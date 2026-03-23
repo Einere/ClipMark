@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
@@ -27,13 +26,12 @@ import {
   removeRecentFile,
 } from "./lib/recent-files";
 import { clearDebugLog, logDebug } from "./lib/debug-log";
+import {
+  getPostDiscardResolution,
+  getPostSaveResolution,
+  type PendingAction,
+} from "./lib/pending-action";
 import { buildWindowTitle } from "./lib/window-state";
-
-type PendingAction =
-  | { type: "close" }
-  | { type: "new" }
-  | { type: "open" }
-  | { path: string; type: "openRecent" };
 
 const UNTITLED_FILENAME = "Untitled.md";
 
@@ -145,9 +143,9 @@ export default function App() {
       return;
     }
 
-    if (action.type === "close" && isTauriRuntime()) {
-      logDebug("action:perform:close close()");
-      await getCurrentWindow().close();
+    if (action.type === "close") {
+      logDebug("action:perform:close");
+      await requestWindowClose(false);
     }
   }
 
@@ -222,6 +220,11 @@ export default function App() {
     }
 
     setPendingAction(null);
+    if (getPostSaveResolution(action) === "force-close") {
+      await requestWindowClose(true);
+      return;
+    }
+
     await performAction(action);
   }
 
@@ -231,6 +234,10 @@ export default function App() {
     setPendingAction(null);
 
     if (!action) {
+      return;
+    }
+
+    if (getPostDiscardResolution(action) === "cancel") {
       return;
     }
 
@@ -290,7 +297,7 @@ export default function App() {
     setPendingAction({ type: "close" });
   });
 
-  const { handleEditorFocusChange } = useNativeWindowState({
+  const { handleEditorFocusChange, requestWindowClose } = useNativeWindowState({
     filePath,
     isDirty,
     isWelcomeVisible,

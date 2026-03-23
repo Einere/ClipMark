@@ -9,10 +9,3 @@ export function buildWindowTitle(
 
   return `${filename} - ${isEdited ? "edited" : "saved"}`;
 }
-
-export function shouldDeferNativeWindowSync(
-  isEditorFocused: boolean,
-  isEdited: boolean,
-): boolean {
-  return isEditorFocused && isEdited;
-}

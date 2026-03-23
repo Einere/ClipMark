@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logDebug } from "../lib/debug-log";
 import { isTauriRuntime } from "../lib/file-system";
-import { shouldDeferNativeWindowSync } from "../lib/window-state";
 
 type WindowSyncState = {
   edited: boolean;
@@ -27,8 +26,6 @@ export function useNativeWindowState({
   windowTitle,
 }: UseNativeWindowStateOptions) {
   const dirtyRef = useRef(isDirty);
-  const editorFocusedRef = useRef(false);
-  const pendingWindowSyncRef = useRef<WindowSyncState | null>(null);
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -40,19 +37,26 @@ export function useNativeWindowState({
         `window:sync title=${state.title} edited=${state.edited} path=${state.path ?? "null"}`,
       );
       await invoke("sync_window_document_state", state);
-      pendingWindowSyncRef.current = null;
     },
   );
 
   const handleEditorFocusChange = useEffectEvent((focused: boolean) => {
     logDebug(`editor:focusChange focused=${focused}`);
-    editorFocusedRef.current = focused;
+  });
 
-    if (focused || !pendingWindowSyncRef.current || !isTauriRuntime()) {
+  const requestWindowClose = useEffectEvent(async (force = false) => {
+    if (!isTauriRuntime()) {
       return;
     }
 
-    void syncNativeWindowState(pendingWindowSyncRef.current);
+    if (force) {
+      logDebug("window:close force destroy");
+      await getCurrentWindow().destroy();
+      return;
+    }
+
+    logDebug("window:close request");
+    await getCurrentWindow().close();
   });
 
   useEffect(() => {
@@ -67,15 +71,6 @@ export function useNativeWindowState({
       path: filePath,
       title: windowTitle,
     };
-
-    if (
-      !isWelcomeVisible &&
-      shouldDeferNativeWindowSync(editorFocusedRef.current, isDirty)
-    ) {
-      pendingWindowSyncRef.current = nextState;
-      logDebug("window:sync deferred while editor focused");
-      return;
-    }
 
     void syncNativeWindowState(nextState);
   }, [filePath, isDirty, isWelcomeVisible, syncNativeWindowState, windowTitle]);
@@ -116,5 +111,6 @@ export function useNativeWindowState({
 
   return {
     handleEditorFocusChange,
+    requestWindowClose,
   };
 }

@@ -32,7 +32,7 @@ export function UnsavedChangesDialog({
         </p>
         <div className="dialog-card__actions">
           <button className="button-secondary" onClick={onDiscard} type="button">
-            Don&apos;t Save
+            Continue Editing
           </button>
           <button className="button-primary" onClick={onSave} type="button">
             Save
