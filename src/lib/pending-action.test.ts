@@ -5,8 +5,8 @@ import {
 } from "./pending-action";
 
 describe("pending action resolution", () => {
-  it("forces close after save when the pending action is close", () => {
-    expect(getPostSaveResolution({ type: "close" })).toBe("force-close");
+  it("hides the window after save when the pending action is closeWindow", () => {
+    expect(getPostSaveResolution({ type: "closeWindow" })).toBe("hide-window");
   });
 
   it("performs non-close actions after save", () => {
@@ -17,8 +17,8 @@ describe("pending action resolution", () => {
     ).toBe("perform");
   });
 
-  it("cancels close on discard", () => {
-    expect(getPostDiscardResolution({ type: "close" })).toBe("cancel");
+  it("hides the window on discard when the pending action is closeWindow", () => {
+    expect(getPostDiscardResolution({ type: "closeWindow" })).toBe("hide-window");
   });
 
   it("cancels non-close actions on discard", () => {

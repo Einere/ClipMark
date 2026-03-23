@@ -38,6 +38,9 @@ describe("setupAppMenu", () => {
 
   it("builds a macOS app menu with file path and window actions", async () => {
     const dispose = await setupAppMenu({
+      canCopyFilePath: true,
+      canSave: true,
+      canTogglePanels: true,
       filePath: "/tmp/clipmark.md",
       isPreviewVisible: true,
       isTocVisible: false,
@@ -77,6 +80,20 @@ describe("setupAppMenu", () => {
     expect(menuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
+        id: "file-save",
+        text: "Save",
+      }),
+    );
+    expect(menuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        id: "file-save-as",
+        text: "Save As...",
+      }),
+    );
+    expect(menuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
         id: "file-copy-path",
         text: "Copy File Path",
       }),
@@ -84,6 +101,7 @@ describe("setupAppMenu", () => {
     expect(checkMenuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         checked: true,
+        enabled: true,
         id: "view-toggle-preview",
         text: "Preview",
       }),
@@ -91,6 +109,7 @@ describe("setupAppMenu", () => {
     expect(checkMenuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         checked: false,
+        enabled: true,
         id: "view-toggle-toc",
         text: "Table of Contents",
       }),
@@ -117,6 +136,9 @@ describe("setupAppMenu", () => {
 
   it("disables file path copy and open recent when unavailable", async () => {
     await setupAppMenu({
+      canCopyFilePath: false,
+      canSave: false,
+      canTogglePanels: false,
       filePath: null,
       isPreviewVisible: false,
       isTocVisible: true,
@@ -135,6 +157,18 @@ describe("setupAppMenu", () => {
     expect(menuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: false,
+        id: "file-save",
+      }),
+    );
+    expect(menuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        id: "file-save-as",
+      }),
+    );
+    expect(menuItemNew).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
         id: "file-copy-path",
       }),
     );
@@ -147,6 +181,7 @@ describe("setupAppMenu", () => {
     expect(checkMenuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         checked: false,
+        enabled: false,
         id: "view-toggle-preview",
         text: "Preview",
       }),
@@ -154,6 +189,7 @@ describe("setupAppMenu", () => {
     expect(checkMenuItemNew).toHaveBeenCalledWith(
       expect.objectContaining({
         checked: true,
+        enabled: false,
         id: "view-toggle-toc",
         text: "Table of Contents",
       }),

@@ -12,12 +12,17 @@ use block2::StackBlock;
 #[cfg(target_os = "macos")]
 use objc2::MainThreadMarker;
 #[cfg(target_os = "macos")]
+use objc2::runtime::AnyObject;
+#[cfg(target_os = "macos")]
 use objc2_app_kit::{
     NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertStyle,
     NSAlertThirdButtonReturn, NSApplication, NSWindow,
 };
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSString;
+#[cfg(target_os = "macos")]
+use objc2_foundation::NSArray;
+use tauri::Manager;
 
 #[tauri::command]
 fn read_markdown_file(path: String) -> Result<String, String> {
@@ -77,6 +82,63 @@ fn sync_window_document_state(
     #[cfg(not(target_os = "macos"))]
     {
         let _ = (window, path, edited, title);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_window(window: tauri::Window) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let window_for_main_thread = window.clone();
+        window
+            .run_on_main_thread(move || {
+                let ns_window: &NSWindow = unsafe {
+                    &*(window_for_main_thread
+                        .ns_window()
+                        .expect("missing ns_window")
+                        as *mut NSWindow)
+                };
+
+                ns_window.orderOut(None::<&AnyObject>);
+            })
+            .map_err(|error| error.to_string())?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        window.hide().map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn show_window(window: tauri::Window) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let window_for_main_thread = window.clone();
+        window
+            .run_on_main_thread(move || {
+                let mtm = MainThreadMarker::new().expect("failed to access the main thread");
+                let ns_window: &NSWindow = unsafe {
+                    &*(window_for_main_thread
+                        .ns_window()
+                        .expect("missing ns_window")
+                        as *mut NSWindow)
+                };
+
+                NSApplication::sharedApplication(mtm).activateIgnoringOtherApps(true);
+                ns_window.makeKeyAndOrderFront(None::<&AnyObject>);
+            })
+            .map_err(|error| error.to_string())?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        window.show().map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())?;
     }
 
     Ok(())
@@ -151,18 +213,80 @@ fn show_unsaved_changes_sheet(window: tauri::Window, filename: String) -> Result
     }
 }
 
+#[tauri::command]
+fn pick_markdown_file() -> Result<Option<String>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mtm = MainThreadMarker::new().ok_or_else(|| "failed to access the main thread".to_string())?;
+        let panel = unsafe { objc2_app_kit::NSOpenPanel::openPanel(mtm) };
+
+        unsafe {
+            panel.setCanChooseDirectories(false);
+            panel.setCanChooseFiles(true);
+            panel.setAllowsMultipleSelection(false);
+            panel.setCanCreateDirectories(false);
+            panel.setAllowedFileTypes(Some(&NSArray::from_retained_slice(&[
+                NSString::from_str("md"),
+                NSString::from_str("markdown"),
+                NSString::from_str("txt"),
+            ])));
+        }
+
+        let response = unsafe { panel.runModal() };
+        if response != objc2_app_kit::NSModalResponseOK {
+            return Ok(None);
+        }
+
+        let urls = panel.URLs();
+        let url = urls.firstObject().ok_or_else(|| "missing selected file url".to_string())?;
+        let path = url
+            .path()
+            .map(|path| path.to_string())
+            .ok_or_else(|| "failed to read selected file path".to_string())?;
+
+        return Ok(Some(path));
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(None)
+    }
+}
+
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             append_debug_log,
             clear_debug_log,
+            hide_window,
+            pick_markdown_file,
             read_markdown_file,
+            show_window,
             show_unsaved_changes_sheet,
             write_markdown_file,
             sync_window_document_state
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running ClipMark");
+        .build(tauri::generate_context!())
+        .expect("error while building ClipMark");
+
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } = event
+        {
+            let mtm = MainThreadMarker::new().expect("failed to access the main thread");
+            if NSApplication::sharedApplication(mtm).modalWindow().is_some() {
+                return;
+            }
+
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
+    });
 }
