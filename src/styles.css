@@ -371,6 +371,33 @@ a {
   white-space: nowrap;
 }
 
+.footer-bar__path-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: copy;
+  transition:
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.footer-bar__path-button:hover {
+  color: var(--text);
+}
+
+.footer-bar__path-button:focus-visible {
+  outline: 2px solid rgba(47, 109, 229, 0.35);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.footer-bar__path-button:active {
+  opacity: 0.7;
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;

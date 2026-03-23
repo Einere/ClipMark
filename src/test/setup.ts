@@ -11,3 +11,5 @@ Object.defineProperty(window, "matchMedia", {
     removeListener: () => undefined,
   }),
 });
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;

@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useMemo } from "react";
+import { useEffectEvent, useMemo } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -17,6 +17,8 @@ type EditorWorkspaceProps = {
   filePath: string | null;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
+  onPathCopy: (path: string) => void;
+  onPathCopyError: () => void;
   onEditorFocusChange: (focused: boolean) => void;
 };
 
@@ -46,8 +48,23 @@ export function EditorWorkspace({
   filePath,
   isPreviewVisible,
   isTocVisible,
+  onPathCopy,
+  onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
+  const handlePathCopy = useEffectEvent(async () => {
+    if (!filePath) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(filePath);
+      onPathCopy(filePath);
+    } catch {
+      onPathCopyError();
+    }
+  });
+
   const workspaceClassName = [
     "workspace",
     isTocVisible && isPreviewVisible
@@ -101,9 +118,18 @@ export function EditorWorkspace({
       </main>
 
       <footer className="footer-bar">
-        <span className="footer-bar__path">
-          {filePath ?? "Unsaved local document"}
-        </span>
+        {filePath ? (
+          <button
+            className="footer-bar__path footer-bar__path-button"
+            onClick={() => void handlePathCopy()}
+            title="Click to copy file path"
+            type="button"
+          >
+            {filePath}
+          </button>
+        ) : (
+          <span className="footer-bar__path">Unsaved local document</span>
+        )}
       </footer>
     </>
   );

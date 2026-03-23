@@ -398,6 +398,8 @@ export default function App() {
           documentStatus={visibleDocumentStatus}
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
+          onPathCopy={() => showToast("파일 경로를 클립보드에 복사했습니다.")}
+          onPathCopyError={() => showToast("파일 경로를 복사하지 못했습니다.", "error")}
           onEditorFocusChange={handleEditorFocusChange}
         />
       )}
