@@ -165,14 +165,17 @@ export default function App() {
       try {
         const document = await openRecentFile(action.path);
         if (!document) {
-          showToast("최근 파일은 데스크톱 앱에서만 열 수 있습니다.", "info");
+          showToast("Recent files are only available in the desktop app.", "info");
           return;
         }
 
         applyOpenedDocument(document);
       } catch {
         setRecentFiles((files) => removeRecentFile(files, action.path));
-        showToast("최근 파일을 찾을 수 없어 목록에서 제거했습니다.", "error");
+        showToast(
+          "This recent file could not be found and was removed from the list.",
+          "error",
+        );
       }
       return;
     }
@@ -419,8 +422,8 @@ export default function App() {
           documentStatus={visibleDocumentStatus}
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
-          onPathCopy={() => showToast("파일 경로를 클립보드에 복사했습니다.")}
-          onPathCopyError={() => showToast("파일 경로를 복사하지 못했습니다.", "error")}
+          onPathCopy={() => showToast("Copied the file path to the clipboard.")}
+          onPathCopyError={() => showToast("Could not copy the file path.", "error")}
           onEditorFocusChange={handleEditorFocusChange}
         />
       )}
