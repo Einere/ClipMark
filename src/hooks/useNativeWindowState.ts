@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logDebug } from "../lib/debug-log";
 import { isTauriRuntime } from "../lib/file-system";
+import { hideNativeWindow, showNativeWindow } from "../lib/native-window";
 
 type WindowSyncState = {
   edited: boolean;
@@ -45,19 +46,28 @@ export function useNativeWindowState({
     logDebug(`editor:focusChange focused=${focused}`);
   });
 
-  const requestWindowClose = useEffectEvent(async (force = false) => {
+  const hideWindow = useEffectEvent(async () => {
     if (!isTauriRuntime()) {
       return;
     }
 
-    if (force) {
-      logDebug("window:close force destroy");
-      await getCurrentWindow().destroy();
+    logDebug("window:hide");
+    await hideNativeWindow();
+  });
+
+  const ensureWindowVisible = useEffectEvent(async () => {
+    if (!isTauriRuntime()) {
       return;
     }
 
-    logDebug("window:close request");
-    await getCurrentWindow().close();
+    const currentWindow = getCurrentWindow();
+    const isVisible = await currentWindow.isVisible();
+    if (!isVisible) {
+      logDebug("window:show");
+      await showNativeWindow();
+    }
+
+    await currentWindow.setFocus();
   });
 
   useEffect(() => {
@@ -87,18 +97,13 @@ export function useNativeWindowState({
     void getCurrentWindow()
       .onCloseRequested((event) => {
         logDebug(`window:closeRequested dirty=${dirtyRef.current}`);
-        if (!dirtyRef.current) {
-          logDebug("window:closeRequested allow default destroy");
-          return;
-        }
-
         event.preventDefault();
-        logDebug("window:closeRequested prevented");
         if (closeRequestInFlightRef.current) {
           logDebug("window:closeRequested ignored in-flight");
           return;
         }
 
+        logDebug("window:closeRequested prevented");
         closeRequestInFlightRef.current = true;
         void Promise.resolve(onRequestClose()).finally(() => {
           closeRequestInFlightRef.current = false;
@@ -119,7 +124,8 @@ export function useNativeWindowState({
   }, [onRequestClose]);
 
   return {
+    ensureWindowVisible,
     handleEditorFocusChange,
-    requestWindowClose,
+    hideWindow,
   };
 }

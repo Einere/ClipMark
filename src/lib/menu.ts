@@ -2,6 +2,9 @@ import type { RecentFile } from "./recent-files";
 import { isTauriRuntime } from "./file-system";
 
 type MenuHandlers = {
+  canCopyFilePath: boolean;
+  canSave: boolean;
+  canTogglePanels: boolean;
   onNew: () => void;
   onOpen: () => void;
   onOpenRecent: (path: string) => void;
@@ -61,12 +64,14 @@ export async function setupAppMenu(
       await MenuItem.new({
         accelerator: "CmdOrCtrl+S",
         action: () => handlers.onSave(),
+        enabled: handlers.canSave,
         id: "file-save",
         text: "Save",
       }),
       await MenuItem.new({
         accelerator: "CmdOrCtrl+Shift+S",
         action: () => handlers.onSaveAs(),
+        enabled: handlers.canSave,
         id: "file-save-as",
         text: "Save As...",
       }),
@@ -102,7 +107,7 @@ export async function setupAppMenu(
       await MenuItem.new({
         accelerator: "Alt+CmdOrCtrl+C",
         action: () => handlers.onCopyFilePath(),
-        enabled: handlers.filePath !== null,
+        enabled: handlers.canCopyFilePath,
         id: "file-copy-path",
         text: "Copy File Path",
       }),
@@ -131,6 +136,7 @@ export async function setupAppMenu(
         accelerator: "Alt+CmdOrCtrl+P",
         action: () => handlers.onTogglePreview(),
         checked: handlers.isPreviewVisible,
+        enabled: handlers.canTogglePanels,
         id: "view-toggle-preview",
         text: "Preview",
       }),
@@ -138,6 +144,7 @@ export async function setupAppMenu(
         accelerator: "Alt+CmdOrCtrl+T",
         action: () => handlers.onToggleToc(),
         checked: handlers.isTocVisible,
+        enabled: handlers.canTogglePanels,
         id: "view-toggle-toc",
         text: "Table of Contents",
       }),

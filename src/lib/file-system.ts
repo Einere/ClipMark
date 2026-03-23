@@ -73,6 +73,24 @@ export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
   };
 }
 
+export async function openMarkdownDocumentWithoutShowingWindow(): Promise<OpenedDocument | null> {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+
+  const selected = await invoke<string | null>("pick_markdown_file");
+  if (!selected) {
+    return null;
+  }
+
+  const markdown = await invoke<string>("read_markdown_file", { path: selected });
+  return {
+    filename: getFilenameFromPath(selected),
+    markdown,
+    path: selected,
+  };
+}
+
 export async function readMarkdownDocumentAtPath(
   path: string,
 ): Promise<OpenedDocument | null> {

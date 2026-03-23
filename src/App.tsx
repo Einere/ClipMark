@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { Toast } from "./components/toast/Toast";
@@ -17,6 +18,7 @@ import {
 import {
   isTauriRuntime,
   openMarkdownDocument,
+  openMarkdownDocumentWithoutShowingWindow,
   saveMarkdownDocument,
 } from "./lib/file-system";
 import { setupAppMenu } from "./lib/menu";
@@ -41,6 +43,7 @@ import {
 } from "./lib/window-state";
 
 const UNTITLED_FILENAME = "Untitled.md";
+const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 
 export default function App() {
@@ -52,6 +55,7 @@ export default function App() {
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [isTocVisible, setIsTocVisible] = useState(true);
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
+  const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -63,10 +67,13 @@ export default function App() {
   const [documentStore] = useState(() => createDocumentStore(""));
 
   const isDirty = useDocumentDirty(documentStore, savedMarkdown, !isWelcomeVisible);
-  const activeFilename = filename ?? UNTITLED_FILENAME;
+  const activeFilename = isWelcomeVisible ? APP_NAME : (filename ?? UNTITLED_FILENAME);
   const documentStatus = getDocumentStatus(filePath, isDirty, isWelcomeVisible);
   const visibleDocumentStatus = getVisibleDocumentStatus(documentStatus);
   const windowTitle = buildWindowTitle(activeFilename, documentStatus);
+  const canSaveDocument = isWindowVisible && !isWelcomeVisible;
+  const canTogglePanels = isWindowVisible && !isWelcomeVisible;
+  const canCopyFilePath = isWindowVisible && filePath !== null;
 
   useEffect(() => {
     void clearDebugLog().then(() => {
@@ -84,6 +91,15 @@ export default function App() {
         window.clearTimeout(toastTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    function handleWindowFocus() {
+      setIsWindowVisible(true);
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => window.removeEventListener("focus", handleWindowFocus);
   }, []);
 
   const showToast = useEffectEvent((
@@ -135,12 +151,30 @@ export default function App() {
     bumpDocumentKey();
   }
 
-  async function openWithPicker() {
+  function closeCurrentDocument() {
+    logDebug("document:close");
+    setIsWelcomeVisible(true);
+    setFilePath(null);
+    setFilename(null);
+    documentStore.replaceMarkdown("");
+    setSavedMarkdown("");
+    bumpDocumentKey();
+  }
+
+  async function closeCurrentWindowSession() {
+    closeCurrentDocument();
+    setIsWindowVisible(false);
+    await hideWindow();
+  }
+
+  async function openWithPicker(fallbackToFileInput = true) {
     logDebug("document:openPicker:start");
     const document = await openMarkdownDocument();
     if (!document) {
       logDebug("document:openPicker:cancelled");
-      fileInputRef.current?.click();
+      if (fallbackToFileInput) {
+        fileInputRef.current?.click();
+      }
       return;
     }
 
@@ -149,6 +183,12 @@ export default function App() {
   }
 
   async function performAction(action: PendingAction) {
+    if (action.type === "closeWindow") {
+      logDebug("action:perform:closeWindow");
+      await closeCurrentWindowSession();
+      return;
+    }
+
     if (action.type === "new") {
       logDebug("action:perform:new");
       createNewDocument();
@@ -179,11 +219,6 @@ export default function App() {
         );
       }
       return;
-    }
-
-    if (action.type === "close") {
-      logDebug("action:perform:close");
-      await requestWindowClose(false);
     }
   }
 
@@ -269,8 +304,8 @@ export default function App() {
     }
 
     setPendingAction(null);
-    if (getPostSaveResolution(action) === "force-close") {
-      await requestWindowClose(true);
+    if (getPostSaveResolution(action) === "hide-window") {
+      await hideWindow();
       return;
     }
 
@@ -318,16 +353,43 @@ export default function App() {
     }
   });
 
+  const requestVisibleAction = useEffectEvent((action: PendingAction) => {
+    if (!isWindowVisible && action.type === "open") {
+      void openMarkdownDocumentWithoutShowingWindow().then((document) => {
+        if (!document) {
+          logDebug("document:openPicker:cancelled");
+          return;
+        }
+
+        flushSync(() => {
+          applyOpenedDocument(document);
+          setIsWindowVisible(true);
+        });
+        void ensureWindowVisible();
+      });
+      return;
+    }
+
+    void ensureWindowVisible().then(() => {
+      setIsWindowVisible(true);
+      if (!isWindowVisible && action.type === "new") {
+        return;
+      }
+
+      requestAction(action);
+    });
+  });
+
   const handleMenuNew = useEffectEvent(() => {
-    requestAction({ type: "new" });
+    requestVisibleAction({ type: "new" });
   });
 
   const handleMenuOpen = useEffectEvent(() => {
-    requestAction({ type: "open" });
+    requestVisibleAction({ type: "open" });
   });
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
-    requestAction({ path, type: "openRecent" });
+    requestVisibleAction({ path, type: "openRecent" });
   });
 
   const handleMenuClearRecentFiles = useEffectEvent(() => {
@@ -335,6 +397,10 @@ export default function App() {
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
+    if (!canSaveDocument) {
+      return;
+    }
+
     void handleSave(saveAs);
   });
 
@@ -351,6 +417,11 @@ export default function App() {
   });
 
   const handleCloseRequested = useEffectEvent(async () => {
+    if (!isDirty) {
+      await closeCurrentWindowSession();
+      return;
+    }
+
     logDebug(`window:closeFlow:start filename=${activeFilename}`);
 
     const result = await showNativeCloseSheet(activeFilename);
@@ -359,22 +430,26 @@ export default function App() {
     if (result === "save") {
       const saved = await handleSave();
       if (saved) {
-        await requestWindowClose(true);
+        await closeCurrentWindowSession();
       }
       return;
     }
 
     if (result === "discard") {
-      await requestWindowClose(true);
+      await closeCurrentWindowSession();
       return;
     }
 
     if (result === "unsupported") {
-      setPendingAction({ type: "close" });
+      setPendingAction({ type: "closeWindow" });
     }
   });
 
-  const { handleEditorFocusChange, requestWindowClose } = useNativeWindowState({
+  const {
+    ensureWindowVisible,
+    handleEditorFocusChange,
+    hideWindow,
+  } = useNativeWindowState({
     filePath,
     isDirty,
     isWelcomeVisible,
@@ -396,6 +471,9 @@ export default function App() {
     let disposed = false;
 
     void setupAppMenu({
+      canCopyFilePath,
+      canSave: canSaveDocument,
+      canTogglePanels,
       onNew: handleMenuNew,
       onOpen: handleMenuOpen,
       onOpenRecent: handleMenuOpenRecent,
@@ -430,7 +508,11 @@ export default function App() {
     handleMenuSave,
     handleMenuTogglePreview,
     handleMenuToggleToc,
+    canCopyFilePath,
+    canSaveDocument,
+    canTogglePanels,
     filePath,
+    isWindowVisible,
     isPreviewVisible,
     isTocVisible,
     recentFiles,
