@@ -14,10 +14,17 @@ import {
   saveMarkdownDocument,
 } from "./lib/file-system";
 import { setupAppMenu } from "./lib/menu";
+import {
+  addRecentFile,
+  loadRecentFiles,
+  openRecentFile,
+  removeRecentFile,
+} from "./lib/recent-files";
 import { SAMPLE_DOCUMENT } from "./lib/sample-document";
 import { extractHeadings } from "./lib/toc";
 
 export default function App() {
+  const [recentFiles, setRecentFiles] = useState(() => loadRecentFiles());
   const [filePath, setFilePath] = useState<string | null>(null);
   const [filename, setFilename] = useState("untitled.md");
   const [markdown, setMarkdown] = useState(SAMPLE_DOCUMENT);
@@ -43,6 +50,10 @@ export default function App() {
       setSavedMarkdown(document.markdown);
       setStatusText(`Opened ${document.filename}`);
     });
+
+    if (document.path) {
+      setRecentFiles((files) => addRecentFile(files, document.path));
+    }
   }
 
   function handleNewDocument() {
@@ -89,6 +100,21 @@ export default function App() {
     event.target.value = "";
   }
 
+  async function handleOpenRecent(path: string) {
+    try {
+      const document = await openRecentFile(path);
+      if (!document) {
+        setStatusText("Open Recent is only available in the desktop app");
+        return;
+      }
+
+      applyOpenedDocument(document);
+    } catch {
+      setRecentFiles((files) => removeRecentFile(files, path));
+      setStatusText("Recent file is no longer available");
+    }
+  }
+
   async function handleSave(saveAs = false) {
     const saved = await saveMarkdownDocument({
       filename,
@@ -106,6 +132,7 @@ export default function App() {
     setFilename(saved.filename);
     setSavedMarkdown(markdown);
     setStatusText(`Saved ${saved.filename}`);
+    setRecentFiles((files) => addRecentFile(files, saved.path));
   }
 
   const handleWindowShortcuts = useEffectEvent((event: KeyboardEvent) => {
@@ -141,6 +168,10 @@ export default function App() {
     void handleOpenClick();
   });
 
+  const handleMenuOpenRecent = useEffectEvent((path: string) => {
+    void handleOpenRecent(path);
+  });
+
   const handleMenuSave = useEffectEvent((saveAs = false) => {
     void handleSave(saveAs);
   });
@@ -168,10 +199,12 @@ export default function App() {
     void setupAppMenu({
       onNew: handleMenuNew,
       onOpen: handleMenuOpen,
+      onOpenRecent: handleMenuOpenRecent,
       onSave: () => handleMenuSave(false),
       onSaveAs: () => handleMenuSave(true),
       onTogglePreview: handleMenuTogglePreview,
       onToggleToc: handleMenuToggleToc,
+      recentFiles,
     }).then((dispose) => {
       cleanup = dispose;
     });
@@ -182,9 +215,11 @@ export default function App() {
   }, [
     handleMenuNew,
     handleMenuOpen,
+    handleMenuOpenRecent,
     handleMenuSave,
     handleMenuTogglePreview,
     handleMenuToggleToc,
+    recentFiles,
   ]);
 
   return (
@@ -246,6 +281,28 @@ export default function App() {
           </section>
         ) : null}
       </main>
+
+      {recentFiles.length > 0 ? (
+        <section className="recent-files">
+          <div className="recent-files__header">
+            <strong>Recent Files</strong>
+            <span className="status">{recentFiles.length} items</span>
+          </div>
+          <div className="recent-files__list">
+            {recentFiles.map((file) => (
+              <button
+                className="recent-files__item"
+                key={file.path}
+                onClick={() => void handleOpenRecent(file.path)}
+                type="button"
+              >
+                <span>{file.filename}</span>
+                <span className="status">{file.path}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <input
         accept=".md,text/markdown,text/plain"

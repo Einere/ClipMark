@@ -1,12 +1,15 @@
+import type { RecentFile } from "./recent-files";
 import { isTauriRuntime } from "./file-system";
 
 type MenuHandlers = {
   onNew: () => void;
   onOpen: () => void;
+  onOpenRecent: (path: string) => void;
   onSave: () => void;
   onSaveAs: () => void;
   onTogglePreview: () => void;
   onToggleToc: () => void;
+  recentFiles: RecentFile[];
 };
 
 export async function setupAppMenu(
@@ -59,6 +62,28 @@ export async function setupAppMenu(
         id: "file-save-as",
         text: "Save As...",
       }),
+      await (
+        handlers.recentFiles.length > 0
+          ? Submenu.new({
+              text: "Open Recent",
+              items: [
+                ...(await Promise.all(
+                  handlers.recentFiles.map((file) =>
+                    MenuItem.new({
+                      action: () => handlers.onOpenRecent(file.path),
+                      id: `recent-${file.path}`,
+                      text: file.filename,
+                    }),
+                  ),
+                )),
+              ],
+            })
+          : MenuItem.new({
+              enabled: false,
+              id: "file-open-recent-empty",
+              text: "Open Recent",
+            })
+      ),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "CloseWindow" }),
     ],
