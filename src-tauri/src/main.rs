@@ -3,8 +3,9 @@
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Mutex;
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
 
@@ -23,10 +24,60 @@ use objc2_app_kit::{
 use objc2_foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSArray;
-use tauri::{Emitter, Manager};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter, Manager, State};
 use url::Url;
 
 const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AppPreferences {
+    auto_load_external_media: bool,
+    is_preview_visible: bool,
+    is_toc_visible: bool,
+}
+
+impl Default for AppPreferences {
+    fn default() -> Self {
+        Self {
+            auto_load_external_media: true,
+            is_preview_visible: true,
+            is_toc_visible: true,
+        }
+    }
+}
+
+struct PreferencesState {
+    file_path: PathBuf,
+    preferences: Mutex<AppPreferences>,
+}
+
+fn load_preferences_from_disk(path: &Path) -> AppPreferences {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return AppPreferences::default();
+    };
+
+    serde_json::from_str(&contents).unwrap_or_default()
+}
+
+fn save_preferences_to_disk(path: &Path, preferences: &AppPreferences) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    let contents = serde_json::to_string_pretty(preferences).map_err(|error| error.to_string())?;
+    fs::write(path, contents).map_err(|error| error.to_string())
+}
+
+fn preferences_file_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    let config_dir = app_handle
+        .path()
+        .app_config_dir()
+        .map_err(|error| error.to_string())?;
+
+    Ok(config_dir.join("preferences.json"))
+}
 
 #[tauri::command]
 fn read_markdown_file(path: String) -> Result<String, String> {
@@ -36,6 +87,32 @@ fn read_markdown_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_markdown_file(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn load_app_preferences(preferences_state: State<'_, PreferencesState>) -> Result<AppPreferences, String> {
+    let preferences = preferences_state
+        .preferences
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    Ok(preferences.clone())
+}
+
+#[tauri::command]
+fn save_app_preferences(
+    preferences: AppPreferences,
+    preferences_state: State<'_, PreferencesState>,
+) -> Result<(), String> {
+    save_preferences_to_disk(&preferences_state.file_path, &preferences)?;
+
+    let mut current_preferences = preferences_state
+        .preferences
+        .lock()
+        .map_err(|error| error.to_string())?;
+    *current_preferences = preferences;
+
+    Ok(())
 }
 
 fn validate_external_url(url: &str) -> Result<Url, String> {
@@ -296,15 +373,28 @@ fn pick_markdown_file() -> Result<Option<String>, String> {
 
 fn main() {
     let app = tauri::Builder::default()
+        .setup(|app| {
+            let preferences_path = preferences_file_path(app.handle())?;
+            let preferences = load_preferences_from_disk(&preferences_path);
+
+            app.manage(PreferencesState {
+                file_path: preferences_path,
+                preferences: Mutex::new(preferences),
+            });
+
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             append_debug_log,
             clear_debug_log,
             hide_window,
+            load_app_preferences,
             open_external_url,
             pick_markdown_file,
             read_markdown_file,
+            save_app_preferences,
             show_window,
             show_unsaved_changes_sheet,
             write_markdown_file,
@@ -353,7 +443,10 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::validate_external_url;
+    use super::{
+        load_preferences_from_disk, save_preferences_to_disk, validate_external_url, AppPreferences,
+    };
+    use std::fs;
 
     #[test]
     fn accepts_supported_external_url_schemes() {
@@ -367,5 +460,29 @@ mod tests {
     fn rejects_unsupported_external_url_schemes() {
         assert!(validate_external_url("javascript:alert('x')").is_err());
         assert!(validate_external_url("data:text/plain,hello").is_err());
+    }
+
+    #[test]
+    fn preferences_default_when_file_is_missing() {
+        let path = std::env::temp_dir().join("clipmark-missing-preferences.json");
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(load_preferences_from_disk(&path), AppPreferences::default());
+    }
+
+    #[test]
+    fn preferences_round_trip_through_disk() {
+        let path = std::env::temp_dir().join("clipmark-test-preferences.json");
+        let preferences = AppPreferences {
+            auto_load_external_media: false,
+            is_preview_visible: false,
+            is_toc_visible: true,
+        };
+
+        save_preferences_to_disk(&path, &preferences).expect("should save preferences");
+
+        assert_eq!(load_preferences_from_disk(&path), preferences);
+
+        let _ = fs::remove_file(&path);
     }
 }

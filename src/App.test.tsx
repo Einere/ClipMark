@@ -12,6 +12,7 @@ const openMarkdownDocument = vi.fn();
 const openMarkdownDocumentWithoutShowingWindow = vi.fn();
 const openRecentFile = vi.fn();
 const removeRecentFile = vi.fn((files) => files);
+const saveAppPreferences = vi.fn().mockResolvedValue(undefined);
 const showNativeCloseSheet = vi.fn();
 const setupAppMenu = vi.fn().mockResolvedValue(undefined);
 const setupNativeOpenDocumentListener = vi.fn();
@@ -61,6 +62,20 @@ vi.mock("./lib/native-open-document", () => ({
   },
 }));
 
+vi.mock("./lib/preview-preferences", () => ({
+  DEFAULT_APP_PREFERENCES: {
+    autoLoadExternalMedia: true,
+    isPreviewVisible: true,
+    isTocVisible: true,
+  },
+  loadAppPreferences: vi.fn().mockResolvedValue({
+    autoLoadExternalMedia: true,
+    isPreviewVisible: true,
+    isTocVisible: true,
+  }),
+  saveAppPreferences,
+}));
+
 vi.mock("./lib/recent-files", () => ({
   addRecentFile: (files: Array<{ filename: string; path: string }>, path: string) => [
     { filename: path.split("/").pop() ?? path, path },
@@ -91,6 +106,7 @@ describe("App close window session", () => {
     openMarkdownDocumentWithoutShowingWindow.mockReset();
     openRecentFile.mockReset();
     removeRecentFile.mockClear();
+    saveAppPreferences.mockClear();
     setupAppMenu.mockClear();
     setupNativeOpenDocumentListener.mockClear();
     showNativeCloseSheet.mockClear();

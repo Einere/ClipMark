@@ -29,16 +29,26 @@ import {
   getDocumentStatus,
   getVisibleDocumentStatus,
 } from "./lib/window-state";
+import {
+  DEFAULT_APP_PREFERENCES,
+  saveAppPreferences,
+  type AppPreferences,
+} from "./lib/preview-preferences";
 
 const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 
-export default function App() {
+type AppProps = {
+  initialPreferences?: AppPreferences;
+};
+
+export default function App({ initialPreferences }: AppProps) {
+  const preferences = initialPreferences ?? DEFAULT_APP_PREFERENCES;
   const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
-    true,
+    preferences.autoLoadExternalMedia,
   );
-  const [isPreviewVisible, setIsPreviewVisible] = useState(true);
-  const [isTocVisible, setIsTocVisible] = useState(true);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(preferences.isPreviewVisible);
+  const [isTocVisible, setIsTocVisible] = useState(preferences.isTocVisible);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
@@ -98,6 +108,18 @@ export default function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    void saveAppPreferences({
+      autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
+      isPreviewVisible,
+      isTocVisible,
+    });
+  }, [
+    isExternalMediaAutoLoadEnabled,
+    isPreviewVisible,
+    isTocVisible,
+  ]);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
