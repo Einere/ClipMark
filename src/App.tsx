@@ -49,7 +49,6 @@ export default function App() {
   const [editorDocumentKey, setEditorDocumentKey] = useState(0);
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [isTocVisible, setIsTocVisible] = useState(true);
-  const [statusText, setStatusText] = useState("Ready");
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
@@ -117,7 +116,6 @@ export default function App() {
     setFilename(document.filename);
     documentStore.replaceMarkdown(document.markdown);
     setSavedMarkdown(document.markdown);
-    setStatusText(`Opened ${document.filename}`);
     bumpDocumentKey();
 
     if (document.path) {
@@ -132,7 +130,6 @@ export default function App() {
     setFilename(UNTITLED_FILENAME);
     documentStore.replaceMarkdown("");
     setSavedMarkdown("");
-    setStatusText("New document");
     bumpDocumentKey();
   }
 
@@ -167,7 +164,6 @@ export default function App() {
       try {
         const document = await openRecentFile(action.path);
         if (!document) {
-          setStatusText("Open Recent is only available in the desktop app");
           showToast("최근 파일은 데스크톱 앱에서만 열 수 있습니다.", "info");
           return;
         }
@@ -175,7 +171,6 @@ export default function App() {
         applyOpenedDocument(document);
       } catch {
         setRecentFiles((files) => removeRecentFile(files, action.path));
-        setStatusText("Recent file is no longer available");
         showToast("최근 파일을 찾을 수 없어 목록에서 제거했습니다.", "error");
       }
       return;
@@ -232,7 +227,6 @@ export default function App() {
 
     if (!saved) {
       logDebug("document:save:cancelled");
-      setStatusText("Save cancelled");
       return false;
     }
 
@@ -240,7 +234,6 @@ export default function App() {
     setFilePath(saved.path);
     setFilename(saved.filename);
     setSavedMarkdown(documentStore.getMarkdown());
-    setStatusText(`Saved ${saved.filename}`);
     setRecentFiles((files) => addRecentFile(files, saved.path));
     return true;
   }
@@ -406,7 +399,6 @@ export default function App() {
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
           onEditorFocusChange={handleEditorFocusChange}
-          statusText={statusText}
         />
       )}
 

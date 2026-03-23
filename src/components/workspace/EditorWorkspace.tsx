@@ -18,7 +18,6 @@ type EditorWorkspaceProps = {
   isPreviewVisible: boolean;
   isTocVisible: boolean;
   onEditorFocusChange: (focused: boolean) => void;
-  statusText: string;
 };
 
 function DocumentPreviewPane({ documentStore }: { documentStore: DocumentStore }) {
@@ -48,7 +47,6 @@ export function EditorWorkspace({
   isPreviewVisible,
   isTocVisible,
   onEditorFocusChange,
-  statusText,
 }: EditorWorkspaceProps) {
   const workspaceClassName = [
     "workspace",
@@ -96,7 +94,6 @@ export function EditorWorkspace({
           <section className="panel panel--preview">
             <div className="panel__header">
               <span>Preview</span>
-              <span className="status">{statusText}</span>
             </div>
             <DocumentPreviewPane documentStore={documentStore} />
           </section>
@@ -107,15 +104,6 @@ export function EditorWorkspace({
         <span className="footer-bar__path">
           {filePath ?? "Unsaved local document"}
         </span>
-        {documentStatus ? (
-          <span
-            className={
-              documentStatus === "edited" ? "status status--dirty" : "status"
-            }
-          >
-            {documentStatus}
-          </span>
-        ) : null}
       </footer>
     </>
   );
