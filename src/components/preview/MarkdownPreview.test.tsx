@@ -4,7 +4,9 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MarkdownPreview } from "./MarkdownPreview";
 
-const openExternalUri = vi.fn().mockResolvedValue(undefined);
+const { openExternalUri } = vi.hoisted(() => ({
+  openExternalUri: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("../../lib/external-link", async () => {
   const actual = await vi.importActual<typeof import("../../lib/external-link")>(
@@ -150,5 +152,49 @@ describe("MarkdownPreview", () => {
 
     expect(container.querySelector("iframe")).toBeNull();
     expect(container.querySelector("details")).not.toBeNull();
+  });
+
+  it("renders allowed raw html details blocks so disclosure content can be toggled", async () => {
+    await act(async () => {
+      root.render(
+        createElement(MarkdownPreview, {
+          filePath: "/tmp/docs/note.md",
+          isExternalMediaAutoLoadEnabled: true,
+          markdown:
+            "<details><summary>Archive notes</summary><p>Collapsed by default</p></details>",
+        }),
+      );
+    });
+
+    const details = container.querySelector("details");
+    const summary = container.querySelector("summary");
+
+    expect(details).not.toBeNull();
+    expect(details?.hasAttribute("open")).toBe(false);
+    expect(summary?.textContent).toBe("Archive notes");
+    expect(details?.textContent).toContain("Collapsed by default");
+  });
+
+  it("renders allowed raw html media using the same guarded external-open flow", async () => {
+    await act(async () => {
+      root.render(
+        createElement(MarkdownPreview, {
+          filePath: "/tmp/docs/note.md",
+          isExternalMediaAutoLoadEnabled: false,
+          markdown: '<video src="https://example.com/demo.mp4"></video>',
+        }),
+      );
+    });
+
+    expect(container.querySelector("video")).toBeNull();
+
+    const button = container.querySelector("button.preview-uri-card__button");
+    expect(button?.textContent).toContain("Open externally");
+
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(openExternalUri).toHaveBeenCalledWith("https://example.com/demo.mp4");
   });
 });

@@ -4,30 +4,54 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
-const clearDebugLog = vi.fn().mockResolvedValue(undefined);
-const ensureWindowVisible = vi.fn().mockResolvedValue(undefined);
-const hideWindow = vi.fn().mockResolvedValue(undefined);
-const loadRecentFiles = vi.fn(() => []);
-const openMarkdownDocument = vi.fn();
-const openMarkdownDocumentWithoutShowingWindow = vi.fn();
-const openRecentFile = vi.fn();
-const removeRecentFile = vi.fn((files) => files);
-const saveAppPreferences = vi.fn().mockResolvedValue(undefined);
-const showNativeCloseSheet = vi.fn();
-const setupAppMenu = vi.fn().mockResolvedValue(undefined);
-const setupNativeOpenDocumentListener = vi.fn();
+const {
+  clearDebugLog,
+  ensureWindowVisible,
+  hideWindow,
+  loadRecentFiles,
+  openMarkdownDocument,
+  openMarkdownDocumentWithoutShowingWindow,
+  openRecentFile,
+  removeRecentFile,
+  saveAppPreferences,
+  setupAppMenu,
+  setupNativeOpenDocumentListener,
+  showNativeCloseSheet,
+} = vi.hoisted(() => ({
+  clearDebugLog: vi.fn().mockResolvedValue(undefined),
+  ensureWindowVisible: vi.fn().mockResolvedValue(undefined),
+  hideWindow: vi.fn().mockResolvedValue(undefined),
+  loadRecentFiles: vi.fn(() => []),
+  openMarkdownDocument: vi.fn(),
+  openMarkdownDocumentWithoutShowingWindow: vi.fn(),
+  openRecentFile: vi.fn(),
+  removeRecentFile: vi.fn((files) => files),
+  saveAppPreferences: vi.fn().mockResolvedValue(undefined),
+  setupAppMenu: vi.fn().mockResolvedValue(undefined),
+  setupNativeOpenDocumentListener: vi.fn().mockResolvedValue(undefined),
+  showNativeCloseSheet: vi.fn(),
+}));
 
 let closeRequestHandler: (() => Promise<void> | void) | null = null;
 let menuHandlers: Record<string, unknown> | null = null;
 let nativeOpenDocumentHandler: ((path: string) => void) | null = null;
 
 vi.mock("./hooks/useNativeWindowState", () => ({
-  useNativeWindowState: (options: { onRequestClose: () => Promise<void> | void }) => {
+  useNativeWindowState: (options: {
+    onRequestClose: () => Promise<void> | void;
+    onVisibilityChange?: (visible: boolean) => void;
+  }) => {
     closeRequestHandler = options.onRequestClose;
     return {
-      ensureWindowVisible,
+      ensureWindowVisible: vi.fn(async () => {
+        await ensureWindowVisible();
+        options.onVisibilityChange?.(true);
+      }),
       handleEditorFocusChange: vi.fn(),
-      hideWindow,
+      hideWindow: vi.fn(async () => {
+        await hideWindow();
+        options.onVisibilityChange?.(false);
+      }),
     };
   },
 }));
@@ -147,7 +171,7 @@ describe("App close window session", () => {
 
     expect(hideWindow).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Open a recent archive or start a new Markdown file.");
-    expect(container.textContent).not.toContain("/tmp/note.md");
+    expect(container.querySelector("button.footer-bar__path-button")).toBeNull();
   });
 
   it("creates a new document when New is selected while the window is hidden", async () => {
@@ -294,7 +318,7 @@ describe("App close window session", () => {
       nativeOpenDocumentHandler?.("/tmp/visible.md");
     });
 
-    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
+    expect(ensureWindowVisible).not.toHaveBeenCalled();
     expect(openRecentFile).toHaveBeenCalledWith("/tmp/visible.md");
     expect(container.textContent).toContain("/tmp/visible.md");
   });
