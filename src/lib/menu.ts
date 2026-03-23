@@ -1,10 +1,9 @@
+import type { MenuItem } from "@tauri-apps/api/menu/menuItem";
+import type { Submenu } from "@tauri-apps/api/menu/submenu";
 import type { RecentFile } from "./recent-files";
 import { isTauriRuntime } from "./file-system";
 
-type MenuHandlers = {
-  canCopyFilePath: boolean;
-  canSave: boolean;
-  canTogglePanels: boolean;
+export type MenuHandlers = {
   onNew: () => void;
   onOpen: () => void;
   onOpenRecent: (path: string) => void;
@@ -14,21 +13,72 @@ type MenuHandlers = {
   onSaveAs: () => void;
   onTogglePreview: () => void;
   onToggleToc: () => void;
-  filePath: string | null;
+};
+
+export type MenuState = {
+  canCopyFilePath: boolean;
+  canSave: boolean;
+  canTogglePanels: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
   recentFiles: RecentFile[];
 };
 
+export type AppMenuController = {
+  dispose: () => Promise<void>;
+  sync: (state: MenuState) => Promise<void>;
+};
+
 export async function setupAppMenu(
   handlers: MenuHandlers,
-): Promise<(() => Promise<void>) | undefined> {
+): Promise<AppMenuController | undefined> {
   if (!isTauriRuntime()) {
     return undefined;
   }
 
   const { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } =
     await import("@tauri-apps/api/menu");
+
+  const recentSubmenu = await Submenu.new({
+    id: "file-open-recent",
+    items: [],
+    text: "Open Recent",
+  });
+
+  const saveItem = await MenuItem.new({
+    accelerator: "CmdOrCtrl+S",
+    action: () => handlers.onSave(),
+    id: "file-save",
+    text: "Save",
+  });
+
+  const saveAsItem = await MenuItem.new({
+    accelerator: "CmdOrCtrl+Shift+S",
+    action: () => handlers.onSaveAs(),
+    id: "file-save-as",
+    text: "Save As...",
+  });
+
+  const copyPathItem = await MenuItem.new({
+    accelerator: "Alt+CmdOrCtrl+C",
+    action: () => handlers.onCopyFilePath(),
+    id: "file-copy-path",
+    text: "Copy File Path",
+  });
+
+  const previewItem = await CheckMenuItem.new({
+    accelerator: "Alt+CmdOrCtrl+P",
+    action: () => handlers.onTogglePreview(),
+    id: "view-toggle-preview",
+    text: "Preview",
+  });
+
+  const tocItem = await CheckMenuItem.new({
+    accelerator: "Alt+CmdOrCtrl+T",
+    action: () => handlers.onToggleToc(),
+    id: "view-toggle-toc",
+    text: "Table of Contents",
+  });
 
   const appSubmenu = await Submenu.new({
     text: "ClipMark",
@@ -61,56 +111,11 @@ export async function setupAppMenu(
         text: "Open...",
       }),
       await PredefinedMenuItem.new({ item: "Separator" }),
-      await MenuItem.new({
-        accelerator: "CmdOrCtrl+S",
-        action: () => handlers.onSave(),
-        enabled: handlers.canSave,
-        id: "file-save",
-        text: "Save",
-      }),
-      await MenuItem.new({
-        accelerator: "CmdOrCtrl+Shift+S",
-        action: () => handlers.onSaveAs(),
-        enabled: handlers.canSave,
-        id: "file-save-as",
-        text: "Save As...",
-      }),
-      await (
-        handlers.recentFiles.length > 0
-          ? Submenu.new({
-              text: "Open Recent",
-              items: [
-                ...(await Promise.all(
-                  handlers.recentFiles.map((file) =>
-                    MenuItem.new({
-                      action: () => handlers.onOpenRecent(file.path),
-                      id: `recent-${file.path}`,
-                      text: file.filename,
-                    }),
-                  ),
-                )),
-                await PredefinedMenuItem.new({ item: "Separator" }),
-                await MenuItem.new({
-                  action: () => handlers.onClearRecentFiles(),
-                  id: "file-open-recent-clear",
-                  text: "Clear Recent Files",
-                }),
-              ],
-            })
-          : MenuItem.new({
-              enabled: false,
-              id: "file-open-recent-empty",
-              text: "Open Recent",
-            })
-      ),
+      saveItem,
+      saveAsItem,
+      recentSubmenu,
       await PredefinedMenuItem.new({ item: "Separator" }),
-      await MenuItem.new({
-        accelerator: "Alt+CmdOrCtrl+C",
-        action: () => handlers.onCopyFilePath(),
-        enabled: handlers.canCopyFilePath,
-        id: "file-copy-path",
-        text: "Copy File Path",
-      }),
+      copyPathItem,
     ],
   });
 
@@ -130,22 +135,8 @@ export async function setupAppMenu(
   const viewSubmenu = await Submenu.new({
     text: "View",
     items: [
-      await CheckMenuItem.new({
-        accelerator: "Alt+CmdOrCtrl+P",
-        action: () => handlers.onTogglePreview(),
-        checked: handlers.isPreviewVisible,
-        enabled: handlers.canTogglePanels,
-        id: "view-toggle-preview",
-        text: "Preview",
-      }),
-      await CheckMenuItem.new({
-        accelerator: "Alt+CmdOrCtrl+T",
-        action: () => handlers.onToggleToc(),
-        checked: handlers.isTocVisible,
-        enabled: handlers.canTogglePanels,
-        id: "view-toggle-toc",
-        text: "Table of Contents",
-      }),
+      previewItem,
+      tocItem,
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Fullscreen" }),
     ],
@@ -167,7 +158,124 @@ export async function setupAppMenu(
 
   await menu.setAsAppMenu();
 
-  return async () => {
-    await menu.close();
+  let lastState: MenuState | null = null;
+
+  return {
+    async dispose() {
+      await menu.close();
+    },
+    async sync(state) {
+      const updates: Promise<void>[] = [];
+
+      if (!lastState || lastState.canSave !== state.canSave) {
+        updates.push(saveItem.setEnabled(state.canSave));
+        updates.push(saveAsItem.setEnabled(state.canSave));
+      }
+
+      if (!lastState || lastState.canCopyFilePath !== state.canCopyFilePath) {
+        updates.push(copyPathItem.setEnabled(state.canCopyFilePath));
+      }
+
+      if (!lastState || lastState.canTogglePanels !== state.canTogglePanels) {
+        updates.push(previewItem.setEnabled(state.canTogglePanels));
+        updates.push(tocItem.setEnabled(state.canTogglePanels));
+      }
+
+      if (!lastState || lastState.isPreviewVisible !== state.isPreviewVisible) {
+        updates.push(previewItem.setChecked(state.isPreviewVisible));
+      }
+
+      if (!lastState || lastState.isTocVisible !== state.isTocVisible) {
+        updates.push(tocItem.setChecked(state.isTocVisible));
+      }
+
+      await Promise.all(updates);
+
+      if (
+        !lastState
+        || !areRecentFilesEqual(lastState.recentFiles, state.recentFiles)
+      ) {
+        await syncRecentFilesMenu({
+          createMenuItem: MenuItem.new,
+          createSeparator: () => PredefinedMenuItem.new({ item: "Separator" }),
+          handlers,
+          recentFiles: state.recentFiles,
+          recentSubmenu,
+        });
+      }
+
+      lastState = {
+        ...state,
+        recentFiles: state.recentFiles.map((file) => ({ ...file })),
+      };
+    },
   };
+}
+
+function areRecentFilesEqual(left: RecentFile[], right: RecentFile[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (
+      left[index]?.path !== right[index]?.path
+      || left[index]?.filename !== right[index]?.filename
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function syncRecentFilesMenu({
+  createMenuItem,
+  createSeparator,
+  handlers,
+  recentFiles,
+  recentSubmenu,
+}: {
+  createMenuItem: (options: Parameters<typeof import("@tauri-apps/api/menu").MenuItem.new>[0]) => Promise<MenuItem>;
+  createSeparator: () => Promise<Awaited<ReturnType<typeof import("@tauri-apps/api/menu").PredefinedMenuItem.new>>>;
+  handlers: MenuHandlers;
+  recentFiles: RecentFile[];
+  recentSubmenu: Submenu;
+}) {
+  const existingItems = await recentSubmenu.items();
+  for (const item of existingItems) {
+    await recentSubmenu.remove(item);
+  }
+
+  await recentSubmenu.setEnabled(recentFiles.length > 0);
+
+  if (recentFiles.length === 0) {
+    await recentSubmenu.append(
+      await createMenuItem({
+        enabled: false,
+        id: "file-open-recent-empty",
+        text: "No Recent Files",
+      }),
+    );
+    return;
+  }
+
+  const recentItems: MenuItem[] = [];
+  for (const file of recentFiles) {
+    recentItems.push(await createMenuItem({
+      action: () => handlers.onOpenRecent(file.path),
+      id: `recent-${file.path}`,
+      text: file.filename,
+    }));
+  }
+
+  await recentSubmenu.append(recentItems);
+  await recentSubmenu.append(await createSeparator());
+  await recentSubmenu.append(
+    await createMenuItem({
+      action: () => handlers.onClearRecentFiles(),
+      id: "file-open-recent-clear",
+      text: "Clear Recent Files",
+    }),
+  );
 }

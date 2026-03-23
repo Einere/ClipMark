@@ -1,6 +1,8 @@
 import {
+  startTransition,
   useEffect,
   useEffectEvent,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -10,26 +12,11 @@ import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { Toast } from "./components/toast/Toast";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { EditorWorkspace } from "./components/workspace/EditorWorkspace";
+import { useAppMenuController } from "./hooks/useAppMenuController";
+import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
-import {
-  createDocumentStore,
-  useDocumentDirty,
-} from "./lib/document-store";
-import {
-  isTauriRuntime,
-  openMarkdownDocument,
-  openMarkdownDocumentWithoutShowingWindow,
-  saveMarkdownDocument,
-} from "./lib/file-system";
-import { setupAppMenu } from "./lib/menu";
-import {
-  addRecentFile,
-  clearRecentFiles,
-  loadRecentFiles,
-  openRecentFile,
-  removeRecentFile,
-} from "./lib/recent-files";
-import { clearDebugLog, logDebug } from "./lib/debug-log";
+import { useDocumentDirty } from "./lib/document-store";
+import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
 import {
@@ -43,65 +30,20 @@ import {
   getVisibleDocumentStatus,
 } from "./lib/window-state";
 
-const UNTITLED_FILENAME = "Untitled.md";
 const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 
 export default function App() {
-  const [recentFiles, setRecentFiles] = useState(() => loadRecentFiles());
-  const [filePath, setFilePath] = useState<string | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
-  const [savedMarkdown, setSavedMarkdown] = useState("");
-  const [editorDocumentKey, setEditorDocumentKey] = useState(0);
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [isTocVisible, setIsTocVisible] = useState(true);
-  const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     tone: "error" | "info";
   } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
-  const [documentStore] = useState(() => createDocumentStore(""));
-
-  const isDirty = useDocumentDirty(documentStore, savedMarkdown, !isWelcomeVisible);
-  const activeFilename = isWelcomeVisible ? APP_NAME : (filename ?? UNTITLED_FILENAME);
-  const documentStatus = getDocumentStatus(filePath, isDirty, isWelcomeVisible);
-  const visibleDocumentStatus = getVisibleDocumentStatus(documentStatus);
-  const windowTitle = buildWindowTitle(activeFilename, documentStatus);
-  const canSaveDocument = isWindowVisible && !isWelcomeVisible;
-  const canTogglePanels = isWindowVisible && !isWelcomeVisible;
-  const canCopyFilePath = isWindowVisible && filePath !== null;
-
-  useEffect(() => {
-    void clearDebugLog().then(() => {
-      logDebug("app:start");
-    });
-  }, []);
-
-  useEffect(() => {
-    logDebug(`app:dirty=${isDirty}`);
-  }, [isDirty]);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current !== null) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleWindowFocus() {
-      setIsWindowVisible(true);
-    }
-
-    window.addEventListener("focus", handleWindowFocus);
-    return () => window.removeEventListener("focus", handleWindowFocus);
-  }, []);
 
   const showToast = useEffectEvent((
     message: string,
@@ -118,125 +60,79 @@ export default function App() {
     }, TOAST_DURATION_MS);
   });
 
-  function bumpDocumentKey() {
-    setEditorDocumentKey((value) => value + 1);
-  }
+  const session = useDocumentSession({
+    onError: (message) => showToast(message, "error"),
+    onInfo: (message) => showToast(message, "info"),
+  });
 
-  function applyOpenedDocument(document: {
-    filename: string;
-    markdown: string;
-    path: string | null;
-  }) {
-    logDebug(
-      `document:apply filename=${document.filename} path=${document.path ?? "null"}`,
-    );
-    setIsWelcomeVisible(false);
-    setFilePath(document.path);
-    setFilename(document.filename);
-    documentStore.replaceMarkdown(document.markdown);
-    setSavedMarkdown(document.markdown);
-    bumpDocumentKey();
+  const isDirty = useDocumentDirty(
+    session.documentStore,
+    session.savedMarkdown,
+    !session.isWelcomeVisible,
+  );
+  const activeFilename = session.isWelcomeVisible
+    ? APP_NAME
+    : (session.filename ?? "Untitled.md");
+  const documentStatus = getDocumentStatus(
+    session.filePath,
+    isDirty,
+    session.isWelcomeVisible,
+  );
+  const visibleDocumentStatus = getVisibleDocumentStatus(documentStatus);
+  const windowTitle = buildWindowTitle(activeFilename, documentStatus);
+  const canSaveDocument = isWindowVisible && !session.isWelcomeVisible;
+  const canTogglePanels = isWindowVisible && !session.isWelcomeVisible;
+  const canCopyFilePath = isWindowVisible && session.filePath !== null;
 
-    if (document.path) {
-      setRecentFiles((files) => addRecentFile(files, document.path));
-    }
-  }
+  useEffect(() => {
+    void clearDebugLog();
+  }, []);
 
-  function createNewDocument() {
-    logDebug("document:new");
-    setIsWelcomeVisible(false);
-    setFilePath(null);
-    setFilename(UNTITLED_FILENAME);
-    documentStore.replaceMarkdown("");
-    setSavedMarkdown("");
-    bumpDocumentKey();
-  }
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  function closeCurrentDocument() {
-    logDebug("document:close");
-    setIsWelcomeVisible(true);
-    setFilePath(null);
-    setFilename(null);
-    documentStore.replaceMarkdown("");
-    setSavedMarkdown("");
-    bumpDocumentKey();
-  }
+  const resetDocumentAfterHide = useEffectEvent(() => {
+    startTransition(() => {
+      session.closeCurrentDocument();
+    });
+  });
 
   async function closeCurrentWindowSession() {
-    closeCurrentDocument();
-    setIsWindowVisible(false);
-    await hideWindow();
-  }
-
-  async function openWithPicker(fallbackToFileInput = true) {
-    logDebug("document:openPicker:start");
-    const document = await openMarkdownDocument();
-    if (!document) {
-      logDebug("document:openPicker:cancelled");
-      if (fallbackToFileInput) {
-        fileInputRef.current?.click();
-      }
-      return;
-    }
-
-    logDebug(`document:openPicker:success filename=${document.filename}`);
-    applyOpenedDocument(document);
+    await hideWindowRef.current();
+    resetDocumentAfterHide();
   }
 
   async function performAction(action: PendingAction) {
     if (action.type === "closeWindow") {
-      logDebug("action:perform:closeWindow");
       await closeCurrentWindowSession();
       return;
     }
 
     if (action.type === "new") {
-      logDebug("action:perform:new");
-      createNewDocument();
+      session.createNewDocument();
       return;
     }
 
     if (action.type === "open") {
-      logDebug("action:perform:open");
-      await openWithPicker();
+      await session.openWithPicker();
       return;
     }
 
-    if (action.type === "openRecent") {
-      logDebug(`action:perform:openRecent path=${action.path}`);
-      const document = await loadRecentDocument(action.path);
-      if (!document) {
-        return;
-      }
-
-      applyOpenedDocument(document);
+    const document = await session.loadRecentDocument(action.path);
+    if (!document) {
       return;
     }
-  }
 
-  async function loadRecentDocument(path: string) {
-    try {
-      const document = await openRecentFile(path);
-      if (!document) {
-        showToast("Recent files are only available in the desktop app.", "info");
-        return null;
-      }
-
-      return document;
-    } catch {
-      setRecentFiles((files) => removeRecentFile(files, path));
-      showToast(
-        "This recent file could not be found and was removed from the list.",
-        "error",
-      );
-      return null;
-    }
+    session.applyOpenedDocument(document);
   }
 
   function requestAction(action: PendingAction) {
-    logDebug(`action:request type=${action.type}`);
     if (isDirty) {
-      logDebug(`action:deferred type=${action.type}`);
       setPendingAction(action);
       return;
     }
@@ -244,79 +140,21 @@ export default function App() {
     void performAction(action);
   }
 
-  async function handleOpenFile(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const text = await file.text();
-    logDebug(`document:openFallback filename=${file.name}`);
-    applyOpenedDocument({
-      filename: file.name,
-      markdown: text,
-      path: null,
-    });
-
-    event.target.value = "";
-  }
-
-  async function handleSave(saveAs = false) {
-    logDebug(`document:save:start saveAs=${saveAs}`);
-    if (isWelcomeVisible) {
-      createNewDocument();
-    }
-
-    const saved = await saveMarkdownDocument({
-      filename: activeFilename,
-      markdown: documentStore.getMarkdown(),
-      path: filePath,
-      saveAs,
-    });
-
-    if (!saved) {
-      logDebug("document:save:cancelled");
-      return false;
-    }
-
-    logDebug(`document:save:success filename=${saved.filename} path=${saved.path ?? "null"}`);
-    setFilePath(saved.path);
-    setFilename(saved.filename);
-    setSavedMarkdown(documentStore.getMarkdown());
-    setRecentFiles((files) => addRecentFile(files, saved.path));
-    return true;
-  }
-
-  const handleCopyFilePath = useEffectEvent(async () => {
-    if (!filePath) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(filePath);
-      showToast("Copied the file path to the clipboard.");
-    } catch {
-      showToast("Could not copy the file path.", "error");
-    }
-  });
-
   async function resolvePendingActionWithSave() {
     const action = pendingAction;
     if (!action) {
       return;
     }
 
-    logDebug(`dialog:saveThenContinue type=${action.type}`);
-    const saved = await handleSave();
+    const saved = await session.saveDocument({ activeFilename });
     if (!saved) {
       return;
     }
 
     setPendingAction(null);
     if (getPostSaveResolution(action) === "hide-window") {
-      await hideWindow();
+      await hideWindowRef.current();
+      resetDocumentAfterHide();
       return;
     }
 
@@ -325,14 +163,9 @@ export default function App() {
 
   async function resolvePendingActionWithDiscard() {
     const action = pendingAction;
-    logDebug(`dialog:discard type=${action?.type ?? "null"}`);
     setPendingAction(null);
 
-    if (!action) {
-      return;
-    }
-
-    if (getPostDiscardResolution(action) === "cancel") {
+    if (!action || getPostDiscardResolution(action) === "cancel") {
       return;
     }
 
@@ -360,7 +193,10 @@ export default function App() {
 
     if (key === "s") {
       event.preventDefault();
-      void handleSave(event.shiftKey);
+      void session.saveDocument({
+        activeFilename,
+        saveAs: event.shiftKey,
+      });
     }
   });
 
@@ -377,7 +213,7 @@ export default function App() {
       }
 
       flushSync(() => {
-        applyOpenedDocument(document);
+        session.applyOpenedDocument(document);
         setIsWindowVisible(true);
       });
       void ensureWindowVisible();
@@ -390,21 +226,15 @@ export default function App() {
       return;
     }
 
-    if (!isWindowVisible && action.type === "open") {
-      showHiddenWindowWithDocument(async () => {
-        const document = await openMarkdownDocumentWithoutShowingWindow();
-        if (!document) {
-          logDebug("document:openPicker:cancelled");
-          return null;
-        }
-
-        return document;
-      });
+    if (action.type === "open") {
+      showHiddenWindowWithDocument(() =>
+        session.openWithPickerWithoutShowingWindow(),
+      );
       return;
     }
 
-    if (!isWindowVisible && action.type === "openRecent") {
-      showHiddenWindowWithDocument(() => loadRecentDocument(action.path));
+    if (action.type === "openRecent") {
+      showHiddenWindowWithDocument(() => session.loadRecentDocument(action.path));
       return;
     }
 
@@ -426,12 +256,7 @@ export default function App() {
   });
 
   const handleNativeOpenDocument = useEffectEvent((path: string) => {
-    logDebug(`nativeOpenDocument path=${path}`);
     handleMenuOpenRecent(path);
-  });
-
-  const handleMenuClearRecentFiles = useEffectEvent(() => {
-    setRecentFiles(clearRecentFiles());
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
@@ -439,11 +264,20 @@ export default function App() {
       return;
     }
 
-    void handleSave(saveAs);
+    void session.saveDocument({ activeFilename, saveAs });
   });
 
-  const handleMenuCopyFilePath = useEffectEvent(() => {
-    void handleCopyFilePath();
+  const handleMenuCopyFilePath = useEffectEvent(async () => {
+    if (!session.filePath) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(session.filePath);
+      showToast("Copied the file path to the clipboard.");
+    } catch {
+      showToast("Could not copy the file path.", "error");
+    }
   });
 
   const handleMenuTogglePreview = useEffectEvent(() => {
@@ -454,19 +288,18 @@ export default function App() {
     setIsTocVisible((value) => !value);
   });
 
+  const hideWindowRef = useRef<() => Promise<void>>(async () => {});
+
   const handleCloseRequested = useEffectEvent(async () => {
     if (!isDirty) {
-      await closeCurrentWindowSession();
+      await hideWindowRef.current();
+      resetDocumentAfterHide();
       return;
     }
 
-    logDebug(`window:closeFlow:start filename=${activeFilename}`);
-
     const result = await showNativeCloseSheet(activeFilename);
-    logDebug(`window:closeFlow:result value=${result}`);
-
     if (result === "save") {
-      const saved = await handleSave();
+      const saved = await session.saveDocument({ activeFilename });
       if (saved) {
         await closeCurrentWindowSession();
       }
@@ -488,12 +321,14 @@ export default function App() {
     handleEditorFocusChange,
     hideWindow,
   } = useNativeWindowState({
-    filePath,
+    filePath: session.filePath,
     isDirty,
-    isWelcomeVisible,
     onRequestClose: handleCloseRequested,
+    onVisibilityChange: setIsWindowVisible,
     windowTitle,
   });
+
+  hideWindowRef.current = hideWindow;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -503,58 +338,6 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleWindowShortcuts]);
-
-  useEffect(() => {
-    let cleanup: (() => Promise<void>) | undefined;
-    let disposed = false;
-
-    void setupAppMenu({
-      canCopyFilePath,
-      canSave: canSaveDocument,
-      canTogglePanels,
-      onNew: handleMenuNew,
-      onOpen: handleMenuOpen,
-      onOpenRecent: handleMenuOpenRecent,
-      onClearRecentFiles: handleMenuClearRecentFiles,
-      onCopyFilePath: handleMenuCopyFilePath,
-      onSave: () => handleMenuSave(false),
-      onSaveAs: () => handleMenuSave(true),
-      onTogglePreview: handleMenuTogglePreview,
-      onToggleToc: handleMenuToggleToc,
-      filePath,
-      isPreviewVisible,
-      isTocVisible,
-      recentFiles,
-    }).then((dispose) => {
-      if (disposed) {
-        void dispose?.();
-        return;
-      }
-      cleanup = dispose;
-    });
-
-    return () => {
-      disposed = true;
-      void cleanup?.();
-    };
-  }, [
-    handleMenuNew,
-    handleMenuOpen,
-    handleMenuOpenRecent,
-    handleMenuClearRecentFiles,
-    handleMenuCopyFilePath,
-    handleMenuSave,
-    handleMenuTogglePreview,
-    handleMenuToggleToc,
-    canCopyFilePath,
-    canSaveDocument,
-    canTogglePanels,
-    filePath,
-    isWindowVisible,
-    isPreviewVisible,
-    isTocVisible,
-    recentFiles,
-  ]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -575,42 +358,102 @@ export default function App() {
     };
   }, [handleNativeOpenDocument]);
 
+  const menuHandlers = useMemo(() => ({
+    onClearRecentFiles: session.clearRecentFilesList,
+    onCopyFilePath: () => {
+      void handleMenuCopyFilePath();
+    },
+    onNew: handleMenuNew,
+    onOpen: handleMenuOpen,
+    onOpenRecent: handleMenuOpenRecent,
+    onSave: () => {
+      void handleMenuSave(false);
+    },
+    onSaveAs: () => {
+      void handleMenuSave(true);
+    },
+    onTogglePreview: handleMenuTogglePreview,
+    onToggleToc: handleMenuToggleToc,
+  }), [
+    handleMenuCopyFilePath,
+    handleMenuNew,
+    handleMenuOpen,
+    handleMenuOpenRecent,
+    handleMenuSave,
+    handleMenuTogglePreview,
+    handleMenuToggleToc,
+    session.clearRecentFilesList,
+  ]);
+
+  const menuState = useMemo(() => ({
+    canCopyFilePath,
+    canSave: canSaveDocument,
+    canTogglePanels,
+    isPreviewVisible,
+    isTocVisible,
+    recentFiles: session.recentFiles,
+  }), [
+    canCopyFilePath,
+    canSaveDocument,
+    canTogglePanels,
+    isPreviewVisible,
+    isTocVisible,
+    session.recentFiles,
+  ]);
+
+  useAppMenuController(menuHandlers, menuState);
+
+  const dialogState = pendingAction?.type === "closeWindow"
+    ? {
+        confirmLabel: "Close Without Saving",
+        description: `${activeFilename} has unsaved changes. Save first or close this window without keeping the latest edits.`,
+        title: "Save changes before closing?",
+      }
+    : {
+        confirmLabel: "Continue Editing",
+        description: `${activeFilename} has unsaved changes. Save first, or keep editing without changing the current document.`,
+        title: "Save changes before continuing?",
+      };
+
   return (
     <div className="app-shell">
-      {isWelcomeVisible ? (
+      {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
           onOpen={() => requestAction({ type: "open" })}
           onOpenRecent={(path) => requestAction({ path, type: "openRecent" })}
-          recentFiles={recentFiles}
+          recentFiles={session.recentFiles}
         />
       ) : (
         <EditorWorkspace
-          documentKey={editorDocumentKey}
-          documentStore={documentStore}
-          editorRef={editorRef}
-          filePath={filePath}
+          documentKey={session.editorDocumentKey}
+          documentStore={session.documentStore}
           documentStatus={visibleDocumentStatus}
+          editorRef={editorRef}
+          filePath={session.filePath}
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
+          onEditorFocusChange={handleEditorFocusChange}
           onPathCopy={() => showToast("Copied the file path to the clipboard.")}
           onPathCopyError={() => showToast("Could not copy the file path.", "error")}
-          onEditorFocusChange={handleEditorFocusChange}
         />
       )}
 
       <UnsavedChangesDialog
+        confirmLabel={dialogState.confirmLabel}
+        description={dialogState.description}
         filename={activeFilename}
         onDiscard={() => void resolvePendingActionWithDiscard()}
         onSave={() => void resolvePendingActionWithSave()}
         open={pendingAction !== null}
+        title={dialogState.title}
       />
 
       <input
         accept=".md,text/markdown,text/plain"
         className="file-input"
-        onChange={handleOpenFile}
-        ref={fileInputRef}
+        onChange={session.handleOpenFile}
+        ref={session.fileInputRef}
         type="file"
       />
 

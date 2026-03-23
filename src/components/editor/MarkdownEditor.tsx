@@ -15,7 +15,6 @@ import {
   convertClipboardToMarkdown,
   getClipboardPayload,
 } from "../../lib/paste";
-import { logDebug } from "../../lib/debug-log";
 
 type MarkdownEditorProps = {
   documentKey: number;
@@ -85,25 +84,16 @@ export const MarkdownEditor = forwardRef<
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              logDebug(
-                `editor:docChanged len=${update.state.doc.length} selection=${update.state.selection.main.from}`,
-              );
               store.setMarkdown(update.state.doc.toString());
             }
           }),
           EditorView.domEventHandlers({
             blur() {
-              logDebug("editor:blur");
               onFocusChangeEvent(false);
               return false;
             },
             focus() {
-              logDebug("editor:focus");
               onFocusChangeEvent(true);
-              return false;
-            },
-            keydown(event) {
-              logDebug(`editor:keydown key=${event.key}`);
               return false;
             },
             paste(event, currentView) {
@@ -164,7 +154,6 @@ export const MarkdownEditor = forwardRef<
 
   useImperativeHandle(ref, () => ({
     focus() {
-      logDebug("editor:focus() imperative");
       viewRef.current?.focus();
     },
     hasFocus() {

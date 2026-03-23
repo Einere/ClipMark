@@ -14,16 +14,16 @@ type WindowSyncState = {
 type UseNativeWindowStateOptions = {
   filePath: string | null;
   isDirty: boolean;
-  isWelcomeVisible: boolean;
   onRequestClose: () => void | Promise<void>;
+  onVisibilityChange: (visible: boolean) => void;
   windowTitle: string;
 };
 
 export function useNativeWindowState({
   filePath,
   isDirty,
-  isWelcomeVisible,
   onRequestClose,
+  onVisibilityChange,
   windowTitle,
 }: UseNativeWindowStateOptions) {
   const dirtyRef = useRef(isDirty);
@@ -51,8 +51,8 @@ export function useNativeWindowState({
       return;
     }
 
-    logDebug("window:hide");
     await hideNativeWindow();
+    onVisibilityChange(false);
   });
 
   const ensureWindowVisible = useEffectEvent(async () => {
@@ -63,11 +63,11 @@ export function useNativeWindowState({
     const currentWindow = getCurrentWindow();
     const isVisible = await currentWindow.isVisible();
     if (!isVisible) {
-      logDebug("window:show");
       await showNativeWindow();
     }
 
     await currentWindow.setFocus();
+    onVisibilityChange(true);
   });
 
   useEffect(() => {
@@ -84,18 +84,21 @@ export function useNativeWindowState({
     };
 
     void syncNativeWindowState(nextState);
-  }, [filePath, isDirty, isWelcomeVisible, syncNativeWindowState, windowTitle]);
+  }, [filePath, isDirty, syncNativeWindowState, windowTitle]);
 
   useEffect(() => {
     if (!isTauriRuntime()) {
       return;
     }
 
+    const currentWindow = getCurrentWindow();
     let unlisten: (() => void) | undefined;
+    let unlistenFocus: (() => void) | undefined;
     let disposed = false;
 
-    void getCurrentWindow()
-      .onCloseRequested((event) => {
+    void Promise.all([
+      currentWindow.isVisible(),
+      currentWindow.onCloseRequested((event) => {
         logDebug(`window:closeRequested dirty=${dirtyRef.current}`);
         event.preventDefault();
         if (closeRequestInFlightRef.current) {
@@ -108,20 +111,27 @@ export function useNativeWindowState({
         void Promise.resolve(onRequestClose()).finally(() => {
           closeRequestInFlightRef.current = false;
         });
-      })
-      .then((dispose) => {
-        if (disposed) {
-          dispose();
-          return;
-        }
-        unlisten = dispose;
-      });
+      }),
+      currentWindow.onFocusChanged(({ payload: focused }) => {
+        onVisibilityChange(focused);
+      }),
+    ]).then(([isVisible, closeDispose, focusDispose]) => {
+      if (disposed) {
+        closeDispose();
+        focusDispose();
+        return;
+      }
+      onVisibilityChange(isVisible);
+      unlisten = closeDispose;
+      unlistenFocus = focusDispose;
+    });
 
     return () => {
       disposed = true;
       unlisten?.();
+      unlistenFocus?.();
     };
-  }, [onRequestClose]);
+  }, [onRequestClose, onVisibilityChange]);
 
   return {
     ensureWindowVisible,

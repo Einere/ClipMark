@@ -1,17 +1,77 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupAppMenu } from "./menu";
 
-const checkMenuItemNew = vi.fn(async (options: Record<string, unknown>) => options);
 const setAsAppMenu = vi.fn().mockResolvedValue(undefined);
 const close = vi.fn().mockResolvedValue(undefined);
+const createdMenuItems = new Map<string, ReturnType<typeof createMenuItem>>();
+const createdSubmenus = new Map<string, ReturnType<typeof createSubmenu>>();
+
+function createMenuItem(options: Record<string, unknown>) {
+  return {
+    ...options,
+    setChecked: vi.fn().mockResolvedValue(undefined),
+    setEnabled: vi.fn().mockResolvedValue(undefined),
+    setText: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function createSubmenu(options: { items: unknown[]; text: string; id?: string }) {
+  const items = [...options.items];
+  return {
+    ...options,
+    append: vi.fn(async (item: unknown | unknown[]) => {
+      if (Array.isArray(item)) {
+        items.push(...item);
+      } else {
+        items.push(item);
+      }
+    }),
+    items: vi.fn(async () => [...items]),
+    remove: vi.fn(async (item: unknown) => {
+      const index = items.indexOf(item);
+      if (index >= 0) {
+        items.splice(index, 1);
+      }
+    }),
+    setEnabled: vi.fn().mockResolvedValue(undefined),
+    setText: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function trackCreatedItem(options: Record<string, unknown>) {
+  const item = createMenuItem(options);
+  if (typeof options.id === "string") {
+    createdMenuItems.set(options.id, item);
+  }
+  return item;
+}
+
+function trackCreatedSubmenu(options: { items: unknown[]; text: string; id?: string }) {
+  const submenu = createSubmenu(options);
+  if (typeof options.id === "string") {
+    createdSubmenus.set(options.id, submenu);
+  }
+  return submenu;
+}
+
+const checkMenuItemNew = vi.fn(async (options: Record<string, unknown>) => {
+  const item = trackCreatedItem(options);
+  return item;
+});
+const menuItemNew = vi.fn(async (options: Record<string, unknown>) => {
+  const item = trackCreatedItem(options);
+  return item;
+});
+const predefinedMenuItemNew = vi.fn(async (options: Record<string, unknown>) => options);
+const submenuNew = vi.fn(async (options: { items: unknown[]; text: string; id?: string }) => {
+  const submenu = trackCreatedSubmenu(options);
+  return submenu;
+});
 const menuNew = vi.fn(async (options: { items: unknown[] }) => ({
   ...options,
   close,
   setAsAppMenu,
 }));
-const submenuNew = vi.fn(async (options: { items: unknown[]; text: string }) => options);
-const menuItemNew = vi.fn(async (options: Record<string, unknown>) => options);
-const predefinedMenuItemNew = vi.fn(async (options: Record<string, unknown>) => options);
 
 vi.mock("./file-system", () => ({
   isTauriRuntime: () => true,
@@ -29,6 +89,8 @@ describe("setupAppMenu", () => {
   beforeEach(() => {
     checkMenuItemNew.mockClear();
     close.mockClear();
+    createdMenuItems.clear();
+    createdSubmenus.clear();
     menuItemNew.mockClear();
     menuNew.mockClear();
     predefinedMenuItemNew.mockClear();
@@ -36,14 +98,8 @@ describe("setupAppMenu", () => {
     submenuNew.mockClear();
   });
 
-  it("builds a macOS app menu with file path and window actions", async () => {
-    const dispose = await setupAppMenu({
-      canCopyFilePath: true,
-      canSave: true,
-      canTogglePanels: true,
-      filePath: "/tmp/clipmark.md",
-      isPreviewVisible: true,
-      isTocVisible: false,
+  it("builds the menu once and syncs its enabled state", async () => {
+    const controller = await setupAppMenu({
       onClearRecentFiles: vi.fn(),
       onCopyFilePath: vi.fn(),
       onNew: vi.fn(),
@@ -53,6 +109,14 @@ describe("setupAppMenu", () => {
       onSaveAs: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
+    });
+
+    await controller?.sync({
+      canCopyFilePath: true,
+      canSave: true,
+      canTogglePanels: true,
+      isPreviewVisible: true,
+      isTocVisible: false,
       recentFiles: [
         {
           filename: "clipmark.md",
@@ -74,79 +138,24 @@ describe("setupAppMenu", () => {
       }),
     );
 
-    expect(predefinedMenuItemNew).toHaveBeenCalledWith({
-      item: { About: null },
-    });
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: true,
-        id: "file-save",
-        text: "Save",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: true,
-        id: "file-save-as",
-        text: "Save As...",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: true,
-        id: "file-copy-path",
-        text: "Copy File Path",
-      }),
-    );
-    expect(checkMenuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checked: true,
-        enabled: true,
-        id: "view-toggle-preview",
-        text: "Preview",
-      }),
-    );
-    expect(checkMenuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checked: false,
-        enabled: true,
-        id: "view-toggle-toc",
-        text: "Table of Contents",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "file-open-recent-clear",
-        text: "Clear Recent Files",
-      }),
-    );
-    expect(predefinedMenuItemNew).toHaveBeenCalledWith({
-      item: "Fullscreen",
-    });
-    expect(predefinedMenuItemNew).toHaveBeenCalledWith({
-      item: "Minimize",
-    });
-    expect(predefinedMenuItemNew).toHaveBeenCalledWith({
-      item: "Maximize",
-    });
-    expect(
-      predefinedMenuItemNew.mock.calls.filter(
-        ([options]) => options.item === "CloseWindow",
-      ),
-    ).toHaveLength(1);
+    const saveItem = createdMenuItems.get("file-save") as {
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
+    const previewItem = createdMenuItems.get("view-toggle-preview") as {
+      setChecked: ReturnType<typeof vi.fn>;
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
 
-    await dispose?.();
+    expect(saveItem.setEnabled).toHaveBeenCalledWith(true);
+    expect(previewItem.setChecked).toHaveBeenCalledWith(true);
+    expect(previewItem.setEnabled).toHaveBeenCalledWith(true);
+
+    await controller?.dispose();
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it("disables file path copy and open recent when unavailable", async () => {
-    await setupAppMenu({
-      canCopyFilePath: false,
-      canSave: false,
-      canTogglePanels: false,
-      filePath: null,
-      isPreviewVisible: false,
-      isTocVisible: true,
+  it("disables recent files and panel toggles when unavailable", async () => {
+    const controller = await setupAppMenu({
       onClearRecentFiles: vi.fn(),
       onCopyFilePath: vi.fn(),
       onNew: vi.fn(),
@@ -156,48 +165,78 @@ describe("setupAppMenu", () => {
       onSaveAs: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
+    });
+
+    await controller?.sync({
+      canCopyFilePath: false,
+      canSave: false,
+      canTogglePanels: false,
+      isPreviewVisible: false,
+      isTocVisible: true,
       recentFiles: [],
     });
 
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        id: "file-save",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        id: "file-save-as",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        id: "file-copy-path",
-      }),
-    );
-    expect(menuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        id: "file-open-recent-empty",
-      }),
-    );
-    expect(checkMenuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checked: false,
-        enabled: false,
-        id: "view-toggle-preview",
-        text: "Preview",
-      }),
-    );
-    expect(checkMenuItemNew).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checked: true,
-        enabled: false,
-        id: "view-toggle-toc",
-        text: "Table of Contents",
-      }),
-    );
+    const copyPathItem = createdMenuItems.get("file-copy-path") as {
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
+    const tocItem = createdMenuItems.get("view-toggle-toc") as {
+      setChecked: ReturnType<typeof vi.fn>;
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
+    const recentSubmenu = createdSubmenus.get("file-open-recent") as {
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
+
+    expect(copyPathItem.setEnabled).toHaveBeenCalledWith(false);
+    expect(tocItem.setChecked).toHaveBeenCalledWith(true);
+    expect(tocItem.setEnabled).toHaveBeenCalledWith(false);
+    expect(recentSubmenu.setEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it("does not rebuild recent files submenu when the list is unchanged", async () => {
+    const controller = await setupAppMenu({
+      onClearRecentFiles: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onNew: vi.fn(),
+      onOpen: vi.fn(),
+      onOpenRecent: vi.fn(),
+      onSave: vi.fn(),
+      onSaveAs: vi.fn(),
+      onTogglePreview: vi.fn(),
+      onToggleToc: vi.fn(),
+    });
+
+    const recentSubmenu = createdSubmenus.get("file-open-recent") as {
+      append: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
+    };
+
+    await controller?.sync({
+      canCopyFilePath: true,
+      canSave: true,
+      canTogglePanels: true,
+      isPreviewVisible: true,
+      isTocVisible: true,
+      recentFiles: [
+        { filename: "clipmark.md", path: "/tmp/clipmark.md" },
+      ],
+    });
+
+    recentSubmenu.append.mockClear();
+    recentSubmenu.remove.mockClear();
+
+    await controller?.sync({
+      canCopyFilePath: true,
+      canSave: true,
+      canTogglePanels: true,
+      isPreviewVisible: true,
+      isTocVisible: true,
+      recentFiles: [
+        { filename: "clipmark.md", path: "/tmp/clipmark.md" },
+      ],
+    });
+
+    expect(recentSubmenu.append).not.toHaveBeenCalled();
+    expect(recentSubmenu.remove).not.toHaveBeenCalled();
   });
 });

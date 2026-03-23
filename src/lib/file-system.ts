@@ -13,7 +13,7 @@ type SaveDocumentInput = {
   saveAs?: boolean;
 };
 
-type SavedDocument = {
+export type SavedDocument = {
   filename: string;
   path: string | null;
 };

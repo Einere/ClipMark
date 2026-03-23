@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useEffectEvent, useMemo } from "react";
+import { useDeferredValue, useEffectEvent, useMemo } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -24,7 +24,9 @@ type EditorWorkspaceProps = {
 
 function DocumentPreviewPane({ documentStore }: { documentStore: DocumentStore }) {
   const markdown = useDocumentMarkdown(documentStore);
-  return <MarkdownPreview markdown={markdown} />;
+  const deferredMarkdown = useDeferredValue(markdown);
+
+  return <MarkdownPreview markdown={deferredMarkdown} />;
 }
 
 function DocumentTocPane({
@@ -35,7 +37,11 @@ function DocumentTocPane({
   onSelectHeading: (line: number) => void;
 }) {
   const markdown = useDocumentMarkdown(documentStore);
-  const headings = useMemo(() => extractHeadings(markdown), [markdown]);
+  const deferredMarkdown = useDeferredValue(markdown);
+  const headings = useMemo(
+    () => extractHeadings(deferredMarkdown),
+    [deferredMarkdown],
+  );
 
   return <TocPanel headings={headings} onSelectHeading={onSelectHeading} />;
 }
