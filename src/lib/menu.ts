@@ -16,6 +16,8 @@ export type MenuHandlers = {
 };
 
 export type MenuState = {
+  canUseEditMenu: boolean;
+  canUseViewMenu: boolean;
   canCopyFilePath: boolean;
   canSave: boolean;
   canTogglePanels: boolean;
@@ -166,6 +168,14 @@ export async function setupAppMenu(
     },
     async sync(state) {
       const updates: Promise<void>[] = [];
+
+      if (!lastState || lastState.canUseEditMenu !== state.canUseEditMenu) {
+        updates.push(editSubmenu.setEnabled(state.canUseEditMenu));
+      }
+
+      if (!lastState || lastState.canUseViewMenu !== state.canUseViewMenu) {
+        updates.push(viewSubmenu.setEnabled(state.canUseViewMenu));
+      }
 
       if (!lastState || lastState.canSave !== state.canSave) {
         updates.push(saveItem.setEnabled(state.canSave));

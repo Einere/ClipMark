@@ -45,6 +45,8 @@ function createHandlers(label: string) {
 
 function createState(): MenuState {
   return {
+    canUseEditMenu: true,
+    canUseViewMenu: true,
     canCopyFilePath: true,
     canSave: true,
     canTogglePanels: true,

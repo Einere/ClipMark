@@ -5,6 +5,7 @@ const setAsAppMenu = vi.fn().mockResolvedValue(undefined);
 const close = vi.fn().mockResolvedValue(undefined);
 const createdMenuItems = new Map<string, ReturnType<typeof createMenuItem>>();
 const createdSubmenus = new Map<string, ReturnType<typeof createSubmenu>>();
+const createdSubmenusByText = new Map<string, ReturnType<typeof createSubmenu>>();
 
 function createMenuItem(options: Record<string, unknown>) {
   return {
@@ -51,6 +52,7 @@ function trackCreatedSubmenu(options: { items: unknown[]; text: string; id?: str
   if (typeof options.id === "string") {
     createdSubmenus.set(options.id, submenu);
   }
+  createdSubmenusByText.set(options.text, submenu);
   return submenu;
 }
 
@@ -91,6 +93,7 @@ describe("setupAppMenu", () => {
     close.mockClear();
     createdMenuItems.clear();
     createdSubmenus.clear();
+    createdSubmenusByText.clear();
     menuItemNew.mockClear();
     menuNew.mockClear();
     predefinedMenuItemNew.mockClear();
@@ -112,6 +115,8 @@ describe("setupAppMenu", () => {
     });
 
     await controller?.sync({
+      canUseEditMenu: true,
+      canUseViewMenu: true,
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,
@@ -154,7 +159,7 @@ describe("setupAppMenu", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it("disables recent files and panel toggles when unavailable", async () => {
+  it("disables edit and view menus when the window is unavailable", async () => {
     const controller = await setupAppMenu({
       onClearRecentFiles: vi.fn(),
       onCopyFilePath: vi.fn(),
@@ -168,6 +173,8 @@ describe("setupAppMenu", () => {
     });
 
     await controller?.sync({
+      canUseEditMenu: false,
+      canUseViewMenu: false,
       canCopyFilePath: false,
       canSave: false,
       canTogglePanels: false,
@@ -186,7 +193,15 @@ describe("setupAppMenu", () => {
     const recentSubmenu = createdSubmenus.get("file-open-recent") as {
       setEnabled: ReturnType<typeof vi.fn>;
     };
+    const editSubmenu = createdSubmenusByText.get("Edit") as {
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
+    const viewSubmenu = createdSubmenusByText.get("View") as {
+      setEnabled: ReturnType<typeof vi.fn>;
+    };
 
+    expect(editSubmenu.setEnabled).toHaveBeenCalledWith(false);
+    expect(viewSubmenu.setEnabled).toHaveBeenCalledWith(false);
     expect(copyPathItem.setEnabled).toHaveBeenCalledWith(false);
     expect(tocItem.setChecked).toHaveBeenCalledWith(true);
     expect(tocItem.setEnabled).toHaveBeenCalledWith(false);
@@ -212,6 +227,8 @@ describe("setupAppMenu", () => {
     };
 
     await controller?.sync({
+      canUseEditMenu: true,
+      canUseViewMenu: true,
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,
@@ -226,6 +243,8 @@ describe("setupAppMenu", () => {
     recentSubmenu.remove.mockClear();
 
     await controller?.sync({
+      canUseEditMenu: true,
+      canUseViewMenu: true,
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,

@@ -113,7 +113,9 @@ export function useNativeWindowState({
         });
       }),
       currentWindow.onFocusChanged(({ payload: focused }) => {
-        onVisibilityChange(focused);
+        if (focused) {
+          onVisibilityChange(true);
+        }
       }),
     ]).then(([isVisible, closeDispose, focusDispose]) => {
       if (disposed) {

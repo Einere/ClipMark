@@ -226,6 +226,15 @@ export default function App() {
       return;
     }
 
+    if (action.type === "new") {
+      flushSync(() => {
+        session.createNewDocument();
+        setIsWindowVisible(true);
+      });
+      void ensureWindowVisible();
+      return;
+    }
+
     if (action.type === "open") {
       showHiddenWindowWithDocument(() =>
         session.openWithPickerWithoutShowingWindow(),
@@ -386,6 +395,8 @@ export default function App() {
   ]);
 
   const menuState = useMemo(() => ({
+    canUseEditMenu: isWindowVisible,
+    canUseViewMenu: isWindowVisible,
     canCopyFilePath,
     canSave: canSaveDocument,
     canTogglePanels,
@@ -393,6 +404,7 @@ export default function App() {
     isTocVisible,
     recentFiles: session.recentFiles,
   }), [
+    isWindowVisible,
     canCopyFilePath,
     canSaveDocument,
     canTogglePanels,

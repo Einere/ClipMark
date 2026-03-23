@@ -134,7 +134,7 @@ describe("App close window session", () => {
     expect(container.textContent).not.toContain("/tmp/note.md");
   });
 
-  it("keeps the landing screen open when New is selected while the window is hidden", async () => {
+  it("creates a new document when New is selected while the window is hidden", async () => {
     await act(async () => {
       root.render(createElement(App));
     });
@@ -151,7 +151,8 @@ describe("App close window session", () => {
     });
 
     expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("Open a recent archive or start a new Markdown file.");
+    expect(container.textContent).toContain("Unsaved local document");
+    expect(container.textContent).not.toContain("Open a recent archive or start a new Markdown file.");
   });
 
   it("opens the file picker when Open is selected while the window is hidden", async () => {
