@@ -6,6 +6,7 @@ import {
 } from "react";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
+import { Toast } from "./components/toast/Toast";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { EditorWorkspace } from "./components/workspace/EditorWorkspace";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
@@ -34,6 +35,7 @@ import {
 import { buildWindowTitle } from "./lib/window-state";
 
 const UNTITLED_FILENAME = "Untitled.md";
+const TOAST_DURATION_MS = 3200;
 
 export default function App() {
   const [recentFiles, setRecentFiles] = useState(() => loadRecentFiles());
@@ -46,8 +48,13 @@ export default function App() {
   const [statusText, setStatusText] = useState("Ready");
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    tone: "error" | "info";
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
   const [documentStore] = useState(() => createDocumentStore(""));
 
   const isDirty = useDocumentDirty(documentStore, savedMarkdown, !isWelcomeVisible);
@@ -63,6 +70,29 @@ export default function App() {
   useEffect(() => {
     logDebug(`app:dirty=${isDirty}`);
   }, [isDirty]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const showToast = useEffectEvent((
+    message: string,
+    tone: "error" | "info" = "info",
+  ) => {
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+
+    setToast({ message, tone });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimeoutRef.current = null;
+    }, TOAST_DURATION_MS);
+  });
 
   function bumpDocumentKey() {
     setEditorDocumentKey((value) => value + 1);
@@ -132,6 +162,7 @@ export default function App() {
         const document = await openRecentFile(action.path);
         if (!document) {
           setStatusText("Open Recent is only available in the desktop app");
+          showToast("최근 파일은 데스크톱 앱에서만 열 수 있습니다.", "info");
           return;
         }
 
@@ -139,6 +170,7 @@ export default function App() {
       } catch {
         setRecentFiles((files) => removeRecentFile(files, action.path));
         setStatusText("Recent file is no longer available");
+        showToast("최근 파일을 찾을 수 없어 목록에서 제거했습니다.", "error");
       }
       return;
     }
@@ -386,6 +418,8 @@ export default function App() {
         ref={fileInputRef}
         type="file"
       />
+
+      {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
     </div>
   );
 }
