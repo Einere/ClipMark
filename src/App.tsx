@@ -32,7 +32,11 @@ import {
   getPostSaveResolution,
   type PendingAction,
 } from "./lib/pending-action";
-import { buildWindowTitle } from "./lib/window-state";
+import {
+  buildWindowTitle,
+  getDocumentStatus,
+  getVisibleDocumentStatus,
+} from "./lib/window-state";
 
 const UNTITLED_FILENAME = "Untitled.md";
 const TOAST_DURATION_MS = 3200;
@@ -59,7 +63,9 @@ export default function App() {
 
   const isDirty = useDocumentDirty(documentStore, savedMarkdown, !isWelcomeVisible);
   const activeFilename = filename ?? UNTITLED_FILENAME;
-  const windowTitle = buildWindowTitle(activeFilename, isDirty, isWelcomeVisible);
+  const documentStatus = getDocumentStatus(filePath, isDirty, isWelcomeVisible);
+  const visibleDocumentStatus = getVisibleDocumentStatus(documentStatus);
+  const windowTitle = buildWindowTitle(activeFilename, documentStatus);
 
   useEffect(() => {
     void clearDebugLog().then(() => {
@@ -396,7 +402,7 @@ export default function App() {
           documentStore={documentStore}
           editorRef={editorRef}
           filePath={filePath}
-          isDirty={isDirty}
+          documentStatus={visibleDocumentStatus}
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
           onEditorFocusChange={handleEditorFocusChange}

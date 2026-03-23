@@ -7,13 +7,14 @@ import { TocPanel } from "../toc/TocPanel";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings } from "../../lib/toc";
+import type { DocumentStatus } from "../../lib/window-state";
 
 type EditorWorkspaceProps = {
   documentKey: number;
   documentStore: DocumentStore;
+  documentStatus: DocumentStatus | null;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   filePath: string | null;
-  isDirty: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
   onEditorFocusChange: (focused: boolean) => void;
@@ -41,9 +42,9 @@ function DocumentTocPane({
 export function EditorWorkspace({
   documentKey,
   documentStore,
+  documentStatus,
   editorRef,
   filePath,
-  isDirty,
   isPreviewVisible,
   isTocVisible,
   onEditorFocusChange,
@@ -72,9 +73,17 @@ export function EditorWorkspace({
         <section className="panel panel--editor">
           <div className="panel__header">
             <span>Editor</span>
-            <span className={isDirty ? "status status--dirty" : "status"}>
-              {isDirty ? "edited" : "saved"}
-            </span>
+            {documentStatus ? (
+              <span
+                className={
+                  documentStatus === "edited"
+                    ? "status status--dirty"
+                    : "status"
+                }
+              >
+                {documentStatus}
+              </span>
+            ) : null}
           </div>
           <MarkdownEditor
             documentKey={documentKey}
@@ -98,9 +107,15 @@ export function EditorWorkspace({
         <span className="footer-bar__path">
           {filePath ?? "Unsaved local document"}
         </span>
-        <span className={isDirty ? "status status--dirty" : "status"}>
-          {isDirty ? "edited" : "saved"}
-        </span>
+        {documentStatus ? (
+          <span
+            className={
+              documentStatus === "edited" ? "status status--dirty" : "status"
+            }
+          >
+            {documentStatus}
+          </span>
+        ) : null}
       </footer>
     </>
   );
