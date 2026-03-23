@@ -27,6 +27,7 @@ import {
   removeRecentFile,
 } from "./lib/recent-files";
 import { clearDebugLog, logDebug } from "./lib/debug-log";
+import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import {
   getPostDiscardResolution,
   getPostSaveResolution,
@@ -324,8 +325,28 @@ export default function App() {
     setIsTocVisible((value) => !value);
   });
 
-  const handleCloseRequested = useEffectEvent(() => {
-    setPendingAction({ type: "close" });
+  const handleCloseRequested = useEffectEvent(async () => {
+    logDebug(`window:closeFlow:start filename=${activeFilename}`);
+
+    const result = await showNativeCloseSheet(activeFilename);
+    logDebug(`window:closeFlow:result value=${result}`);
+
+    if (result === "save") {
+      const saved = await handleSave();
+      if (saved) {
+        await requestWindowClose(true);
+      }
+      return;
+    }
+
+    if (result === "discard") {
+      await requestWindowClose(true);
+      return;
+    }
+
+    if (result === "unsupported") {
+      setPendingAction({ type: "close" });
+    }
   });
 
   const { handleEditorFocusChange, requestWindowClose } = useNativeWindowState({

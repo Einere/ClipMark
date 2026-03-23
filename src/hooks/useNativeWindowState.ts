@@ -14,7 +14,7 @@ type UseNativeWindowStateOptions = {
   filePath: string | null;
   isDirty: boolean;
   isWelcomeVisible: boolean;
-  onRequestClose: () => void;
+  onRequestClose: () => void | Promise<void>;
   windowTitle: string;
 };
 
@@ -26,6 +26,7 @@ export function useNativeWindowState({
   windowTitle,
 }: UseNativeWindowStateOptions) {
   const dirtyRef = useRef(isDirty);
+  const closeRequestInFlightRef = useRef(false);
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -93,7 +94,15 @@ export function useNativeWindowState({
 
         event.preventDefault();
         logDebug("window:closeRequested prevented");
-        onRequestClose();
+        if (closeRequestInFlightRef.current) {
+          logDebug("window:closeRequested ignored in-flight");
+          return;
+        }
+
+        closeRequestInFlightRef.current = true;
+        void Promise.resolve(onRequestClose()).finally(() => {
+          closeRequestInFlightRef.current = false;
+        });
       })
       .then((dispose) => {
         if (disposed) {
