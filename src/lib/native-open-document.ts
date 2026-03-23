@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { isTauriRuntime } from "./file-system";
 
 export const NATIVE_OPEN_DOCUMENT_EVENT = "clipmark://open-document";
@@ -12,8 +13,6 @@ export async function setupNativeOpenDocumentListener(
   if (!isTauriRuntime()) {
     return undefined;
   }
-
-  const { listen } = await import("@tauri-apps/api/event");
 
   return listen<NativeOpenDocumentPayload>(
     NATIVE_OPEN_DOCUMENT_EVENT,
