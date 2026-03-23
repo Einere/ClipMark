@@ -76,6 +76,11 @@ export function removeRecentFile(
   return next;
 }
 
+export function clearRecentFiles(): RecentFile[] {
+  saveRecentFiles([]);
+  return [];
+}
+
 export async function openRecentFile(
   path: string,
 ){

@@ -5,10 +5,15 @@ type MenuHandlers = {
   onNew: () => void;
   onOpen: () => void;
   onOpenRecent: (path: string) => void;
+  onClearRecentFiles: () => void;
+  onCopyFilePath: () => void;
   onSave: () => void;
   onSaveAs: () => void;
   onTogglePreview: () => void;
   onToggleToc: () => void;
+  filePath: string | null;
+  isPreviewVisible: boolean;
+  isTocVisible: boolean;
   recentFiles: RecentFile[];
 };
 
@@ -19,13 +24,16 @@ export async function setupAppMenu(
     return undefined;
   }
 
-  const { Menu, MenuItem, PredefinedMenuItem, Submenu } = await import(
-    "@tauri-apps/api/menu"
-  );
+  const { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } =
+    await import("@tauri-apps/api/menu");
 
   const appSubmenu = await Submenu.new({
     text: "ClipMark",
     items: [
+      await PredefinedMenuItem.new({ item: { About: null } }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Services" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Hide" }),
       await PredefinedMenuItem.new({ item: "HideOthers" }),
       await PredefinedMenuItem.new({ item: "ShowAll" }),
@@ -76,6 +84,12 @@ export async function setupAppMenu(
                     }),
                   ),
                 )),
+                await PredefinedMenuItem.new({ item: "Separator" }),
+                await MenuItem.new({
+                  action: () => handlers.onClearRecentFiles(),
+                  id: "file-open-recent-clear",
+                  text: "Clear Recent Files",
+                }),
               ],
             })
           : MenuItem.new({
@@ -84,6 +98,14 @@ export async function setupAppMenu(
               text: "Open Recent",
             })
       ),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await MenuItem.new({
+        accelerator: "Alt+CmdOrCtrl+C",
+        action: () => handlers.onCopyFilePath(),
+        enabled: handlers.filePath !== null,
+        id: "file-copy-path",
+        text: "Copy File Path",
+      }),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "CloseWindow" }),
     ],
@@ -105,23 +127,37 @@ export async function setupAppMenu(
   const viewSubmenu = await Submenu.new({
     text: "View",
     items: [
-      await MenuItem.new({
+      await CheckMenuItem.new({
         accelerator: "Alt+CmdOrCtrl+P",
         action: () => handlers.onTogglePreview(),
+        checked: handlers.isPreviewVisible,
         id: "view-toggle-preview",
-        text: "Toggle Preview",
+        text: "Preview",
       }),
-      await MenuItem.new({
+      await CheckMenuItem.new({
         accelerator: "Alt+CmdOrCtrl+T",
         action: () => handlers.onToggleToc(),
+        checked: handlers.isTocVisible,
         id: "view-toggle-toc",
-        text: "Toggle Table of Contents",
+        text: "Table of Contents",
       }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Fullscreen" }),
+    ],
+  });
+
+  const windowSubmenu = await Submenu.new({
+    text: "Window",
+    items: [
+      await PredefinedMenuItem.new({ item: "Minimize" }),
+      await PredefinedMenuItem.new({ item: "Maximize" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "CloseWindow" }),
     ],
   });
 
   const menu = await Menu.new({
-    items: [appSubmenu, fileSubmenu, editSubmenu, viewSubmenu],
+    items: [appSubmenu, fileSubmenu, editSubmenu, viewSubmenu, windowSubmenu],
   });
 
   await menu.setAsAppMenu();

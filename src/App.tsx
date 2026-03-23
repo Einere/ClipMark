@@ -22,6 +22,7 @@ import {
 import { setupAppMenu } from "./lib/menu";
 import {
   addRecentFile,
+  clearRecentFiles,
   loadRecentFiles,
   openRecentFile,
   removeRecentFile,
@@ -242,6 +243,19 @@ export default function App() {
     return true;
   }
 
+  const handleCopyFilePath = useEffectEvent(async () => {
+    if (!filePath) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(filePath);
+      showToast("Copied the file path to the clipboard.");
+    } catch {
+      showToast("Could not copy the file path.", "error");
+    }
+  });
+
   async function resolvePendingActionWithSave() {
     const action = pendingAction;
     if (!action) {
@@ -316,8 +330,16 @@ export default function App() {
     requestAction({ path, type: "openRecent" });
   });
 
+  const handleMenuClearRecentFiles = useEffectEvent(() => {
+    setRecentFiles(clearRecentFiles());
+  });
+
   const handleMenuSave = useEffectEvent((saveAs = false) => {
     void handleSave(saveAs);
+  });
+
+  const handleMenuCopyFilePath = useEffectEvent(() => {
+    void handleCopyFilePath();
   });
 
   const handleMenuTogglePreview = useEffectEvent(() => {
@@ -377,10 +399,15 @@ export default function App() {
       onNew: handleMenuNew,
       onOpen: handleMenuOpen,
       onOpenRecent: handleMenuOpenRecent,
+      onClearRecentFiles: handleMenuClearRecentFiles,
+      onCopyFilePath: handleMenuCopyFilePath,
       onSave: () => handleMenuSave(false),
       onSaveAs: () => handleMenuSave(true),
       onTogglePreview: handleMenuTogglePreview,
       onToggleToc: handleMenuToggleToc,
+      filePath,
+      isPreviewVisible,
+      isTocVisible,
       recentFiles,
     }).then((dispose) => {
       if (disposed) {
@@ -398,9 +425,14 @@ export default function App() {
     handleMenuNew,
     handleMenuOpen,
     handleMenuOpenRecent,
+    handleMenuClearRecentFiles,
+    handleMenuCopyFilePath,
     handleMenuSave,
     handleMenuTogglePreview,
     handleMenuToggleToc,
+    filePath,
+    isPreviewVisible,
+    isTocVisible,
     recentFiles,
   ]);
 
