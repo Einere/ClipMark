@@ -1,17 +1,32 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useEffectEvent,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorView, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
+import type { DocumentStore } from "../../lib/document-store";
 import {
   convertClipboardToMarkdown,
   getClipboardPayload,
 } from "../../lib/paste";
+import { logDebug } from "../../lib/debug-log";
 
 type MarkdownEditorProps = {
-  onChange: (value: string) => void;
-  value: string;
+  documentKey: number;
+  onFocusChange?: (isFocused: boolean) => void;
+  store: DocumentStore;
+};
+
+export type MarkdownEditorHandle = {
+  focus: () => void;
+  hasFocus: () => boolean;
+  focusHeadingLine: (line: number) => void;
 };
 
 const editorTheme = EditorView.theme({
@@ -42,13 +57,16 @@ const editorTheme = EditorView.theme({
   },
 });
 
-export function MarkdownEditor({
-  onChange,
-  value,
-}: MarkdownEditorProps) {
+export const MarkdownEditor = forwardRef<
+  MarkdownEditorHandle,
+  MarkdownEditorProps
+>(function MarkdownEditor({ documentKey, onFocusChange, store }, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const onChangeEvent = useEffectEvent(onChange);
+  const lastDocumentKeyRef = useRef(documentKey);
+  const onFocusChangeEvent = useEffectEvent((isFocused: boolean) => {
+    onFocusChange?.(isFocused);
+  });
 
   useEffect(() => {
     if (!rootRef.current || viewRef.current) {
@@ -58,7 +76,7 @@ export function MarkdownEditor({
     const view = new EditorView({
       parent: rootRef.current,
       state: EditorState.create({
-        doc: value,
+        doc: store.getMarkdown(),
         extensions: [
           basicSetup,
           markdown(),
@@ -67,10 +85,27 @@ export function MarkdownEditor({
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              onChangeEvent(update.state.doc.toString());
+              logDebug(
+                `editor:docChanged len=${update.state.doc.length} selection=${update.state.selection.main.from}`,
+              );
+              store.setMarkdown(update.state.doc.toString());
             }
           }),
           EditorView.domEventHandlers({
+            blur() {
+              logDebug("editor:blur");
+              onFocusChangeEvent(false);
+              return false;
+            },
+            focus() {
+              logDebug("editor:focus");
+              onFocusChangeEvent(true);
+              return false;
+            },
+            keydown(event) {
+              logDebug(`editor:keydown key=${event.key}`);
+              return false;
+            },
             paste(event, currentView) {
               const clipboardData = event.clipboardData;
               if (!clipboardData) {
@@ -101,7 +136,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [onChangeEvent, value]);
+  }, [store]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -109,20 +144,47 @@ export function MarkdownEditor({
       return;
     }
 
-    const currentValue = view.state.doc.toString();
-    if (currentValue === value) {
+    if (lastDocumentKeyRef.current === documentKey) {
       return;
     }
 
+    lastDocumentKeyRef.current = documentKey;
+    const currentValue = view.state.doc.toString();
     view.dispatch({
       changes: {
         from: 0,
         to: currentValue.length,
-        insert: value,
+        insert: store.getMarkdown(),
       },
       selection: EditorSelection.cursor(0),
+      scrollIntoView: true,
     });
-  }, [value]);
+    view.focus();
+  }, [documentKey, store]);
+
+  useImperativeHandle(ref, () => ({
+    focus() {
+      logDebug("editor:focus() imperative");
+      viewRef.current?.focus();
+    },
+    hasFocus() {
+      return rootRef.current?.contains(document.activeElement) ?? false;
+    },
+    focusHeadingLine(line: number) {
+      const view = viewRef.current;
+      if (!view) {
+        return;
+      }
+
+      const safeLine = Math.max(1, Math.min(line, view.state.doc.lines));
+      const lineInfo = view.state.doc.line(safeLine);
+      view.dispatch({
+        selection: EditorSelection.cursor(lineInfo.from),
+        scrollIntoView: true,
+      });
+      view.focus();
+    },
+  }));
 
   return <div className="editor-root" ref={rootRef} />;
-}
+});

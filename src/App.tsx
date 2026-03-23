@@ -1,15 +1,21 @@
 import {
   useEffect,
   useEffectEvent,
-  startTransition,
-  useDeferredValue,
   useRef,
   useState,
 } from "react";
-import { MarkdownEditor } from "./components/editor/MarkdownEditor";
-import { MarkdownPreview } from "./components/preview/MarkdownPreview";
-import { TocPanel } from "./components/toc/TocPanel";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
+import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
+import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
+import { EditorWorkspace } from "./components/workspace/EditorWorkspace";
+import { useNativeWindowState } from "./hooks/useNativeWindowState";
 import {
+  createDocumentStore,
+  useDocumentDirty,
+} from "./lib/document-store";
+import {
+  isTauriRuntime,
   openMarkdownDocument,
   saveMarkdownDocument,
 } from "./lib/file-system";
@@ -20,65 +26,140 @@ import {
   openRecentFile,
   removeRecentFile,
 } from "./lib/recent-files";
-import { SAMPLE_DOCUMENT } from "./lib/sample-document";
-import { extractHeadings } from "./lib/toc";
+import { clearDebugLog, logDebug } from "./lib/debug-log";
+import { buildWindowTitle } from "./lib/window-state";
+
+type PendingAction =
+  | { type: "close" }
+  | { type: "new" }
+  | { type: "open" }
+  | { path: string; type: "openRecent" };
+
+const UNTITLED_FILENAME = "Untitled.md";
 
 export default function App() {
   const [recentFiles, setRecentFiles] = useState(() => loadRecentFiles());
   const [filePath, setFilePath] = useState<string | null>(null);
-  const [filename, setFilename] = useState("untitled.md");
-  const [markdown, setMarkdown] = useState(SAMPLE_DOCUMENT);
-  const [savedMarkdown, setSavedMarkdown] = useState(SAMPLE_DOCUMENT);
+  const [filename, setFilename] = useState<string | null>(null);
+  const [savedMarkdown, setSavedMarkdown] = useState("");
+  const [editorDocumentKey, setEditorDocumentKey] = useState(0);
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [isTocVisible, setIsTocVisible] = useState(true);
   const [statusText, setStatusText] = useState("Ready");
+  const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<MarkdownEditorHandle | null>(null);
+  const [documentStore] = useState(() => createDocumentStore(""));
 
-  const deferredMarkdown = useDeferredValue(markdown);
-  const headings = extractHeadings(deferredMarkdown);
-  const isDirty = markdown !== savedMarkdown;
+  const isDirty = useDocumentDirty(documentStore, savedMarkdown, !isWelcomeVisible);
+  const activeFilename = filename ?? UNTITLED_FILENAME;
+  const windowTitle = buildWindowTitle(activeFilename, isDirty, isWelcomeVisible);
+
+  useEffect(() => {
+    void clearDebugLog().then(() => {
+      logDebug("app:start");
+    });
+  }, []);
+
+  useEffect(() => {
+    logDebug(`app:dirty=${isDirty}`);
+  }, [isDirty]);
+
+  function bumpDocumentKey() {
+    setEditorDocumentKey((value) => value + 1);
+  }
 
   function applyOpenedDocument(document: {
     filename: string;
     markdown: string;
     path: string | null;
   }) {
-    startTransition(() => {
-      setFilePath(document.path);
-      setFilename(document.filename);
-      setMarkdown(document.markdown);
-      setSavedMarkdown(document.markdown);
-      setStatusText(`Opened ${document.filename}`);
-    });
+    logDebug(
+      `document:apply filename=${document.filename} path=${document.path ?? "null"}`,
+    );
+    setIsWelcomeVisible(false);
+    setFilePath(document.path);
+    setFilename(document.filename);
+    documentStore.replaceMarkdown(document.markdown);
+    setSavedMarkdown(document.markdown);
+    setStatusText(`Opened ${document.filename}`);
+    bumpDocumentKey();
 
     if (document.path) {
       setRecentFiles((files) => addRecentFile(files, document.path));
     }
   }
 
-  function handleNewDocument() {
-    if (
-      isDirty &&
-      !window.confirm("Discard unsaved changes and start a new document?")
-    ) {
-      return;
-    }
-
+  function createNewDocument() {
+    logDebug("document:new");
+    setIsWelcomeVisible(false);
     setFilePath(null);
-    setFilename("untitled.md");
-    setMarkdown("");
+    setFilename(UNTITLED_FILENAME);
+    documentStore.replaceMarkdown("");
     setSavedMarkdown("");
     setStatusText("New document");
+    bumpDocumentKey();
   }
 
-  async function handleOpenClick() {
+  async function openWithPicker() {
+    logDebug("document:openPicker:start");
     const document = await openMarkdownDocument();
     if (!document) {
+      logDebug("document:openPicker:cancelled");
       fileInputRef.current?.click();
       return;
     }
 
+    logDebug(`document:openPicker:success filename=${document.filename}`);
     applyOpenedDocument(document);
+  }
+
+  async function performAction(action: PendingAction) {
+    if (action.type === "new") {
+      logDebug("action:perform:new");
+      createNewDocument();
+      return;
+    }
+
+    if (action.type === "open") {
+      logDebug("action:perform:open");
+      await openWithPicker();
+      return;
+    }
+
+    if (action.type === "openRecent") {
+      logDebug(`action:perform:openRecent path=${action.path}`);
+      try {
+        const document = await openRecentFile(action.path);
+        if (!document) {
+          setStatusText("Open Recent is only available in the desktop app");
+          return;
+        }
+
+        applyOpenedDocument(document);
+      } catch {
+        setRecentFiles((files) => removeRecentFile(files, action.path));
+        setStatusText("Recent file is no longer available");
+      }
+      return;
+    }
+
+    if (action.type === "close" && isTauriRuntime()) {
+      logDebug("action:perform:close close()");
+      await getCurrentWindow().close();
+    }
+  }
+
+  function requestAction(action: PendingAction) {
+    logDebug(`action:request type=${action.type}`);
+    if (isDirty) {
+      logDebug(`action:deferred type=${action.type}`);
+      setPendingAction(action);
+      return;
+    }
+
+    void performAction(action);
   }
 
   async function handleOpenFile(
@@ -90,7 +171,7 @@ export default function App() {
     }
 
     const text = await file.text();
-
+    logDebug(`document:openFallback filename=${file.name}`);
     applyOpenedDocument({
       filename: file.name,
       markdown: text,
@@ -100,39 +181,60 @@ export default function App() {
     event.target.value = "";
   }
 
-  async function handleOpenRecent(path: string) {
-    try {
-      const document = await openRecentFile(path);
-      if (!document) {
-        setStatusText("Open Recent is only available in the desktop app");
-        return;
-      }
-
-      applyOpenedDocument(document);
-    } catch {
-      setRecentFiles((files) => removeRecentFile(files, path));
-      setStatusText("Recent file is no longer available");
-    }
-  }
-
   async function handleSave(saveAs = false) {
+    logDebug(`document:save:start saveAs=${saveAs}`);
+    if (isWelcomeVisible) {
+      createNewDocument();
+    }
+
     const saved = await saveMarkdownDocument({
-      filename,
-      markdown,
+      filename: activeFilename,
+      markdown: documentStore.getMarkdown(),
       path: filePath,
       saveAs,
     });
 
     if (!saved) {
+      logDebug("document:save:cancelled");
       setStatusText("Save cancelled");
+      return false;
+    }
+
+    logDebug(`document:save:success filename=${saved.filename} path=${saved.path ?? "null"}`);
+    setFilePath(saved.path);
+    setFilename(saved.filename);
+    setSavedMarkdown(documentStore.getMarkdown());
+    setStatusText(`Saved ${saved.filename}`);
+    setRecentFiles((files) => addRecentFile(files, saved.path));
+    return true;
+  }
+
+  async function resolvePendingActionWithSave() {
+    const action = pendingAction;
+    if (!action) {
       return;
     }
 
-    setFilePath(saved.path);
-    setFilename(saved.filename);
-    setSavedMarkdown(markdown);
-    setStatusText(`Saved ${saved.filename}`);
-    setRecentFiles((files) => addRecentFile(files, saved.path));
+    logDebug(`dialog:saveThenContinue type=${action.type}`);
+    const saved = await handleSave();
+    if (!saved) {
+      return;
+    }
+
+    setPendingAction(null);
+    await performAction(action);
+  }
+
+  async function resolvePendingActionWithDiscard() {
+    const action = pendingAction;
+    logDebug(`dialog:discard type=${action?.type ?? "null"}`);
+    setPendingAction(null);
+
+    if (!action) {
+      return;
+    }
+
+    await performAction(action);
   }
 
   const handleWindowShortcuts = useEffectEvent((event: KeyboardEvent) => {
@@ -144,13 +246,13 @@ export default function App() {
     const key = event.key.toLowerCase();
     if (key === "n") {
       event.preventDefault();
-      handleNewDocument();
+      requestAction({ type: "new" });
       return;
     }
 
     if (key === "o") {
       event.preventDefault();
-      void handleOpenClick();
+      requestAction({ type: "open" });
       return;
     }
 
@@ -161,15 +263,15 @@ export default function App() {
   });
 
   const handleMenuNew = useEffectEvent(() => {
-    handleNewDocument();
+    requestAction({ type: "new" });
   });
 
   const handleMenuOpen = useEffectEvent(() => {
-    void handleOpenClick();
+    requestAction({ type: "open" });
   });
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
-    void handleOpenRecent(path);
+    requestAction({ path, type: "openRecent" });
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
@@ -184,6 +286,18 @@ export default function App() {
     setIsTocVisible((value) => !value);
   });
 
+  const handleCloseRequested = useEffectEvent(() => {
+    setPendingAction({ type: "close" });
+  });
+
+  const { handleEditorFocusChange } = useNativeWindowState({
+    filePath,
+    isDirty,
+    isWelcomeVisible,
+    onRequestClose: handleCloseRequested,
+    windowTitle,
+  });
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       handleWindowShortcuts(event);
@@ -195,6 +309,7 @@ export default function App() {
 
   useEffect(() => {
     let cleanup: (() => Promise<void>) | undefined;
+    let disposed = false;
 
     void setupAppMenu({
       onNew: handleMenuNew,
@@ -206,10 +321,15 @@ export default function App() {
       onToggleToc: handleMenuToggleToc,
       recentFiles,
     }).then((dispose) => {
+      if (disposed) {
+        void dispose?.();
+        return;
+      }
       cleanup = dispose;
     });
 
     return () => {
+      disposed = true;
       void cleanup?.();
     };
   }, [
@@ -224,85 +344,33 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <strong>ClipMark</strong>
-          <span className="brand__tag">Archive-first Markdown editor</span>
-        </div>
-        <div className="toolbar">
-          <button onClick={handleNewDocument} type="button">
-            New
-          </button>
-          <button onClick={() => void handleOpenClick()} type="button">
-            Open
-          </button>
-          <button onClick={() => void handleSave()} type="button">
-            Save
-          </button>
-          <button onClick={() => void handleSave(true)} type="button">
-            Save As
-          </button>
-          <button
-            onClick={() => setIsTocVisible((value) => !value)}
-            type="button"
-          >
-            TOC
-          </button>
-          <button
-            onClick={() => setIsPreviewVisible((value) => !value)}
-            type="button"
-          >
-            Preview
-          </button>
-        </div>
-      </header>
+      {isWelcomeVisible ? (
+        <WelcomeScreen
+          onNew={() => requestAction({ type: "new" })}
+          onOpen={() => requestAction({ type: "open" })}
+          onOpenRecent={(path) => requestAction({ path, type: "openRecent" })}
+          recentFiles={recentFiles}
+        />
+      ) : (
+        <EditorWorkspace
+          documentKey={editorDocumentKey}
+          documentStore={documentStore}
+          editorRef={editorRef}
+          filePath={filePath}
+          isDirty={isDirty}
+          isPreviewVisible={isPreviewVisible}
+          isTocVisible={isTocVisible}
+          onEditorFocusChange={handleEditorFocusChange}
+          statusText={statusText}
+        />
+      )}
 
-      <main className="workspace">
-        {isTocVisible ? <TocPanel headings={headings} /> : null}
-        <section className="panel panel--editor">
-          <div className="panel__header">
-            <span>{filename}</span>
-            <div className="panel__meta">
-              {filePath ? <span className="status">{filePath}</span> : null}
-              <span className={isDirty ? "status status--dirty" : "status"}>
-                {isDirty ? "Unsaved changes" : "Saved"}
-              </span>
-            </div>
-          </div>
-          <MarkdownEditor value={markdown} onChange={setMarkdown} />
-        </section>
-        {isPreviewVisible ? (
-          <section className="panel panel--preview">
-            <div className="panel__header">
-              <span>Preview</span>
-              <span className="status">{statusText}</span>
-            </div>
-            <MarkdownPreview markdown={deferredMarkdown} />
-          </section>
-        ) : null}
-      </main>
-
-      {recentFiles.length > 0 ? (
-        <section className="recent-files">
-          <div className="recent-files__header">
-            <strong>Recent Files</strong>
-            <span className="status">{recentFiles.length} items</span>
-          </div>
-          <div className="recent-files__list">
-            {recentFiles.map((file) => (
-              <button
-                className="recent-files__item"
-                key={file.path}
-                onClick={() => void handleOpenRecent(file.path)}
-                type="button"
-              >
-                <span>{file.filename}</span>
-                <span className="status">{file.path}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <UnsavedChangesDialog
+        filename={activeFilename}
+        onDiscard={() => void resolvePendingActionWithDiscard()}
+        onSave={() => void resolvePendingActionWithSave()}
+        open={pendingAction !== null}
+      />
 
       <input
         accept=".md,text/markdown,text/plain"
