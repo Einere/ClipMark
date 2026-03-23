@@ -10,12 +10,15 @@ const hideWindow = vi.fn().mockResolvedValue(undefined);
 const loadRecentFiles = vi.fn(() => []);
 const openMarkdownDocument = vi.fn();
 const openMarkdownDocumentWithoutShowingWindow = vi.fn();
+const openRecentFile = vi.fn();
 const removeRecentFile = vi.fn((files) => files);
 const showNativeCloseSheet = vi.fn();
 const setupAppMenu = vi.fn().mockResolvedValue(undefined);
+const setupNativeOpenDocumentListener = vi.fn();
 
 let closeRequestHandler: (() => Promise<void> | void) | null = null;
 let menuHandlers: Record<string, unknown> | null = null;
+let nativeOpenDocumentHandler: ((path: string) => void) | null = null;
 
 vi.mock("./hooks/useNativeWindowState", () => ({
   useNativeWindowState: (options: { onRequestClose: () => Promise<void> | void }) => {
@@ -51,6 +54,13 @@ vi.mock("./lib/native-close-sheet", () => ({
   showNativeCloseSheet,
 }));
 
+vi.mock("./lib/native-open-document", () => ({
+  setupNativeOpenDocumentListener: (handler: (path: string) => void) => {
+    nativeOpenDocumentHandler = handler;
+    return setupNativeOpenDocumentListener(handler);
+  },
+}));
+
 vi.mock("./lib/recent-files", () => ({
   addRecentFile: (files: Array<{ filename: string; path: string }>, path: string) => [
     { filename: path.split("/").pop() ?? path, path },
@@ -58,7 +68,7 @@ vi.mock("./lib/recent-files", () => ({
   ],
   clearRecentFiles: vi.fn(() => []),
   loadRecentFiles,
-  openRecentFile: vi.fn(),
+  openRecentFile,
   removeRecentFile,
 }));
 
@@ -72,14 +82,17 @@ describe("App close window session", () => {
     root = createRoot(container);
     closeRequestHandler = null;
     menuHandlers = null;
+    nativeOpenDocumentHandler = null;
     clearDebugLog.mockClear();
     ensureWindowVisible.mockClear();
     hideWindow.mockClear();
     loadRecentFiles.mockClear();
     openMarkdownDocument.mockReset();
     openMarkdownDocumentWithoutShowingWindow.mockReset();
+    openRecentFile.mockReset();
     removeRecentFile.mockClear();
     setupAppMenu.mockClear();
+    setupNativeOpenDocumentListener.mockClear();
     showNativeCloseSheet.mockClear();
   });
 
@@ -167,5 +180,105 @@ describe("App close window session", () => {
     expect(openMarkdownDocumentWithoutShowingWindow).toHaveBeenCalledTimes(1);
     expect(openMarkdownDocument).not.toHaveBeenCalled();
     expect(container.textContent).toContain("/tmp/opened.md");
+  });
+
+  it("opens the selected recent document when Open Recent is selected while the window is hidden", async () => {
+    openRecentFile.mockResolvedValue({
+      filename: "hidden-recent.md",
+      markdown: "# Hidden Recent",
+      path: "/tmp/hidden-recent.md",
+    });
+
+    await act(async () => {
+      root.render(createElement(App));
+    });
+
+    expect(menuHandlers).not.toBeNull();
+    expect(closeRequestHandler).not.toBeNull();
+
+    await act(async () => {
+      await closeRequestHandler?.();
+    });
+
+    await act(async () => {
+      await (menuHandlers?.onOpenRecent as ((path: string) => void) | undefined)?.("/tmp/hidden-recent.md");
+    });
+
+    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/hidden-recent.md");
+    expect(container.textContent).toContain("/tmp/hidden-recent.md");
+    expect(container.textContent).not.toContain("Open a recent archive or start a new Markdown file.");
+  });
+
+  it("opens the selected recent document when Open Recent is selected while the window is visible", async () => {
+    openRecentFile.mockResolvedValue({
+      filename: "visible-recent.md",
+      markdown: "# Visible Recent",
+      path: "/tmp/visible-recent.md",
+    });
+
+    await act(async () => {
+      root.render(createElement(App));
+    });
+
+    expect(menuHandlers).not.toBeNull();
+
+    await act(async () => {
+      await (menuHandlers?.onOpenRecent as ((path: string) => void) | undefined)?.("/tmp/visible-recent.md");
+    });
+
+    expect(ensureWindowVisible).not.toHaveBeenCalled();
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/visible-recent.md");
+    expect(container.textContent).toContain("/tmp/visible-recent.md");
+  });
+
+  it("opens the selected recent document when macOS requests a document while the window is hidden", async () => {
+    openRecentFile.mockResolvedValue({
+      filename: "recent.md",
+      markdown: "# Recent",
+      path: "/tmp/recent.md",
+    });
+
+    await act(async () => {
+      root.render(createElement(App));
+    });
+
+    expect(closeRequestHandler).not.toBeNull();
+    expect(nativeOpenDocumentHandler).not.toBeNull();
+
+    await act(async () => {
+      await closeRequestHandler?.();
+    });
+
+    await act(async () => {
+      nativeOpenDocumentHandler?.("/tmp/recent.md");
+    });
+
+    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(container.textContent).toContain("/tmp/recent.md");
+    expect(container.textContent).not.toContain("Open a recent archive or start a new Markdown file.");
+  });
+
+  it("opens the selected recent document when macOS requests a document while the window is visible", async () => {
+    openRecentFile.mockResolvedValue({
+      filename: "visible.md",
+      markdown: "# Visible",
+      path: "/tmp/visible.md",
+    });
+
+    await act(async () => {
+      root.render(createElement(App));
+    });
+
+    expect(nativeOpenDocumentHandler).not.toBeNull();
+
+    await act(async () => {
+      nativeOpenDocumentHandler?.("/tmp/visible.md");
+    });
+
+    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/visible.md");
+    expect(container.textContent).toContain("/tmp/visible.md");
   });
 });

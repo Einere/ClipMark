@@ -22,7 +22,9 @@ use objc2_app_kit::{
 use objc2_foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSArray;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+
+const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
 #[tauri::command]
 fn read_markdown_file(path: String) -> Result<String, String> {
@@ -273,20 +275,38 @@ fn main() {
 
     app.run(|app_handle, event| {
         #[cfg(target_os = "macos")]
-        if let tauri::RunEvent::Reopen {
-            has_visible_windows: false,
-            ..
-        } = event
-        {
-            let mtm = MainThreadMarker::new().expect("failed to access the main thread");
-            if NSApplication::sharedApplication(mtm).modalWindow().is_some() {
-                return;
-            }
+        match event {
+            tauri::RunEvent::Opened { urls } => {
+                for url in urls {
+                    let Ok(path) = url.to_file_path() else {
+                        continue;
+                    };
 
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
+                    let Some(path) = path.to_str() else {
+                        continue;
+                    };
+
+                    let _ = app_handle.emit(
+                        OPEN_DOCUMENT_EVENT,
+                        serde_json::json!({ "path": path }),
+                    );
+                }
             }
+            tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } => {
+                let mtm = MainThreadMarker::new().expect("failed to access the main thread");
+                if NSApplication::sharedApplication(mtm).modalWindow().is_some() {
+                    return;
+                }
+
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            _ => {}
         }
     });
 }

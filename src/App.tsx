@@ -31,6 +31,7 @@ import {
 } from "./lib/recent-files";
 import { clearDebugLog, logDebug } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
+import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
 import {
   getPostDiscardResolution,
   getPostSaveResolution,
@@ -203,22 +204,32 @@ export default function App() {
 
     if (action.type === "openRecent") {
       logDebug(`action:perform:openRecent path=${action.path}`);
-      try {
-        const document = await openRecentFile(action.path);
-        if (!document) {
-          showToast("Recent files are only available in the desktop app.", "info");
-          return;
-        }
-
-        applyOpenedDocument(document);
-      } catch {
-        setRecentFiles((files) => removeRecentFile(files, action.path));
-        showToast(
-          "This recent file could not be found and was removed from the list.",
-          "error",
-        );
+      const document = await loadRecentDocument(action.path);
+      if (!document) {
+        return;
       }
+
+      applyOpenedDocument(document);
       return;
+    }
+  }
+
+  async function loadRecentDocument(path: string) {
+    try {
+      const document = await openRecentFile(path);
+      if (!document) {
+        showToast("Recent files are only available in the desktop app.", "info");
+        return null;
+      }
+
+      return document;
+    } catch {
+      setRecentFiles((files) => removeRecentFile(files, path));
+      showToast(
+        "This recent file could not be found and was removed from the list.",
+        "error",
+      );
+      return null;
     }
   }
 
@@ -353,30 +364,52 @@ export default function App() {
     }
   });
 
+  const showHiddenWindowWithDocument = useEffectEvent((
+    loadDocument: () => Promise<{
+      filename: string;
+      markdown: string;
+      path: string | null;
+    } | null>,
+  ) => {
+    void loadDocument().then((document) => {
+      if (!document) {
+        return;
+      }
+
+      flushSync(() => {
+        applyOpenedDocument(document);
+        setIsWindowVisible(true);
+      });
+      void ensureWindowVisible();
+    });
+  });
+
   const requestVisibleAction = useEffectEvent((action: PendingAction) => {
+    if (isWindowVisible) {
+      requestAction(action);
+      return;
+    }
+
     if (!isWindowVisible && action.type === "open") {
-      void openMarkdownDocumentWithoutShowingWindow().then((document) => {
+      showHiddenWindowWithDocument(async () => {
+        const document = await openMarkdownDocumentWithoutShowingWindow();
         if (!document) {
           logDebug("document:openPicker:cancelled");
-          return;
+          return null;
         }
 
-        flushSync(() => {
-          applyOpenedDocument(document);
-          setIsWindowVisible(true);
-        });
-        void ensureWindowVisible();
+        return document;
       });
+      return;
+    }
+
+    if (!isWindowVisible && action.type === "openRecent") {
+      showHiddenWindowWithDocument(() => loadRecentDocument(action.path));
       return;
     }
 
     void ensureWindowVisible().then(() => {
       setIsWindowVisible(true);
-      if (!isWindowVisible && action.type === "new") {
-        return;
-      }
-
-      requestAction(action);
     });
   });
 
@@ -390,6 +423,11 @@ export default function App() {
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
     requestVisibleAction({ path, type: "openRecent" });
+  });
+
+  const handleNativeOpenDocument = useEffectEvent((path: string) => {
+    logDebug(`nativeOpenDocument path=${path}`);
+    handleMenuOpenRecent(path);
   });
 
   const handleMenuClearRecentFiles = useEffectEvent(() => {
@@ -517,6 +555,25 @@ export default function App() {
     isTocVisible,
     recentFiles,
   ]);
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let disposed = false;
+
+    void setupNativeOpenDocumentListener(handleNativeOpenDocument).then((dispose) => {
+      if (disposed) {
+        dispose?.();
+        return;
+      }
+
+      cleanup = dispose;
+    });
+
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, [handleNativeOpenDocument]);
 
   return (
     <div className="app-shell">
