@@ -13,9 +13,5 @@ export function getPostSaveResolution(action: PendingAction) {
 }
 
 export function getPostDiscardResolution(action: PendingAction) {
-  if (action.type === "close") {
-    return "cancel" as const;
-  }
-
-  return "perform" as const;
+  return "cancel" as const;
 }

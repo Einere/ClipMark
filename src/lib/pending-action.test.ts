@@ -21,11 +21,11 @@ describe("pending action resolution", () => {
     expect(getPostDiscardResolution({ type: "close" })).toBe("cancel");
   });
 
-  it("performs non-close actions on discard", () => {
-    expect(getPostDiscardResolution({ type: "new" })).toBe("perform");
-    expect(getPostDiscardResolution({ type: "open" })).toBe("perform");
+  it("cancels non-close actions on discard", () => {
+    expect(getPostDiscardResolution({ type: "new" })).toBe("cancel");
+    expect(getPostDiscardResolution({ type: "open" })).toBe("cancel");
     expect(
       getPostDiscardResolution({ path: "/tmp/note.md", type: "openRecent" }),
-    ).toBe("perform");
+    ).toBe("cancel");
   });
 });

@@ -24,11 +24,11 @@ export function UnsavedChangesDialog({
         role="dialog"
       >
         <h2 className="dialog-card__title" id="unsaved-dialog-title">
-          Save changes before closing?
+          Save changes before continuing?
         </h2>
         <p className="dialog-card__body">
-          <strong>{filename}</strong> has unsaved changes. You can save before
-          continuing or discard the changes.
+          <strong>{filename}</strong> has unsaved changes. Save first, or keep
+          editing without changing the current document.
         </p>
         <div className="dialog-card__actions">
           <button className="button-secondary" onClick={onDiscard} type="button">
