@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+
 export type OpenedDocument = {
   filename: string;
   markdown: string;
@@ -51,10 +53,7 @@ export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
     return null;
   }
 
-  const [{ open }, { readTextFile }] = await Promise.all([
-    import("@tauri-apps/plugin-dialog"),
-    import("@tauri-apps/plugin-fs"),
-  ]);
+  const [{ open }] = await Promise.all([import("@tauri-apps/plugin-dialog")]);
 
   const selected = await open({
     directory: false,
@@ -66,11 +65,26 @@ export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
     return null;
   }
 
-  const markdown = await readTextFile(selected);
+  const markdown = await invoke<string>("read_markdown_file", { path: selected });
   return {
     filename: getFilenameFromPath(selected),
     markdown,
     path: selected,
+  };
+}
+
+export async function readMarkdownDocumentAtPath(
+  path: string,
+): Promise<OpenedDocument | null> {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+
+  const markdown = await invoke<string>("read_markdown_file", { path });
+  return {
+    filename: getFilenameFromPath(path),
+    markdown,
+    path,
   };
 }
 
@@ -90,10 +104,7 @@ export async function saveMarkdownDocument({
     };
   }
 
-  const [{ save }, { writeTextFile }] = await Promise.all([
-    import("@tauri-apps/plugin-dialog"),
-    import("@tauri-apps/plugin-fs"),
-  ]);
+  const [{ save }] = await Promise.all([import("@tauri-apps/plugin-dialog")]);
 
   let targetPath = path;
   if (!targetPath || saveAs) {
@@ -107,7 +118,7 @@ export async function saveMarkdownDocument({
     return null;
   }
 
-  await writeTextFile(targetPath, markdown);
+  await invoke("write_markdown_file", { contents: markdown, path: targetPath });
   return {
     filename: getFilenameFromPath(targetPath),
     path: targetPath,

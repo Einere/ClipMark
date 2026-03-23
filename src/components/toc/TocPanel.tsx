@@ -2,9 +2,10 @@ import type { Heading } from "../../lib/toc";
 
 type TocPanelProps = {
   headings: Heading[];
+  onSelectHeading: (line: number) => void;
 };
 
-export function TocPanel({ headings }: TocPanelProps) {
+export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
   return (
     <aside className="panel panel--toc">
       <div className="panel__header">
@@ -16,14 +17,15 @@ export function TocPanel({ headings }: TocPanelProps) {
           <p className="toc__empty">Add headings to build a table of contents.</p>
         ) : (
           headings.map((heading) => (
-            <a
+            <button
               className="toc__item"
-              href={`#${heading.id}`}
               key={`${heading.id}-${heading.line}`}
+              onClick={() => onSelectHeading(heading.line)}
               style={{ paddingLeft: `${heading.depth * 0.75}rem` }}
+              type="button"
             >
               {heading.text}
-            </a>
+            </button>
           ))
         )}
       </nav>

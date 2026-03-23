@@ -1,7 +1,6 @@
 import {
   getFilenameFromPath,
-  isTauriRuntime,
-  type OpenedDocument,
+  readMarkdownDocumentAtPath,
 } from "./file-system";
 
 const RECENT_FILES_KEY = "clipmark:recent-files";
@@ -79,16 +78,6 @@ export function removeRecentFile(
 
 export async function openRecentFile(
   path: string,
-): Promise<OpenedDocument | null> {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-
-  const { readTextFile } = await import("@tauri-apps/plugin-fs");
-  const markdown = await readTextFile(path);
-  return {
-    filename: getFilenameFromPath(path),
-    markdown,
-    path,
-  };
+){
+  return readMarkdownDocumentAtPath(path);
 }
