@@ -47,7 +47,7 @@ const editorTheme = EditorView.theme({
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--accent)",
   },
-  ".cm-activeLine": {
+  "&.cm-focused .cm-activeLine": {
     backgroundColor: "rgba(31, 92, 255, 0.06)",
   },
   ".cm-gutters": {
