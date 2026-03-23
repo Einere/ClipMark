@@ -129,6 +129,11 @@ describe("setupAppMenu", () => {
     expect(predefinedMenuItemNew).toHaveBeenCalledWith({
       item: "Maximize",
     });
+    expect(
+      predefinedMenuItemNew.mock.calls.filter(
+        ([options]) => options.item === "CloseWindow",
+      ),
+    ).toHaveLength(1);
 
     await dispose?.();
     expect(close).toHaveBeenCalledTimes(1);

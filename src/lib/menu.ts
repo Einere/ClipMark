@@ -111,8 +111,6 @@ export async function setupAppMenu(
         id: "file-copy-path",
         text: "Copy File Path",
       }),
-      await PredefinedMenuItem.new({ item: "Separator" }),
-      await PredefinedMenuItem.new({ item: "CloseWindow" }),
     ],
   });
 
