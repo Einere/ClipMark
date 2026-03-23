@@ -110,6 +110,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
     });
@@ -120,6 +121,7 @@ describe("setupAppMenu", () => {
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,
+      isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: false,
       recentFiles: [
@@ -150,8 +152,12 @@ describe("setupAppMenu", () => {
       setChecked: ReturnType<typeof vi.fn>;
       setEnabled: ReturnType<typeof vi.fn>;
     };
+    const externalMediaItem = createdMenuItems.get("view-toggle-external-media") as {
+      setChecked: ReturnType<typeof vi.fn>;
+    };
 
     expect(saveItem.setEnabled).toHaveBeenCalledWith(true);
+    expect(externalMediaItem.setChecked).toHaveBeenCalledWith(true);
     expect(previewItem.setChecked).toHaveBeenCalledWith(true);
     expect(previewItem.setEnabled).toHaveBeenCalledWith(true);
 
@@ -168,6 +174,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
     });
@@ -178,6 +185,7 @@ describe("setupAppMenu", () => {
       canCopyFilePath: false,
       canSave: false,
       canTogglePanels: false,
+      isExternalMediaAutoLoadEnabled: false,
       isPreviewVisible: false,
       isTocVisible: true,
       recentFiles: [],
@@ -217,6 +225,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
     });
@@ -232,6 +241,7 @@ describe("setupAppMenu", () => {
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,
+      isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: true,
       recentFiles: [
@@ -248,6 +258,7 @@ describe("setupAppMenu", () => {
       canCopyFilePath: true,
       canSave: true,
       canTogglePanels: true,
+      isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: true,
       recentFiles: [

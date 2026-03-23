@@ -15,6 +15,7 @@ type EditorWorkspaceProps = {
   documentStatus: DocumentStatus | null;
   editorRef: RefObject<MarkdownEditorHandle | null>;
   filePath: string | null;
+  isExternalMediaAutoLoadEnabled: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
   onPathCopy: (path: string) => void;
@@ -22,11 +23,25 @@ type EditorWorkspaceProps = {
   onEditorFocusChange: (focused: boolean) => void;
 };
 
-function DocumentPreviewPane({ documentStore }: { documentStore: DocumentStore }) {
+function DocumentPreviewPane({
+  documentStore,
+  filePath,
+  isExternalMediaAutoLoadEnabled,
+}: {
+  documentStore: DocumentStore;
+  filePath: string | null;
+  isExternalMediaAutoLoadEnabled: boolean;
+}) {
   const markdown = useDocumentMarkdown(documentStore);
   const deferredMarkdown = useDeferredValue(markdown);
 
-  return <MarkdownPreview markdown={deferredMarkdown} />;
+  return (
+    <MarkdownPreview
+      filePath={filePath}
+      isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+      markdown={deferredMarkdown}
+    />
+  );
 }
 
 function DocumentTocPane({
@@ -52,6 +67,7 @@ export function EditorWorkspace({
   documentStatus,
   editorRef,
   filePath,
+  isExternalMediaAutoLoadEnabled,
   isPreviewVisible,
   isTocVisible,
   onPathCopy,
@@ -118,7 +134,11 @@ export function EditorWorkspace({
             <div className="panel__header">
               <span>Preview</span>
             </div>
-            <DocumentPreviewPane documentStore={documentStore} />
+            <DocumentPreviewPane
+              documentStore={documentStore}
+              filePath={filePath}
+              isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+            />
           </section>
         ) : null}
       </main>

@@ -4,6 +4,7 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::Command;
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
 
@@ -23,6 +24,7 @@ use objc2_foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSArray;
 use tauri::{Emitter, Manager};
+use url::Url;
 
 const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
@@ -34,6 +36,43 @@ fn read_markdown_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_markdown_file(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| error.to_string())
+}
+
+fn validate_external_url(url: &str) -> Result<Url, String> {
+    let parsed = Url::parse(url).map_err(|error| error.to_string())?;
+    match parsed.scheme() {
+        "file" | "http" | "https" | "mailto" | "tel" => Ok(parsed),
+        scheme => Err(format!("unsupported external URL scheme: {scheme}")),
+    }
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let parsed = validate_external_url(&url)?;
+
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(parsed.as_str());
+        command
+    };
+
+    #[cfg(target_os = "linux")]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(parsed.as_str());
+        command
+    };
+
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "start", "", parsed.as_str()]);
+        command
+    };
+
+    command.spawn().map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 fn debug_log_path() -> PathBuf {
@@ -263,6 +302,7 @@ fn main() {
             append_debug_log,
             clear_debug_log,
             hide_window,
+            open_external_url,
             pick_markdown_file,
             read_markdown_file,
             show_window,
@@ -309,4 +349,23 @@ fn main() {
             _ => {}
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_external_url;
+
+    #[test]
+    fn accepts_supported_external_url_schemes() {
+        assert!(validate_external_url("https://example.com").is_ok());
+        assert!(validate_external_url("mailto:test@example.com").is_ok());
+        assert!(validate_external_url("tel:+82-2-555-1234").is_ok());
+        assert!(validate_external_url("file:///tmp/note.md").is_ok());
+    }
+
+    #[test]
+    fn rejects_unsupported_external_url_schemes() {
+        assert!(validate_external_url("javascript:alert('x')").is_err());
+        assert!(validate_external_url("data:text/plain,hello").is_err());
+    }
 }

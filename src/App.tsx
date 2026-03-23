@@ -34,6 +34,9 @@ const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 
 export default function App() {
+  const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
+    true,
+  );
   const [isPreviewVisible, setIsPreviewVisible] = useState(true);
   const [isTocVisible, setIsTocVisible] = useState(true);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
@@ -297,6 +300,10 @@ export default function App() {
     setIsTocVisible((value) => !value);
   });
 
+  const handleMenuToggleExternalMedia = useEffectEvent(() => {
+    setIsExternalMediaAutoLoadEnabled((value) => !value);
+  });
+
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
 
   const handleCloseRequested = useEffectEvent(async () => {
@@ -381,6 +388,7 @@ export default function App() {
     onSaveAs: () => {
       void handleMenuSave(true);
     },
+    onToggleExternalMedia: handleMenuToggleExternalMedia,
     onTogglePreview: handleMenuTogglePreview,
     onToggleToc: handleMenuToggleToc,
   }), [
@@ -389,6 +397,7 @@ export default function App() {
     handleMenuOpen,
     handleMenuOpenRecent,
     handleMenuSave,
+    handleMenuToggleExternalMedia,
     handleMenuTogglePreview,
     handleMenuToggleToc,
     session.clearRecentFilesList,
@@ -400,6 +409,7 @@ export default function App() {
     canCopyFilePath,
     canSave: canSaveDocument,
     canTogglePanels,
+    isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
     recentFiles: session.recentFiles,
@@ -408,6 +418,7 @@ export default function App() {
     canCopyFilePath,
     canSaveDocument,
     canTogglePanels,
+    isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
     session.recentFiles,
@@ -443,6 +454,7 @@ export default function App() {
           documentStatus={visibleDocumentStatus}
           editorRef={editorRef}
           filePath={session.filePath}
+          isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
           isPreviewVisible={isPreviewVisible}
           isTocVisible={isTocVisible}
           onEditorFocusChange={handleEditorFocusChange}

@@ -38,6 +38,7 @@ function createHandlers(label: string) {
     onOpenRecent: vi.fn(),
     onSave: vi.fn(),
     onSaveAs: vi.fn(),
+    onToggleExternalMedia: vi.fn(),
     onTogglePreview: vi.fn(),
     onToggleToc: vi.fn(() => label),
   } satisfies MenuHandlers;
@@ -50,6 +51,7 @@ function createState(): MenuState {
     canCopyFilePath: true,
     canSave: true,
     canTogglePanels: true,
+    isExternalMediaAutoLoadEnabled: true,
     isPreviewVisible: true,
     isTocVisible: true,
     recentFiles: [],

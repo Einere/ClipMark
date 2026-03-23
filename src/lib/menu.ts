@@ -11,6 +11,7 @@ export type MenuHandlers = {
   onCopyFilePath: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onToggleExternalMedia: () => void;
   onTogglePreview: () => void;
   onToggleToc: () => void;
 };
@@ -21,6 +22,7 @@ export type MenuState = {
   canCopyFilePath: boolean;
   canSave: boolean;
   canTogglePanels: boolean;
+  isExternalMediaAutoLoadEnabled: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
   recentFiles: RecentFile[];
@@ -82,6 +84,12 @@ export async function setupAppMenu(
     text: "Table of Contents",
   });
 
+  const externalMediaItem = await CheckMenuItem.new({
+    action: () => handlers.onToggleExternalMedia(),
+    id: "view-toggle-external-media",
+    text: "Load External Media",
+  });
+
   const appSubmenu = await Submenu.new({
     text: "ClipMark",
     items: [
@@ -139,6 +147,7 @@ export async function setupAppMenu(
     items: [
       previewItem,
       tocItem,
+      externalMediaItem,
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Fullscreen" }),
     ],
@@ -189,6 +198,13 @@ export async function setupAppMenu(
       if (!lastState || lastState.canTogglePanels !== state.canTogglePanels) {
         updates.push(previewItem.setEnabled(state.canTogglePanels));
         updates.push(tocItem.setEnabled(state.canTogglePanels));
+      }
+
+      if (
+        !lastState
+        || lastState.isExternalMediaAutoLoadEnabled !== state.isExternalMediaAutoLoadEnabled
+      ) {
+        updates.push(externalMediaItem.setChecked(state.isExternalMediaAutoLoadEnabled));
       }
 
       if (!lastState || lastState.isPreviewVisible !== state.isPreviewVisible) {
