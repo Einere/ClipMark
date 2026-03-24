@@ -11,6 +11,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
 import type { DocumentStore } from "../../lib/document-store";
+import { useEditorViewStateStore } from "../../hooks/useEditorViewState";
 import {
   convertClipboardToMarkdown,
   getClipboardPayload,
@@ -18,7 +19,6 @@ import {
 
 type MarkdownEditorProps = {
   documentKey: number;
-  onActiveLineChange?: (line: number) => void;
   onFocusChange?: (isFocused: boolean) => void;
   store: DocumentStore;
 };
@@ -33,15 +33,13 @@ export const MarkdownEditor = forwardRef<
   MarkdownEditorHandle,
   MarkdownEditorProps
 >(function MarkdownEditor(
-  { documentKey, onActiveLineChange, onFocusChange, store },
+  { documentKey, onFocusChange, store },
   ref,
 ) {
+  const editorViewStateStore = useEditorViewStateStore();
   const rootRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastDocumentKeyRef = useRef(documentKey);
-  const onActiveLineChangeEvent = useEffectEvent((line: number) => {
-    onActiveLineChange?.(line);
-  });
   const onFocusChangeEvent = useEffectEvent((isFocused: boolean) => {
     onFocusChange?.(isFocused);
   });
@@ -65,21 +63,19 @@ export const MarkdownEditor = forwardRef<
               store.setMarkdown(update.state.doc.toString());
             }
 
-            if (update.docChanged || update.selectionSet || update.focusChanged) {
-              onActiveLineChangeEvent(
+            if (update.docChanged || update.selectionSet) {
+              editorViewStateStore.setActiveLine(
                 update.state.doc.lineAt(update.state.selection.main.head).number,
               );
             }
+
+            if (update.focusChanged) {
+              const focused = update.view.hasFocus;
+              editorViewStateStore.setFocused(focused);
+              onFocusChangeEvent(focused);
+            }
           }),
           EditorView.domEventHandlers({
-            blur() {
-              onFocusChangeEvent(false);
-              return false;
-            },
-            focus() {
-              onFocusChangeEvent(true);
-              return false;
-            },
             paste(event, currentView) {
               const clipboardData = event.clipboardData;
               if (!clipboardData) {
@@ -105,13 +101,16 @@ export const MarkdownEditor = forwardRef<
     });
 
     viewRef.current = view;
-    onActiveLineChangeEvent(view.state.doc.lineAt(view.state.selection.main.head).number);
+    editorViewStateStore.setActiveLine(
+      view.state.doc.lineAt(view.state.selection.main.head).number,
+    );
+    editorViewStateStore.setFocused(view.hasFocus);
 
     return () => {
       view.destroy();
       viewRef.current = null;
     };
-  }, [onActiveLineChangeEvent, store]);
+  }, [editorViewStateStore, store]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -134,9 +133,10 @@ export const MarkdownEditor = forwardRef<
       selection: EditorSelection.cursor(0),
       scrollIntoView: true,
     });
-    onActiveLineChangeEvent(1);
+    editorViewStateStore.setActiveLine(1);
+    editorViewStateStore.setFocused(true);
     view.focus();
-  }, [documentKey, onActiveLineChangeEvent, store]);
+  }, [documentKey, editorViewStateStore, store]);
 
   useImperativeHandle(ref, () => ({
     focus() {

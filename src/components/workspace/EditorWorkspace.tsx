@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useDeferredValue, useEffectEvent, useMemo, useState } from "react";
+import { useDeferredValue, useEffectEvent, useMemo } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -9,6 +9,10 @@ import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings, getActiveHeadingLine } from "../../lib/toc";
 import { summarizeDocument } from "../../lib/document-metrics";
 import type { DocumentStatus } from "../../lib/window-state";
+import {
+  EditorViewStateProvider,
+  useActiveEditorLine,
+} from "../../hooks/useEditorViewState";
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -64,14 +68,18 @@ function DocumentPreviewPane({
 }
 
 function DocumentTocPane({
-  activeHeadingLine,
   headings,
   onSelectHeading,
 }: {
-  activeHeadingLine: number | null;
   headings: ReturnType<typeof extractHeadings>;
   onSelectHeading: (line: number) => void;
 }) {
+  const activeEditorLine = useActiveEditorLine();
+  const activeHeadingLine = useMemo(
+    () => getActiveHeadingLine(headings, activeEditorLine),
+    [activeEditorLine, headings],
+  );
+
   return (
     <TocPanel
       activeHeadingLine={activeHeadingLine}
@@ -94,25 +102,17 @@ export function EditorWorkspace({
   onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
-  const [activeEditorLine, setActiveEditorLine] = useState<number | null>(1);
   const markdown = useDocumentMarkdown(documentStore);
   const deferredMarkdown = useDeferredValue(markdown);
   const headings = useMemo(
     () => extractHeadings(deferredMarkdown),
     [deferredMarkdown],
   );
-  const activeHeadingLine = useMemo(
-    () => getActiveHeadingLine(headings, activeEditorLine),
-    [activeEditorLine, headings],
-  );
   const documentMetrics = useMemo(
     () => summarizeDocument(markdown),
     [markdown],
   );
   const isDocumentEmpty = markdown.trim().length === 0;
-  const handleEditorFocus = useEffectEvent((focused: boolean) => {
-    onEditorFocusChange(focused);
-  });
   const handlePathCopy = useEffectEvent(async () => {
     if (!filePath) {
       return;
@@ -127,90 +127,90 @@ export function EditorWorkspace({
   });
   const visibleStatusLabel = formatDocumentStatus(documentStatus);
   return (
-    <div className="editor-workspace">
-      <main
-        className="editor-workspace__main"
-        data-has-preview={isPreviewVisible}
-        data-has-toc={isTocVisible}
-      >
-        {isTocVisible ? (
-          <DocumentTocPane
-            activeHeadingLine={activeHeadingLine}
-            headings={headings}
-            onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
-          />
-        ) : null}
-        <section
-          className="editor-workspace__panel"
-          data-panel="editor"
+    <EditorViewStateProvider documentKey={documentKey}>
+      <div className="editor-workspace">
+        <main
+          className="editor-workspace__main"
+          data-has-preview={isPreviewVisible}
+          data-has-toc={isTocVisible}
         >
-          <div className="editor-workspace__panel-header">
-            <div className="editor-workspace__panel-heading">
-              <span className="editor-workspace__panel-kicker">Writing</span>
-            </div>
-          </div>
-          <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
-            <div className="editor-workspace__editor-surface">
-              <MarkdownEditor
-                onActiveLineChange={setActiveEditorLine}
-                documentKey={documentKey}
-                onFocusChange={handleEditorFocus}
-                ref={editorRef}
-                store={documentStore}
-              />
-            </div>
-          </div>
-        </section>
-        {isPreviewVisible ? (
-          <section className="editor-workspace__panel" data-panel="preview">
+          {isTocVisible ? (
+            <DocumentTocPane
+              headings={headings}
+              onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
+            />
+          ) : null}
+          <section
+            className="editor-workspace__panel"
+            data-panel="editor"
+          >
             <div className="editor-workspace__panel-header">
               <div className="editor-workspace__panel-heading">
-                <span className="editor-workspace__panel-kicker">Reading</span>
+                <span className="editor-workspace__panel-kicker">Writing</span>
               </div>
             </div>
-            <div className="editor-workspace__panel-body">
-              {isDocumentEmpty ? (
-                <div className="editor-workspace__preview-empty-state">
-                  <p className="editor-workspace__preview-empty-kicker">Preview</p>
-                  <h2 className="editor-workspace__preview-empty-title">
-                    Start writing in the editor to build a clean reading view here.
-                  </h2>
-                </div>
-              ) : (
-                <DocumentPreviewPane
-                  markdown={deferredMarkdown}
-                  filePath={filePath}
-                  isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+            <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
+              <div className="editor-workspace__editor-surface">
+                <MarkdownEditor
+                  documentKey={documentKey}
+                  onFocusChange={onEditorFocusChange}
+                  ref={editorRef}
+                  store={documentStore}
                 />
-              )}
+              </div>
             </div>
           </section>
-        ) : null}
-      </main>
+          {isPreviewVisible ? (
+            <section className="editor-workspace__panel" data-panel="preview">
+              <div className="editor-workspace__panel-header">
+                <div className="editor-workspace__panel-heading">
+                  <span className="editor-workspace__panel-kicker">Reading</span>
+                </div>
+              </div>
+              <div className="editor-workspace__panel-body">
+                {isDocumentEmpty ? (
+                  <div className="editor-workspace__preview-empty-state">
+                    <p className="editor-workspace__preview-empty-kicker">Preview</p>
+                    <h2 className="editor-workspace__preview-empty-title">
+                      Start writing in the editor to build a clean reading view here.
+                    </h2>
+                  </div>
+                ) : (
+                  <DocumentPreviewPane
+                    markdown={deferredMarkdown}
+                    filePath={filePath}
+                    isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                  />
+                )}
+              </div>
+            </section>
+          ) : null}
+        </main>
 
-      <footer className="editor-workspace__footer">
-        <div className="editor-workspace__footer-primary">
-          <span className="editor-workspace__footer-label">File</span>
-          {filePath ? (
-            <button
-              className="editor-workspace__path-button"
-              onClick={() => void handlePathCopy()}
-              title="Click to copy file path"
-              type="button"
-            >
-              {filePath}
-            </button>
-          ) : (
-            <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
-          )}
-        </div>
-        <div className="editor-workspace__footer-meta" aria-label="Document summary">
-          <span>{visibleStatusLabel}</span>
-          <span>{documentMetrics.wordCount} words</span>
-          <span>{documentMetrics.lineCount} lines</span>
-          <span>{headings.length} headings</span>
-        </div>
-      </footer>
-    </div>
+        <footer className="editor-workspace__footer">
+          <div className="editor-workspace__footer-primary">
+            <span className="editor-workspace__footer-label">File</span>
+            {filePath ? (
+              <button
+                className="editor-workspace__path-button"
+                onClick={() => void handlePathCopy()}
+                title="Click to copy file path"
+                type="button"
+              >
+                {filePath}
+              </button>
+            ) : (
+              <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
+            )}
+          </div>
+          <div className="editor-workspace__footer-meta" aria-label="Document summary">
+            <span>{visibleStatusLabel}</span>
+            <span>{documentMetrics.wordCount} words</span>
+            <span>{documentMetrics.lineCount} lines</span>
+            <span>{headings.length} headings</span>
+          </div>
+        </footer>
+      </div>
+    </EditorViewStateProvider>
   );
 }
