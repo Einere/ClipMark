@@ -6,8 +6,10 @@ export const buttonVariants = cva(
     "inline-flex items-center justify-center gap-3",
     "radius-squircle px-5 py-3",
     "text-body-lg leading-none font-semibold text-center",
-    "transition-[background-color,color,opacity] duration-180 ease-[var(--ease-standard)]",
+    "transform-gpu",
+    "transition-[background-color,color,opacity,transform] duration-220 ease-[var(--ease-standard)]",
     "disabled:cursor-not-allowed disabled:opacity-50",
+    "motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0",
     "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-glow)]",
   ],
   {
