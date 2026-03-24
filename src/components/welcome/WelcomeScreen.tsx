@@ -1,7 +1,5 @@
 import packageJson from "../../../package.json";
 import type { RecentFile } from "../../lib/recent-files";
-import { NewFileIcon } from "../icons/NewFileIcon";
-import { OpenFileIcon } from "../icons/OpenFileIcon";
 import { WelcomeRecentFileButton } from "./WelcomeRecentFileButton";
 import { Button } from "../ui/Button";
 
@@ -21,20 +19,11 @@ export function WelcomeScreen({
   const appVersionLabel = `v${packageJson.version}`;
 
   return (
-    <main className="relative grid min-h-0 grid-rows-[1fr_auto] overflow-hidden p-12">
-      <div
-        aria-hidden="true"
-        className="radius-squircle pointer-events-none absolute bottom-[-12rem] left-[-12rem] size-[32rem] bg-[image:var(--welcome-glow-primary)] opacity-[0.16] blur-[110px] xl:size-[40rem]"
-      />
-      <div
-        aria-hidden="true"
-        className="radius-squircle pointer-events-none absolute top-[-12rem] right-[-12rem] size-[34rem] bg-[image:var(--welcome-glow-secondary)] opacity-[0.18] blur-[120px] xl:size-[42rem]"
-      />
-
+    <main className="grid min-h-0 grid-rows-[1fr_auto] overflow-hidden p-12">
       <div className="grid min-h-0 items-center gap-8 xl:gap-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(20rem,0.88fr)]">
         <section
           aria-labelledby="welcome-hero-title"
-          className="relative z-10 flex min-h-0 flex-col justify-center gap-9"
+          className="flex min-h-0 flex-col justify-center gap-9"
         >
           <header className="flex flex-col gap-6">
             <h1
@@ -53,11 +42,9 @@ export function WelcomeScreen({
 
           <nav aria-label="Welcome actions" className="flex flex-wrap gap-3.5">
             <Button variant="primary" onClick={onNew}>
-              <NewFileIcon className="grid size-4 place-items-center text-current opacity-90" />
               New Markdown File
             </Button>
             <Button variant="secondary" onClick={onOpen}>
-              <OpenFileIcon className="grid size-4 place-items-center text-current opacity-90" />
               Open Existing File
             </Button>
           </nav>
@@ -65,10 +52,10 @@ export function WelcomeScreen({
 
         <section
           aria-labelledby="welcome-recent-files-title"
-          className="relative z-10 px-3 pb-6 md:px-6 lg:px-0"
+          className="px-3 pb-6 md:px-6 lg:px-0"
         >
-          <article className="radius-squircle relative flex min-h-0 flex-col gap-6 bg-surface-container-low p-6 shadow-ambient xl:p-8">
-            <header className="relative flex items-center justify-between gap-4">
+          <article className="radius-squircle flex min-h-0 flex-col gap-6 bg-surface-container-low p-6 shadow-ambient xl:p-8">
+            <header className="flex items-center justify-between gap-4">
               <h2
                 className="m-0 text-body-sm font-semibold tracking-label-upper text-secondary uppercase"
                 id="welcome-recent-files-title"
@@ -103,7 +90,7 @@ export function WelcomeScreen({
         </section>
       </div>
 
-      <footer className="relative z-10 flex flex-wrap items-center gap-x-10 gap-y-3 pt-4 pb-2 text-body-sm font-medium uppercase tracking-label-upper text-on-surface-muted">
+      <footer className="flex flex-wrap items-center gap-x-10 gap-y-3 pt-4 pb-2 text-body-sm font-medium uppercase tracking-label-upper text-on-surface-muted">
         <p className="m-0">{appVersionLabel}</p>
         <p className="m-0">© 2026 ClipMark</p>
       </footer>

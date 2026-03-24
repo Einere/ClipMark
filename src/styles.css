@@ -100,16 +100,6 @@
     --surface-elevated: var(--color-surface-container-lowest);
     --motion-fast: 120ms;
     --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
-    --welcome-glow-primary: radial-gradient(
-      circle,
-      color-mix(in srgb, var(--color-primary-container) 60%, transparent) 0%,
-      transparent 68%
-    );
-    --welcome-glow-secondary: radial-gradient(
-      circle,
-      color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
-      transparent 70%
-    );
   }
 
   body {
@@ -119,8 +109,8 @@
     font-weight: var(--font-weight-regular);
     color: var(--color-on-surface);
     background:
-      radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-container) 18%, transparent) 0%, transparent 24%),
-      radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 28%),
+      radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-container) 26%, transparent) 0%, transparent 36%),
+      radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, transparent 42%),
       linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white) 0%, var(--color-background) 100%);
   }
 
