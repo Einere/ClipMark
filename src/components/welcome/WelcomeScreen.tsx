@@ -1,8 +1,9 @@
+import packageJson from "../../../package.json";
 import type { RecentFile } from "../../lib/recent-files";
-import {
-  designSystem,
-  getButtonClasses,
-} from "../../lib/design-system";
+import { NewFileIcon } from "../icons/NewFileIcon";
+import { OpenFileIcon } from "../icons/OpenFileIcon";
+import { WelcomeRecentFileButton } from "./WelcomeRecentFileButton";
+import { Button } from "../ui/Button";
 
 type WelcomeScreenProps = {
   onNew: () => void;
@@ -17,50 +18,94 @@ export function WelcomeScreen({
   onOpenRecent,
   recentFiles,
 }: WelcomeScreenProps) {
-  return (
-    <main className={designSystem.welcomeScreen}>
-      <section className={designSystem.welcomeCard}>
-        <p className={designSystem.eyebrow}>ClipMark</p>
-        <h1 className={designSystem.welcomeTitle}>
-          Open a recent archive or start a new Markdown file.
-        </h1>
-        <p className={designSystem.welcomeBody}>
-          ClipMark keeps web clipping and Markdown cleanup lightweight. Open an
-          existing file or create a new note to begin.
-        </p>
-        <div className={designSystem.welcomeActions}>
-          <button className={getButtonClasses("primary")} onClick={onNew} type="button">
-            New Markdown File
-          </button>
-          <button className={getButtonClasses("secondary")} onClick={onOpen} type="button">
-            Open Markdown File
-          </button>
-        </div>
-      </section>
+  const appVersionLabel = `v${packageJson.version}`;
 
-      <section className={designSystem.welcomeCard}>
-        <div className={designSystem.recentFilesHeader}>
-          <strong>Recent Files</strong>
-          <span className={designSystem.status}>{recentFiles.length} items</span>
-        </div>
-        {recentFiles.length === 0 ? (
-          <p className={designSystem.tocEmpty}>No recent files yet.</p>
-        ) : (
-          <div className={designSystem.recentFilesList}>
-            {recentFiles.map((file) => (
-              <button
-                className={designSystem.recentFileItem}
-                key={file.path}
-                onClick={() => onOpenRecent(file.path)}
-                type="button"
+  return (
+    <main className="relative grid min-h-0 grid-rows-[1fr_auto] overflow-hidden p-12">
+      <div
+        aria-hidden="true"
+        className="radius-squircle pointer-events-none absolute bottom-[-12rem] left-[-12rem] size-[32rem] bg-[image:var(--welcome-glow-primary)] opacity-[0.16] blur-[110px] xl:size-[40rem]"
+      />
+      <div
+        aria-hidden="true"
+        className="radius-squircle pointer-events-none absolute top-[-12rem] right-[-12rem] size-[34rem] bg-[image:var(--welcome-glow-secondary)] opacity-[0.18] blur-[120px] xl:size-[42rem]"
+      />
+
+      <div className="grid min-h-0 items-center gap-8 xl:gap-16 lg:grid-cols-[minmax(0,1.12fr)_minmax(20rem,0.88fr)]">
+        <section
+          aria-labelledby="welcome-hero-title"
+          className="relative z-10 flex min-h-0 flex-col justify-center gap-9"
+        >
+          <header className="flex flex-col gap-6">
+            <h1
+              className="m-0 text-[clamp(3rem,6vw,5.25rem)] leading-[0.9] tracking-[-0.04em] font-bold text-on-surface"
+              id="welcome-hero-title"
+            >
+              Open a recent archive or start a new&nbsp;
+              <span className="text-primary">Markdown</span> file.
+            </h1>
+            <p className="m-0 max-w-[31rem] text-[clamp(1.02rem,1.45vw,1.18rem)] leading-[1.7] text-on-surface-variant">
+              ClipMark is a lightweight Markdown workspace for saving web research
+              into local files. Move from paste to cleanup, preview, and focused
+              writing without leaving the file-first flow.
+            </p>
+          </header>
+
+          <nav aria-label="Welcome actions" className="flex flex-wrap gap-3.5">
+            <Button variant="primary" onClick={onNew}>
+              <NewFileIcon className="grid size-4 place-items-center text-current opacity-90" />
+              New Markdown File
+            </Button>
+            <Button variant="secondary" onClick={onOpen}>
+              <OpenFileIcon className="grid size-4 place-items-center text-current opacity-90" />
+              Open Existing File
+            </Button>
+          </nav>
+        </section>
+
+        <section
+          aria-labelledby="welcome-recent-files-title"
+          className="relative z-10 px-3 pb-6 md:px-6 lg:px-0"
+        >
+          <article className="radius-squircle relative flex min-h-0 flex-col gap-6 bg-surface-container-low p-6 shadow-ambient xl:p-8">
+            <header className="relative flex items-center justify-between gap-4">
+              <h2
+                className="m-0 text-body-sm font-semibold tracking-label-upper text-secondary uppercase"
+                id="welcome-recent-files-title"
               >
-                <span>{file.filename}</span>
-                <span className={designSystem.status}>{file.path}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+                Recent Files
+              </h2>
+              <p className="m-0 text-body-sm font-medium uppercase tracking-label-upper text-on-surface-muted">
+                {recentFiles.length === 0
+                  ? "Ready"
+                  : `${recentFiles.length} file${recentFiles.length === 1 ? "" : "s"}`}
+              </p>
+            </header>
+            {recentFiles.length === 0 ? (
+              <p className="radius-squircle m-0 bg-surface-container-lowest px-5 py-5 text-body-md leading-body-md text-on-surface-variant">
+                <strong className="font-medium text-on-surface">No recent files yet.</strong>{" "}
+                Open a Markdown document once and it will appear here for quick
+                access.
+              </p>
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {recentFiles.map((file) => (
+                  <WelcomeRecentFileButton
+                    file={file}
+                    key={file.path}
+                    onOpenRecent={onOpenRecent}
+                  />
+                ))}
+              </ul>
+            )}
+          </article>
+        </section>
+      </div>
+
+      <footer className="relative z-10 flex flex-wrap items-center gap-x-10 gap-y-3 pt-4 pb-2 text-body-sm font-medium uppercase tracking-label-upper text-on-surface-muted">
+        <p className="m-0">{appVersionLabel}</p>
+        <p className="m-0">© 2026 ClipMark</p>
+      </footer>
     </main>
   );
 }
