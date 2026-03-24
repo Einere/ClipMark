@@ -1,3 +1,11 @@
+# ClipMark - Home Screen
+
+Project ID: `3206945935767802565`
+Requested screen label: `Design System`
+Requested screen ID: `asset-stub-assets-fb271843078c43a28d6c1ce8e15d3d54-1774327049129`
+
+## Stitch design system document
+
 # Design System Document
 
 ## 1. Overview & Creative North Star
@@ -5,7 +13,7 @@
 ### Creative North Star: "The Digital Atheneum"
 This design system is a high-end, editorial-first framework designed specifically for the focused writer. It moves beyond the clinical utility of standard Markdown editors into a realm of sophisticated digital craftsmanship. By marrying the structural clarity of macOS with a "Digital Atheneum" philosophy, we prioritize a layout that feels curated, serene, and authoritative.
 
-The system breaks the "standard template" look by utilizing intentional asymmetry—placing significant visual weight on content while allowing auxiliary navigation to breathe in the periphery. We reject rigid grids in favor of tonal layering, where depth is communicated through the interplay of light and surface rather than harsh lines. The result is a premium workspace that feels like an intentional environment for thought.
+The system breaks the "standard template" look by utilizing intentional asymmetry-placing significant visual weight on content while allowing auxiliary navigation to breathe in the periphery. We reject rigid grids in favor of tonal layering, where depth is communicated through the interplay of light and surface rather than harsh lines. The result is a premium workspace that feels like an intentional environment for thought.
 
 ---
 
@@ -14,7 +22,7 @@ The system breaks the "standard template" look by utilizing intentional asymmetr
 The color palette is rooted in a sophisticated range of cool grays and deep blues, designed to reduce eye strain while providing a canvas for high-contrast accents.
 
 - **Primary & Actions:** Use `primary` (#004fa8) for high-impact actions. For primary CTAs, apply a subtle gradient transitioning from `primary` to `primary_container` (#0366d6) at a 135-degree angle to add "soul" and dimension.
-- **Surface & Background:** The foundation is `background` (#f8f9fb). 
+- **Surface & Background:** The foundation is `background` (#f8f9fb).
 
 ### The "No-Line" Rule
 **Explicit Instruction:** Do not use 1px solid borders to section off UI components or layouts. Boundaries must be defined solely through background color shifts. For example, a sidebar should be defined by being `surface_container_low` (#f2f4f6) against the main `surface` (#f8f9fb) editor area.
@@ -84,4 +92,4 @@ We eschew traditional structural lines for **Tonal Layering**.
 ### Don't
 - **DON'T** use black (#000000) for text. Use `on_surface` (#191c1e) to maintain a premium, softer contrast.
 - **DON'T** use 90-degree corners. Everything must adhere to the **Roundedness Scale** (default `0.75rem`) to mirror macOS hardware and software language.
-- **DON'T** use standard drop shadows. If it looks like a "box shadow" from 2010, it’s too heavy. It should look like light falling on paper.
+- **DON'T** use standard drop shadows. If it looks like a "box shadow" from 2010, it's too heavy. It should look like light falling on paper.
