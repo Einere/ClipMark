@@ -4,6 +4,7 @@ import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
+import { cn } from "../../lib/cn";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings } from "../../lib/toc";
@@ -87,7 +88,7 @@ export function EditorWorkspace({
     }
   });
 
-  const workspaceClassName = [
+  const workspaceClassName = cn(
     "grid min-h-0 gap-4",
     isTocVisible
       ? isPreviewVisible
@@ -96,12 +97,12 @@ export function EditorWorkspace({
       : isPreviewVisible
         ? "grid-cols-1 xl:grid-cols-[minmax(0,1.16fr)_minmax(21.25rem,0.84fr)]"
         : "grid-cols-1",
-  ].join(" ");
+  );
 
-  const documentStatusClassName = [
+  const documentStatusClassName = cn(
     "cm-status",
-    documentStatus === "edited" ? "cm-status-dirty" : "",
-  ].join(" ").trim();
+    documentStatus === "edited" && "cm-status-dirty",
+  );
 
   return (
     <>

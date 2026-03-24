@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "../../lib/cn";
 
 export const buttonVariants = cva(
   [
@@ -49,10 +50,7 @@ export function Button({
   type = "button",
   ...props
 }: ButtonProps) {
-  // TODO: cn 같은 라이브러리 도입하기
-  const resolvedClassName = [buttonVariants({ variant }), className]
-    .filter(Boolean)
-    .join(" ");
+  const resolvedClassName = cn(buttonVariants({ variant }), className);
 
   return (
     <button
