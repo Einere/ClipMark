@@ -18,6 +18,7 @@ import {
 
 type MarkdownEditorProps = {
   documentKey: number;
+  onActiveLineChange?: (line: number) => void;
   onFocusChange?: (isFocused: boolean) => void;
   store: DocumentStore;
 };
@@ -31,10 +32,16 @@ export type MarkdownEditorHandle = {
 export const MarkdownEditor = forwardRef<
   MarkdownEditorHandle,
   MarkdownEditorProps
->(function MarkdownEditor({ documentKey, onFocusChange, store }, ref) {
+>(function MarkdownEditor(
+  { documentKey, onActiveLineChange, onFocusChange, store },
+  ref,
+) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastDocumentKeyRef = useRef(documentKey);
+  const onActiveLineChangeEvent = useEffectEvent((line: number) => {
+    onActiveLineChange?.(line);
+  });
   const onFocusChangeEvent = useEffectEvent((isFocused: boolean) => {
     onFocusChange?.(isFocused);
   });
@@ -56,6 +63,12 @@ export const MarkdownEditor = forwardRef<
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               store.setMarkdown(update.state.doc.toString());
+            }
+
+            if (update.docChanged || update.selectionSet || update.focusChanged) {
+              onActiveLineChangeEvent(
+                update.state.doc.lineAt(update.state.selection.main.head).number,
+              );
             }
           }),
           EditorView.domEventHandlers({
@@ -92,12 +105,13 @@ export const MarkdownEditor = forwardRef<
     });
 
     viewRef.current = view;
+    onActiveLineChangeEvent(view.state.doc.lineAt(view.state.selection.main.head).number);
 
     return () => {
       view.destroy();
       viewRef.current = null;
     };
-  }, [store]);
+  }, [onActiveLineChangeEvent, store]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -120,8 +134,9 @@ export const MarkdownEditor = forwardRef<
       selection: EditorSelection.cursor(0),
       scrollIntoView: true,
     });
+    onActiveLineChangeEvent(1);
     view.focus();
-  }, [documentKey, store]);
+  }, [documentKey, onActiveLineChangeEvent, store]);
 
   useImperativeHandle(ref, () => ({
     focus() {

@@ -2,11 +2,16 @@ import type { CSSProperties } from "react";
 import type { Heading } from "../../lib/toc";
 
 type TocPanelProps = {
+  activeHeadingLine: number | null;
   headings: Heading[];
   onSelectHeading: (line: number) => void;
 };
 
-export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
+export function TocPanel({
+  activeHeadingLine,
+  headings,
+  onSelectHeading,
+}: TocPanelProps) {
   return (
     <aside className="toc-panel">
       <div className="toc-panel__header">
@@ -20,7 +25,9 @@ export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
         ) : (
           headings.map((heading) => (
             <button
+              aria-current={activeHeadingLine === heading.line ? "location" : undefined}
               className="toc-panel__item"
+              data-active={activeHeadingLine === heading.line}
               key={`${heading.id}-${heading.line}`}
               onClick={() => onSelectHeading(heading.line)}
               style={

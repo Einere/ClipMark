@@ -6,7 +6,7 @@ import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
-import { extractHeadings } from "../../lib/toc";
+import { extractHeadings, getActiveHeadingLine } from "../../lib/toc";
 import { summarizeDocument } from "../../lib/document-metrics";
 import type { DocumentStatus } from "../../lib/window-state";
 
@@ -64,13 +64,21 @@ function DocumentPreviewPane({
 }
 
 function DocumentTocPane({
+  activeHeadingLine,
   headings,
   onSelectHeading,
 }: {
+  activeHeadingLine: number | null;
   headings: ReturnType<typeof extractHeadings>;
   onSelectHeading: (line: number) => void;
 }) {
-  return <TocPanel headings={headings} onSelectHeading={onSelectHeading} />;
+  return (
+    <TocPanel
+      activeHeadingLine={activeHeadingLine}
+      headings={headings}
+      onSelectHeading={onSelectHeading}
+    />
+  );
 }
 
 export function EditorWorkspace({
@@ -87,11 +95,16 @@ export function EditorWorkspace({
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [activeEditorLine, setActiveEditorLine] = useState<number | null>(1);
   const markdown = useDocumentMarkdown(documentStore);
   const deferredMarkdown = useDeferredValue(markdown);
   const headings = useMemo(
     () => extractHeadings(deferredMarkdown),
     [deferredMarkdown],
+  );
+  const activeHeadingLine = useMemo(
+    () => getActiveHeadingLine(headings, activeEditorLine),
+    [activeEditorLine, headings],
   );
   const documentMetrics = useMemo(
     () => summarizeDocument(markdown),
@@ -125,6 +138,7 @@ export function EditorWorkspace({
       >
         {isTocVisible ? (
           <DocumentTocPane
+            activeHeadingLine={activeHeadingLine}
             headings={headings}
             onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
           />
@@ -142,6 +156,7 @@ export function EditorWorkspace({
           <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
             <div className="editor-workspace__editor-surface">
               <MarkdownEditor
+                onActiveLineChange={setActiveEditorLine}
                 documentKey={documentKey}
                 onFocusChange={handleEditorFocus}
                 ref={editorRef}
@@ -162,12 +177,8 @@ export function EditorWorkspace({
                 <div className="editor-workspace__preview-empty-state">
                   <p className="editor-workspace__preview-empty-kicker">Preview</p>
                   <h2 className="editor-workspace__preview-empty-title">
-                    Rendered output appears here once the document has content.
+                    Rendered output appears here when the document has content.
                   </h2>
-                  <p className="editor-workspace__preview-empty-copy">
-                    Use this panel to check heading rhythm, code blocks, tables, links,
-                    and media fallbacks before saving.
-                  </p>
                 </div>
               ) : (
                 <DocumentPreviewPane

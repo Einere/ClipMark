@@ -28,6 +28,8 @@
   --color-bg-panel: rgb(255 255 255 / 0.9);
   --color-bg-panel-hover: #f5f6f2;
   --color-bg-elevated: #fbfbf8;
+  --color-bg-header-start: rgb(249 249 245 / 0.98);
+  --color-bg-header-end: rgb(245 246 241 / 0.94);
 
   --color-text-strong: var(--slate-900);
   --color-text-muted: var(--slate-700);
@@ -48,4 +50,8 @@
 
   --color-focus-ring: color-mix(in srgb, var(--blue-500) 55%, white);
   --color-selection-bg: color-mix(in srgb, var(--blue-200) 72%, white);
+  --color-editor-active-line: rgb(239 239 233 / 0.38);
+  --color-editor-gutter-bg: rgb(248 248 243 / 0.9);
+  --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 82%, white);
+  --color-editor-selection-match: color-mix(in srgb, var(--color-accent-text) 14%, white);
 }

@@ -44,3 +44,24 @@ export function extractHeadings(markdown: string): Heading[] {
 
   return headings;
 }
+
+export function getActiveHeadingLine(
+  headings: Heading[],
+  currentLine: number | null,
+): number | null {
+  if (headings.length === 0 || currentLine === null || currentLine < 1) {
+    return null;
+  }
+
+  let activeHeadingLine: number | null = null;
+
+  for (const heading of headings) {
+    if (heading.line > currentLine) {
+      break;
+    }
+
+    activeHeadingLine = heading.line;
+  }
+
+  return activeHeadingLine;
+}
