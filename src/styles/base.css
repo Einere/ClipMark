@@ -35,6 +35,10 @@
       linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white) 0%, var(--color-background) 100%);
   }
 
+  #root {
+    overflow: hidden;
+  }
+
   button,
   input,
   textarea {
