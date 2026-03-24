@@ -413,7 +413,7 @@
 
 .editor-workspace__metrics dd {
   margin: 0;
-  color: var(--color-text-strong);
+  color: var(--color-metric-value);
   font-size: var(--font-size-0);
   font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
@@ -554,9 +554,14 @@
 }
 
 .markdown-editor .cm-content {
-  caret-color: var(--color-accent-text);
+  caret-color: var(--color-editor-caret);
   max-width: 76ch;
   padding-bottom: 30vh;
+}
+
+.markdown-editor .cm-cursor,
+.markdown-editor .cm-dropCursor {
+  border-left-color: var(--color-editor-caret);
 }
 
 .markdown-editor .cm-activeLine,
@@ -575,10 +580,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.markdown-editor .cm-selectionBackground,
-.markdown-editor .cm-focused .cm-selectionBackground,
-.markdown-editor .cm-editor ::selection {
-  background-color: var(--color-selection-bg);
+.markdown-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+.markdown-editor .cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
+  background-color: var(--color-selection-bg-strong);
 }
 
 .markdown-editor .cm-selectionMatch {
@@ -586,7 +590,7 @@
   border-radius: var(--radius-sm);
 }
 
-.markdown-editor .cm-selectionBackground {
+.markdown-editor .cm-editor > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
   background-color: var(--color-selection-bg-strong);
 }
 

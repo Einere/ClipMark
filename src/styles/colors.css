@@ -61,9 +61,12 @@
   --color-selection-bg: color-mix(in srgb, var(--blue-200) 72%, white);
   --color-selection-bg-strong: color-mix(in srgb, var(--color-selection-bg) 92%, white);
   --color-editor-active-line: rgb(239 239 233 / 0.38);
+  --color-editor-link: var(--color-accent-text);
+  --color-editor-caret: var(--color-accent-text);
   --color-editor-gutter-bg: rgb(248 248 243 / 0.9);
   --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 82%, white);
   --color-editor-selection-match: color-mix(in srgb, var(--color-accent-text) 14%, white);
+  --color-metric-value: var(--color-text-strong);
   --color-button-secondary-hover-bg: rgb(255 255 252 / 0.74);
   --color-button-secondary-hover-border: var(--color-text-soft);
   --color-button-secondary-active-bg: var(--color-bg-subtle);
@@ -104,12 +107,15 @@
   --color-danger-text: var(--red-200);
 
   --color-focus-ring: color-mix(in srgb, var(--blue-400) 72%, white);
-  --color-selection-bg: color-mix(in srgb, var(--blue-500) 44%, black);
-  --color-selection-bg-strong: color-mix(in srgb, var(--blue-400) 36%, black);
+  --color-selection-bg: rgb(84 98 120 / 0.11);
+  --color-selection-bg-strong: rgb(96 110 134 / 0.18);
   --color-editor-active-line: rgb(120 144 196 / 0.14);
+  --color-editor-link: var(--color-accent-text);
+  --color-editor-caret: #dbe5fb;
   --color-editor-gutter-bg: rgb(24 29 26 / 0.9);
   --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 84%, black);
-  --color-editor-selection-match: color-mix(in srgb, var(--blue-300) 24%, black);
+  --color-editor-selection-match: rgb(136 154 188 / 0.18);
+  --color-metric-value: #dddcd4;
   --color-button-secondary-hover-bg: rgb(41 47 43 / 0.94);
   --color-button-secondary-hover-border: var(--color-border-strong);
   --color-button-secondary-active-bg: #262c28;

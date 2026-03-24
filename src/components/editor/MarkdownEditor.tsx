@@ -5,8 +5,10 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import { tags } from "@lezer/highlight";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
@@ -22,6 +24,13 @@ type MarkdownEditorProps = {
   onFocusChange?: (isFocused: boolean) => void;
   store: DocumentStore;
 };
+
+export const markdownEditorHighlightStyle = HighlightStyle.define([
+  {
+    tag: [tags.link, tags.url],
+    color: "var(--color-editor-link)",
+  },
+]);
 
 export type MarkdownEditorHandle = {
   focus: () => void;
@@ -56,6 +65,7 @@ export const MarkdownEditor = forwardRef<
         extensions: [
           basicSetup,
           markdown(),
+          syntaxHighlighting(markdownEditorHighlightStyle),
           keymap.of([indentWithTab]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
