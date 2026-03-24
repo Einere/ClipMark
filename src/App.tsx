@@ -9,7 +9,7 @@ import {
 import { flushSync } from "react-dom";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
-import { Toast } from "./components/toast/Toast";
+import { Toast } from "./components/ui";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { EditorWorkspace } from "./components/workspace/EditorWorkspace";
 import { useAppMenuController } from "./hooks/useAppMenuController";
@@ -41,7 +41,6 @@ const TOAST_DURATION_MS = 3200;
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
-
 export default function App({ initialPreferences }: AppProps) {
   const preferences = initialPreferences ?? DEFAULT_APP_PREFERENCES;
   const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
@@ -461,7 +460,7 @@ export default function App({ initialPreferences }: AppProps) {
       };
 
   return (
-    <div className="app-shell">
+    <div >
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
@@ -497,7 +496,7 @@ export default function App({ initialPreferences }: AppProps) {
 
       <input
         accept=".md,text/markdown,text/plain"
-        className="file-input"
+        className="invisible hidden"
         onChange={session.handleOpenFile}
         ref={session.fileInputRef}
         type="file"

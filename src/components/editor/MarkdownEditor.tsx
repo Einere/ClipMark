@@ -30,8 +30,8 @@ export type MarkdownEditorHandle = {
 
 const editorTheme = EditorView.theme({
   "&": {
-    backgroundColor: "var(--surface-primary)",
-    color: "var(--text-primary)",
+    backgroundColor: "var(--surface-base)",
+    color: "var(--color-on-surface)",
     height: "100%",
   },
   ".cm-scroller": {
@@ -40,19 +40,19 @@ const editorTheme = EditorView.theme({
     overflow: "auto",
   },
   ".cm-content": {
-    caretColor: "var(--accent)",
+    caretColor: "var(--color-surface-tint)",
     padding: "1rem 1.1rem 2rem",
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--accent)",
+    borderLeftColor: "var(--color-surface-tint)",
   },
   "&.cm-focused .cm-activeLine": {
-    backgroundColor: "rgba(31, 92, 255, 0.06)",
+    backgroundColor: "rgba(0, 91, 192, 0.08)",
   },
   ".cm-gutters": {
-    backgroundColor: "var(--surface-primary)",
+    backgroundColor: "var(--surface-base)",
     border: "none",
-    color: "var(--text-muted)",
+    color: "var(--color-on-surface-muted)",
   },
 });
 

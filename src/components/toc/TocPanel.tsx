@@ -7,18 +7,18 @@ type TocPanelProps = {
 
 export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
   return (
-    <aside className="panel panel--toc">
-      <div className="panel__header">
+    <aside className="cm-panel cm-panel-toc">
+      <div className="cm-panel-header">
         <span>Contents</span>
-        <span className="status">{headings.length} headings</span>
+        <span className="cm-status">{headings.length} headings</span>
       </div>
-      <nav className="toc">
+      <nav className="cm-toc">
         {headings.length === 0 ? (
-          <p className="toc__empty">Add headings to build a table of contents.</p>
+          <p className="cm-toc-empty">Add headings to build a table of contents.</p>
         ) : (
           headings.map((heading) => (
             <button
-              className="toc__item"
+              className="cm-toc-item"
               key={`${heading.id}-${heading.line}`}
               onClick={() => onSelectHeading(heading.line)}
               style={{ paddingLeft: `${heading.depth * 0.75}rem` }}

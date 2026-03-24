@@ -1,3 +1,5 @@
+import { Button } from "../ui";
+
 type UnsavedChangesDialogProps = {
   confirmLabel: string;
   description: string;
@@ -22,26 +24,26 @@ export function UnsavedChangesDialog({
   }
 
   return (
-    <div className="dialog-backdrop" role="presentation">
+    <div className="cm-dialog-backdrop" role="presentation">
       <div
         aria-labelledby="unsaved-dialog-title"
         aria-modal="true"
-        className="dialog-card"
+        className="cm-dialog-card"
         role="dialog"
       >
-        <h2 className="dialog-card__title" id="unsaved-dialog-title">
+        <h2 className="cm-dialog-title" id="unsaved-dialog-title">
           {title}
         </h2>
-        <p className="dialog-card__body">
+        <p className="cm-dialog-body">
           <strong>{filename}</strong> {description}
         </p>
-        <div className="dialog-card__actions">
-          <button className="button-secondary" onClick={onDiscard} type="button">
+        <div className="cm-dialog-actions">
+          <Button onClick={onDiscard} variant="secondary">
             {confirmLabel}
-          </button>
-          <button className="button-primary" onClick={onSave} type="button">
+          </Button>
+          <Button onClick={onSave} variant="primary">
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>

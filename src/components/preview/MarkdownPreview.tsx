@@ -7,6 +7,7 @@ import {
   type ResolvedPreviewUri,
 } from "../../lib/external-link";
 import { slugifyHeading } from "../../lib/toc";
+import { Button } from "../ui";
 
 type MarkdownPreviewProps = {
   markdown: string;
@@ -80,7 +81,7 @@ export function MarkdownPreview({
 }: MarkdownPreviewProps) {
   return (
     <div
-      className="preview markdown-body"
+      className="cm-preview markdown-body"
       onAuxClick={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
@@ -188,12 +189,11 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">
+              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
+                <span className="cm-preview-uri-label">
                   {alt?.trim() || "External media"}
                 </span>
-                <button
-                  className="preview-uri-card__button"
+                <Button
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {
@@ -202,10 +202,9 @@ export function MarkdownPreview({
 
                     void openExternalUri(externalUri);
                   }}
-                  type="button"
                 >
                   Open externally
-                </button>
+                </Button>
               </span>
             );
           },
@@ -221,10 +220,9 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">External video</span>
-                <button
-                  className="preview-uri-card__button"
+              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
+                <span className="cm-preview-uri-label">External video</span>
+                <Button
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {
@@ -233,10 +231,9 @@ export function MarkdownPreview({
 
                     void openExternalUri(externalUri);
                   }}
-                  type="button"
                 >
                   Open externally
-                </button>
+                </Button>
               </span>
             );
           },
@@ -252,10 +249,9 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">External audio</span>
-                <button
-                  className="preview-uri-card__button"
+              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
+                <span className="cm-preview-uri-label">External audio</span>
+                <Button
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {
@@ -264,10 +260,9 @@ export function MarkdownPreview({
 
                     void openExternalUri(externalUri);
                   }}
-                  type="button"
                 >
                   Open externally
-                </button>
+                </Button>
               </span>
             );
           },

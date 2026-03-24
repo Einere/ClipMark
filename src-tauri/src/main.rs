@@ -247,7 +247,7 @@ fn show_window(window: tauri::Window) -> Result<(), String> {
                         as *mut NSWindow)
                 };
 
-                NSApplication::sharedApplication(mtm).activateIgnoringOtherApps(true);
+                NSApplication::sharedApplication(mtm).activate();
                 ns_window.makeKeyAndOrderFront(None::<&AnyObject>);
             })
             .map_err(|error| error.to_string())?;
@@ -335,22 +335,22 @@ fn show_unsaved_changes_sheet(window: tauri::Window, filename: String) -> Result
 fn pick_markdown_file() -> Result<Option<String>, String> {
     #[cfg(target_os = "macos")]
     {
-        let mtm = MainThreadMarker::new().ok_or_else(|| "failed to access the main thread".to_string())?;
-        let panel = unsafe { objc2_app_kit::NSOpenPanel::openPanel(mtm) };
+        let mtm =
+            MainThreadMarker::new().ok_or_else(|| "failed to access the main thread".to_string())?;
+        let panel = objc2_app_kit::NSOpenPanel::openPanel(mtm);
 
-        unsafe {
-            panel.setCanChooseDirectories(false);
-            panel.setCanChooseFiles(true);
-            panel.setAllowsMultipleSelection(false);
-            panel.setCanCreateDirectories(false);
-            panel.setAllowedFileTypes(Some(&NSArray::from_retained_slice(&[
-                NSString::from_str("md"),
-                NSString::from_str("markdown"),
-                NSString::from_str("txt"),
-            ])));
-        }
+        panel.setCanChooseDirectories(false);
+        panel.setCanChooseFiles(true);
+        panel.setAllowsMultipleSelection(false);
+        panel.setCanCreateDirectories(false);
+        #[allow(deprecated)]
+        panel.setAllowedFileTypes(Some(&NSArray::from_retained_slice(&[
+            NSString::from_str("md"),
+            NSString::from_str("markdown"),
+            NSString::from_str("txt"),
+        ])));
 
-        let response = unsafe { panel.runModal() };
+        let response = panel.runModal();
         if response != objc2_app_kit::NSModalResponseOK {
             return Ok(None);
         }
