@@ -155,7 +155,7 @@ describe("App close window session", () => {
     });
 
     const openButton = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Open Markdown File",
+      (button) => button.textContent === "Open Existing File",
     );
 
     await act(async () => {
@@ -170,7 +170,9 @@ describe("App close window session", () => {
     });
 
     expect(hideWindow).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("Open a recent archive or start a new Markdown file.");
+    expect(container.textContent?.replace(/\s+/g, " ").trim()).toContain(
+      "Open a recent archive or start a new Markdown file.",
+    );
     expect(
       Array.from(container.querySelectorAll('button[title="Click to copy file path"]')).length,
     ).toBe(0);

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-
+/* TODO: 테마 설정 값을 컬러 팔레트, 타이포그래피, 스페이싱, 등 영역에 맞춰 분리하기 */
 @theme {
   --font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SF Mono", "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
@@ -68,10 +68,7 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1.125rem;
+  --radius: 8px;
 
   --shadow-ambient: 0 12px 40px rgba(25, 28, 30, 0.06);
   --shadow-lifted: 0 18px 45px rgba(25, 28, 30, 0.08);
@@ -80,6 +77,7 @@
   --breakpoint-xl: 75rem;
 }
 
+/* TODO:root 속성 모두 제거하기 */
 :root {
   color: var(--color-on-surface);
   background:
@@ -101,9 +99,6 @@
   --text-primary: var(--color-on-surface);
   --text-muted: var(--color-on-surface-muted);
   --accent: var(--color-surface-tint);
-  --radius-panel: var(--radius-xl);
-  --radius-card: var(--radius-lg);
-  --radius-control: var(--radius-lg);
   --panel-header-height: 3.25rem;
   --blur-glass: 20px;
   --blur-soft: 10px;
@@ -123,6 +118,23 @@
     color-mix(in srgb, var(--color-primary) 70%, var(--color-primary-container)) 58%,
     color-mix(in srgb, var(--color-primary-container) 92%, white) 100%
   );
+  --welcome-card-fill: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-elevated) 94%, transparent),
+    color-mix(in srgb, var(--surface-section) 96%, transparent)
+  );
+  --welcome-glow-primary: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary-container) 60%, transparent) 0%,
+    transparent 68%
+  );
+  --welcome-glow-secondary: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
+    transparent 70%
+  );
+  --welcome-active-shadow: 0 10px 28px rgba(25, 28, 30, 0.06);
+  --welcome-active-shadow-hover: 0 14px 30px rgba(25, 28, 30, 0.08);
 }
 
 @layer base {
@@ -162,6 +174,11 @@
     text-decoration-color: color-mix(in srgb, var(--color-tertiary) 28%, transparent);
     text-underline-offset: 0.16em;
   }
+}
+
+.radius-squircle {
+  border-radius: var(--radius);
+  corner-shape: squircle;
 }
 
 .editor-root,
@@ -239,7 +256,8 @@
 
 .markdown-body pre {
   overflow: auto;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius);
+  corner-shape: squircle;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--surface-elevated) 74%, var(--surface-panel)) 0%,
@@ -251,14 +269,16 @@
 
 .markdown-body code:not(pre code) {
   background: color-mix(in srgb, var(--surface-section) 84%, white);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
+  corner-shape: squircle;
   padding: 0.14rem 0.36rem;
 }
 
 .markdown-body blockquote {
   margin-left: 0;
   padding: 0.85rem 1rem;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius);
+  corner-shape: squircle;
   background: color-mix(in srgb, var(--surface-section) 78%, white);
   color: var(--color-on-surface-variant);
   font-style: italic;
@@ -267,7 +287,8 @@
 .markdown-body hr {
   height: 0.45rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius);
+  corner-shape: squircle;
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -293,18 +314,21 @@
 
 .markdown-body th:first-child,
 .markdown-body td:first-child {
-  border-top-left-radius: var(--radius-md);
-  border-bottom-left-radius: var(--radius-md);
+  border-top-left-radius: var(--radius);
+  border-bottom-left-radius: var(--radius);
+  corner-shape: squircle;
 }
 
 .markdown-body th:last-child,
 .markdown-body td:last-child {
-  border-top-right-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  corner-shape: squircle;
 }
 
 .markdown-body details {
-  border-radius: var(--radius-card);
+  border-radius: var(--radius);
+  corner-shape: squircle;
   background: color-mix(in srgb, var(--surface-section) 62%, white);
   padding: 0.9rem 1rem;
 }

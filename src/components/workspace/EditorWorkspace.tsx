@@ -4,11 +4,6 @@ import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
-import {
-  designSystem,
-  getStatusClasses,
-  getWorkspaceLayoutClasses,
-} from "../../lib/design-system";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings } from "../../lib/toc";
@@ -92,10 +87,21 @@ export function EditorWorkspace({
     }
   });
 
-  const workspaceClassName = getWorkspaceLayoutClasses({
-    isPreviewVisible,
-    isTocVisible,
-  });
+  const workspaceClassName = [
+    "grid min-h-0 gap-4",
+    isTocVisible
+      ? isPreviewVisible
+        ? "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1.08fr)_minmax(21.25rem,0.88fr)]"
+        : "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1fr)]"
+      : isPreviewVisible
+        ? "grid-cols-1 xl:grid-cols-[minmax(0,1.16fr)_minmax(21.25rem,0.84fr)]"
+        : "grid-cols-1",
+  ].join(" ");
+
+  const documentStatusClassName = [
+    "cm-status",
+    documentStatus === "edited" ? "cm-status-dirty" : "",
+  ].join(" ").trim();
 
   return (
     <>
@@ -106,11 +112,11 @@ export function EditorWorkspace({
             onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
           />
         ) : null}
-        <section className={designSystem.panel}>
-          <div className={designSystem.panelHeader}>
+        <section className="cm-panel">
+          <div className="cm-panel-header">
             <span>Editor</span>
             {documentStatus ? (
-              <span className={getStatusClasses(documentStatus === "edited")}>
+              <span className={documentStatusClassName}>
                 {documentStatus}
               </span>
             ) : null}
@@ -123,8 +129,8 @@ export function EditorWorkspace({
           />
         </section>
         {isPreviewVisible ? (
-          <section className={designSystem.panel}>
-            <div className={designSystem.panelHeader}>
+          <section className="cm-panel">
+            <div className="cm-panel-header">
               <span>Preview</span>
             </div>
             <DocumentPreviewPane
@@ -136,10 +142,10 @@ export function EditorWorkspace({
         ) : null}
       </main>
 
-      <footer className={designSystem.footerBar}>
+      <footer className="cm-footer-bar">
         {filePath ? (
           <button
-            className={`${designSystem.footerPath} ${designSystem.footerPathButton}`}
+            className="cm-footer-path cm-footer-path-button"
             onClick={() => void handlePathCopy()}
             title="Click to copy file path"
             type="button"
@@ -147,7 +153,7 @@ export function EditorWorkspace({
             {filePath}
           </button>
         ) : (
-          <span className={designSystem.footerPath}>Unsaved local document</span>
+          <span className="cm-footer-path">Unsaved local document</span>
         )}
       </footer>
     </>

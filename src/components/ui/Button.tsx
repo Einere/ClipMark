@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
+/* TODO: 버튼의 기본 텍스트 사이즈는 16px, semibold 로 바꾸기 */
 export const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-3",
