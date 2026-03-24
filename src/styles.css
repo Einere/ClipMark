@@ -77,66 +77,6 @@
   --breakpoint-xl: 75rem;
 }
 
-/* TODO:root 속성 모두 제거하기 */
-:root {
-  color: var(--color-on-surface);
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-container) 18%, transparent) 0%, transparent 24%),
-    radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 28%),
-    linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white) 0%, var(--color-background) 100%);
-  font-family: var(--font-sans);
-  line-height: var(--leading-body-md);
-  font-weight: var(--font-weight-regular);
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  color-scheme: light;
-  --surface-base: var(--color-surface);
-  --surface-section: var(--color-surface-container-low);
-  --surface-panel: var(--color-surface-container);
-  --surface-elevated: var(--color-surface-container-lowest);
-  --surface-glass-strong: var(--color-glass-surface-strong);
-  --surface-primary: var(--surface-base);
-  --text-primary: var(--color-on-surface);
-  --text-muted: var(--color-on-surface-muted);
-  --accent: var(--color-surface-tint);
-  --panel-header-height: 3.25rem;
-  --blur-glass: 20px;
-  --blur-soft: 10px;
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-  --motion-slow: 320ms;
-  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
-  --button-primary-fill: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    color-mix(in srgb, var(--color-primary) 58%, var(--color-primary-container)) 58%,
-    var(--color-primary-container) 100%
-  );
-  --button-primary-fill-hover: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-primary) 88%, black) 0%,
-    color-mix(in srgb, var(--color-primary) 70%, var(--color-primary-container)) 58%,
-    color-mix(in srgb, var(--color-primary-container) 92%, white) 100%
-  );
-  --welcome-card-fill: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--surface-elevated) 94%, transparent),
-    color-mix(in srgb, var(--surface-section) 96%, transparent)
-  );
-  --welcome-glow-primary: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--color-primary-container) 60%, transparent) 0%,
-    transparent 68%
-  );
-  --welcome-glow-secondary: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
-    transparent 70%
-  );
-  --welcome-active-shadow: 0 10px 28px rgba(25, 28, 30, 0.06);
-  --welcome-active-shadow-hover: 0 14px 30px rgba(25, 28, 30, 0.08);
-}
-
 @layer base {
   *,
   *::before,
@@ -151,10 +91,37 @@
     margin: 0;
   }
 
+  html {
+    color-scheme: light;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    --surface-base: var(--color-surface);
+    --surface-section: var(--color-surface-container-low);
+    --surface-elevated: var(--color-surface-container-lowest);
+    --motion-fast: 120ms;
+    --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+    --welcome-glow-primary: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-primary-container) 60%, transparent) 0%,
+      transparent 68%
+    );
+    --welcome-glow-secondary: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
+      transparent 70%
+    );
+  }
+
   body {
     min-width: 0;
+    font-family: var(--font-sans);
+    line-height: var(--leading-body-md);
+    font-weight: var(--font-weight-regular);
     color: var(--color-on-surface);
-    background: inherit;
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-container) 18%, transparent) 0%, transparent 24%),
+      radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 28%),
+      linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white) 0%, var(--color-background) 100%);
   }
 
   button,
@@ -179,156 +146,4 @@
 .radius-squircle {
   border-radius: var(--radius);
   corner-shape: squircle;
-}
-
-.editor-root,
-.cm-editor {
-  height: 100%;
-}
-
-.markdown-body {
-  color: var(--color-on-surface);
-}
-
-.markdown-body > :first-child {
-  margin-top: 0;
-}
-
-.markdown-body > :last-child {
-  margin-bottom: 0;
-}
-
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4,
-.markdown-body h5,
-.markdown-body h6 {
-  color: var(--color-on-surface);
-  letter-spacing: -0.02em;
-  line-height: 1.12;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-.markdown-body h1 {
-  font-size: clamp(2rem, 3.2vw, 3rem);
-}
-
-.markdown-body h2 {
-  font-size: clamp(1.5rem, 2.2vw, var(--text-headline-lg));
-}
-
-.markdown-body h3 {
-  font-size: clamp(1.1rem, 1.5vw, 1.25rem);
-}
-
-.markdown-body p,
-.markdown-body li,
-.markdown-body blockquote,
-.markdown-body td,
-.markdown-body th {
-  color: var(--color-on-surface);
-  font-size: var(--text-body-md);
-  line-height: var(--leading-body-md);
-}
-
-.markdown-body p,
-.markdown-body ul,
-.markdown-body ol,
-.markdown-body table,
-.markdown-body details,
-.markdown-body pre,
-.markdown-body blockquote {
-  margin-block: 1rem;
-}
-
-.markdown-body strong,
-.markdown-body summary {
-  font-weight: var(--font-weight-semibold);
-}
-
-.markdown-body pre,
-.markdown-body code {
-  font-family: var(--font-mono);
-  font-size: calc(var(--text-body-md) * 0.92);
-}
-
-.markdown-body pre {
-  overflow: auto;
-  border-radius: var(--radius);
-  corner-shape: squircle;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--surface-elevated) 74%, var(--surface-panel)) 0%,
-    var(--surface-panel) 100%
-  );
-  color: var(--color-on-surface);
-  padding: 1rem 1.1rem;
-}
-
-.markdown-body code:not(pre code) {
-  background: color-mix(in srgb, var(--surface-section) 84%, white);
-  border-radius: var(--radius);
-  corner-shape: squircle;
-  padding: 0.14rem 0.36rem;
-}
-
-.markdown-body blockquote {
-  margin-left: 0;
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius);
-  corner-shape: squircle;
-  background: color-mix(in srgb, var(--surface-section) 78%, white);
-  color: var(--color-on-surface-variant);
-  font-style: italic;
-}
-
-.markdown-body hr {
-  height: 0.45rem;
-  border: 0;
-  border-radius: var(--radius);
-  corner-shape: squircle;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--color-outline-variant) 22%, white) 18%,
-    color-mix(in srgb, var(--color-outline-variant) 22%, white) 82%,
-    transparent 100%
-  );
-  margin-block: 1.4rem;
-}
-
-.markdown-body table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.35rem;
-}
-
-.markdown-body th,
-.markdown-body td {
-  padding: 0.7rem 0.8rem;
-  text-align: left;
-  background: color-mix(in srgb, var(--surface-section) 58%, white);
-}
-
-.markdown-body th:first-child,
-.markdown-body td:first-child {
-  border-top-left-radius: var(--radius);
-  border-bottom-left-radius: var(--radius);
-  corner-shape: squircle;
-}
-
-.markdown-body th:last-child,
-.markdown-body td:last-child {
-  border-top-right-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
-  corner-shape: squircle;
-}
-
-.markdown-body details {
-  border-radius: var(--radius);
-  corner-shape: squircle;
-  background: color-mix(in srgb, var(--surface-section) 62%, white);
-  padding: 0.9rem 1rem;
 }
