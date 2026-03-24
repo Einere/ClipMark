@@ -1,0 +1,64 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  min-width: 20rem;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgb(255 255 255 / 0.9), transparent 32%),
+    linear-gradient(180deg, var(--color-bg-elevated), var(--color-bg-canvas));
+  color: var(--color-text-strong);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-relaxed);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  margin: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+::selection {
+  background: var(--color-selection-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+[hidden] {
+  display: none !important;
+}

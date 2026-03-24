@@ -11,11 +11,12 @@ export function WelcomeRecentFileButton({
 }: WelcomeRecentFileButtonProps) {
   return (
     <button
+      className="welcome-recent-file-button"
       onClick={() => onOpenRecent(file.path)}
       type="button"
     >
-      <span>{file.filename}</span>
-      <span>
+      <span className="welcome-recent-file-button__filename">{file.filename}</span>
+      <span className="welcome-recent-file-button__path">
         {file.path}
       </span>
     </button>

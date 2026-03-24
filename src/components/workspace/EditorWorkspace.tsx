@@ -88,47 +88,56 @@ export function EditorWorkspace({
   });
 
   return (
-    <>
-      <main>
+    <div className="editor-workspace">
+      <main
+        className="editor-workspace__main"
+        data-has-preview={isPreviewVisible}
+        data-has-toc={isTocVisible}
+      >
         {isTocVisible ? (
           <DocumentTocPane
             documentStore={documentStore}
             onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
           />
         ) : null}
-        <section>
-          <div>
-            <span>Editor</span>
+        <section className="editor-workspace__panel">
+          <div className="editor-workspace__panel-header">
+            <span className="editor-workspace__panel-title">Editor</span>
             {documentStatus ? (
-              <span>
+              <span className="editor-workspace__status" data-status={documentStatus}>
                 {documentStatus}
               </span>
             ) : null}
           </div>
-          <MarkdownEditor
-            documentKey={documentKey}
-            onFocusChange={onEditorFocusChange}
-            ref={editorRef}
-            store={documentStore}
-        />
+          <div className="editor-workspace__panel-body">
+            <MarkdownEditor
+              documentKey={documentKey}
+              onFocusChange={onEditorFocusChange}
+              ref={editorRef}
+              store={documentStore}
+            />
+          </div>
         </section>
         {isPreviewVisible ? (
-          <section>
-            <div>
-              <span>Preview</span>
+          <section className="editor-workspace__panel">
+            <div className="editor-workspace__panel-header">
+              <span className="editor-workspace__panel-title">Preview</span>
             </div>
-            <DocumentPreviewPane
-              documentStore={documentStore}
-              filePath={filePath}
-              isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-            />
+            <div className="editor-workspace__panel-body">
+              <DocumentPreviewPane
+                documentStore={documentStore}
+                filePath={filePath}
+                isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+              />
+            </div>
           </section>
         ) : null}
       </main>
 
-      <footer>
+      <footer className="editor-workspace__footer">
         {filePath ? (
           <button
+            className="editor-workspace__path-button"
             onClick={() => void handlePathCopy()}
             title="Click to copy file path"
             type="button"
@@ -139,6 +148,6 @@ export function EditorWorkspace({
           <span>Unsaved local document</span>
         )}
       </footer>
-    </>
+    </div>
   );
 }

@@ -146,5 +146,5 @@ export const MarkdownEditor = forwardRef<
     },
   }));
 
-  return <div ref={rootRef} />;
+  return <div className="markdown-editor" ref={rootRef} />;
 });

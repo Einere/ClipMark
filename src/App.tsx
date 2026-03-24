@@ -460,7 +460,7 @@ export default function App({ initialPreferences }: AppProps) {
       };
 
   return (
-    <div >
+    <div className="app-shell">
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
@@ -497,7 +497,6 @@ export default function App({ initialPreferences }: AppProps) {
       <input
         accept=".md,text/markdown,text/plain"
         hidden
-        className="invisible hidden"
         onChange={session.handleOpenFile}
         ref={session.fileInputRef}
         type="file"

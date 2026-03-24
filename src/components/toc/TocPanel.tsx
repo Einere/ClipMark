@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Heading } from "../../lib/toc";
 
 type TocPanelProps = {
@@ -7,19 +8,25 @@ type TocPanelProps = {
 
 export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
   return (
-    <aside>
-      <div>
-        <span>Contents</span>
-        <span>{headings.length} headings</span>
+    <aside className="toc-panel">
+      <div className="toc-panel__header">
+        <span className="toc-panel__title">Contents</span>
+        <span className="toc-panel__meta">{headings.length} headings</span>
       </div>
-      <nav>
+      <nav className="toc-panel__nav">
         {headings.length === 0 ? (
-          <p>Add headings to build a table of contents.</p>
+          <p className="toc-panel__empty">Add headings to build a table of contents.</p>
         ) : (
           headings.map((heading) => (
             <button
+              className="toc-panel__item"
               key={`${heading.id}-${heading.line}`}
               onClick={() => onSelectHeading(heading.line)}
+              style={
+                {
+                  paddingLeft: `calc(0.7rem + ${(heading.depth - 1) * 0.8}rem)`,
+                } as CSSProperties
+              }
               type="button"
             >
               {heading.text}
