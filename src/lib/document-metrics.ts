@@ -1,6 +1,7 @@
 export type DocumentMetrics = {
   characterCount: number;
   estimatedReadingMinutes: number;
+  lineCount: number;
   wordCount: number;
 };
 
@@ -12,10 +13,12 @@ export function summarizeDocument(markdown: string): DocumentMetrics {
   const trimmed = markdown.trim();
   const words = getTokenMatches(trimmed);
   const compactText = trimmed.replace(/\s+/g, " ");
+  const lineCount = trimmed === "" ? 0 : markdown.split(/\r?\n/).length;
 
   return {
     characterCount: compactText.length,
     estimatedReadingMinutes: words.length === 0 ? 0 : Math.max(1, Math.ceil(words.length / 220)),
+    lineCount,
     wordCount: words.length,
   };
 }

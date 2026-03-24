@@ -97,6 +97,7 @@ export function EditorWorkspace({
     () => summarizeDocument(markdown),
     [markdown],
   );
+  const isDocumentEmpty = markdown.trim().length === 0;
   const handleEditorFocus = useEffectEvent((focused: boolean) => {
     setIsEditorFocused(focused);
     onEditorFocusChange(focused);
@@ -113,7 +114,6 @@ export function EditorWorkspace({
       onPathCopyError();
     }
   });
-  const fileLabel = getFileLabel(filePath);
   const visibleStatusLabel = formatDocumentStatus(documentStatus);
 
   return (
@@ -137,31 +137,17 @@ export function EditorWorkspace({
           <div className="editor-workspace__panel-header">
             <div className="editor-workspace__panel-heading">
               <span className="editor-workspace__panel-kicker">Writing</span>
-              <div className="editor-workspace__panel-title-row">
-                <span className="editor-workspace__panel-title">Editor</span>
-                <span className="editor-workspace__status" data-status={documentStatus ?? "initial"}>
-                  {visibleStatusLabel}
-                </span>
-              </div>
             </div>
-            <dl className="editor-workspace__metrics" aria-label="Editor metrics">
-              <div>
-                <dt>Words</dt>
-                <dd>{documentMetrics.wordCount}</dd>
-              </div>
-              <div>
-                <dt>Read</dt>
-                <dd>{documentMetrics.estimatedReadingMinutes} min</dd>
-              </div>
-            </dl>
           </div>
-          <div className="editor-workspace__panel-body">
-            <MarkdownEditor
-              documentKey={documentKey}
-              onFocusChange={handleEditorFocus}
-              ref={editorRef}
-              store={documentStore}
-            />
+          <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
+            <div className="editor-workspace__editor-surface">
+              <MarkdownEditor
+                documentKey={documentKey}
+                onFocusChange={handleEditorFocus}
+                ref={editorRef}
+                store={documentStore}
+              />
+            </div>
           </div>
         </section>
         {isPreviewVisible ? (
@@ -169,27 +155,27 @@ export function EditorWorkspace({
             <div className="editor-workspace__panel-header">
               <div className="editor-workspace__panel-heading">
                 <span className="editor-workspace__panel-kicker">Reading</span>
-                <div className="editor-workspace__panel-title-row">
-                  <span className="editor-workspace__panel-title">Preview</span>
-                </div>
               </div>
-              <dl className="editor-workspace__metrics" aria-label="Preview metrics">
-                <div>
-                  <dt>Headings</dt>
-                  <dd>{headings.length}</dd>
-                </div>
-                <div>
-                  <dt>Chars</dt>
-                  <dd>{documentMetrics.characterCount}</dd>
-                </div>
-              </dl>
             </div>
             <div className="editor-workspace__panel-body">
-              <DocumentPreviewPane
-                markdown={deferredMarkdown}
-                filePath={filePath}
-                isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-              />
+              {isDocumentEmpty ? (
+                <div className="editor-workspace__preview-empty-state">
+                  <p className="editor-workspace__preview-empty-kicker">Preview</p>
+                  <h2 className="editor-workspace__preview-empty-title">
+                    Rendered output appears here once the document has content.
+                  </h2>
+                  <p className="editor-workspace__preview-empty-copy">
+                    Use this panel to check heading rhythm, code blocks, tables, links,
+                    and media fallbacks before saving.
+                  </p>
+                </div>
+              ) : (
+                <DocumentPreviewPane
+                  markdown={deferredMarkdown}
+                  filePath={filePath}
+                  isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                />
+              )}
             </div>
           </section>
         ) : null}
@@ -205,15 +191,16 @@ export function EditorWorkspace({
               title="Click to copy file path"
               type="button"
             >
-              {fileLabel}
+              {getFileLabel(filePath)}
             </button>
           ) : (
-            <span className="editor-workspace__footer-value">{fileLabel}</span>
+            <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
           )}
         </div>
         <div className="editor-workspace__footer-meta" aria-label="Document summary">
           <span>{visibleStatusLabel}</span>
           <span>{documentMetrics.wordCount} words</span>
+          <span>{documentMetrics.lineCount} lines</span>
           <span>{headings.length} headings</span>
         </div>
       </footer>

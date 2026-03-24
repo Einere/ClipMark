@@ -6,6 +6,7 @@ describe("summarizeDocument", () => {
     expect(summarizeDocument("   \n\n")).toEqual({
       characterCount: 0,
       estimatedReadingMinutes: 0,
+      lineCount: 0,
       wordCount: 0,
     });
   });
@@ -14,6 +15,7 @@ describe("summarizeDocument", () => {
     expect(summarizeDocument("# Heading\n\nHello   world from ClipMark.")).toEqual({
       characterCount: 36,
       estimatedReadingMinutes: 1,
+      lineCount: 3,
       wordCount: 5,
     });
   });
@@ -22,6 +24,7 @@ describe("summarizeDocument", () => {
     expect(summarizeDocument("문서 요약 test 123")).toEqual({
       characterCount: 14,
       estimatedReadingMinutes: 1,
+      lineCount: 1,
       wordCount: 4,
     });
   });
