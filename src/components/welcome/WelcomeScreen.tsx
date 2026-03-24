@@ -1,7 +1,7 @@
 import packageJson from "../../../package.json";
 import type { RecentFile } from "../../lib/recent-files";
 import { WelcomeRecentFileButton } from "./WelcomeRecentFileButton";
-import { Button } from "../ui/Button";
+import { Button } from "../ui";
 
 type WelcomeScreenProps = {
   onNew: () => void;

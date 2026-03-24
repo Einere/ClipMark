@@ -7,7 +7,7 @@ import {
   type ResolvedPreviewUri,
 } from "../../lib/external-link";
 import { slugifyHeading } from "../../lib/toc";
-import { Button } from "../ui/Button";
+import { Button } from "../ui";
 
 type MarkdownPreviewProps = {
   markdown: string;
