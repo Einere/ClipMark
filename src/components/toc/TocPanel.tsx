@@ -10,7 +10,10 @@ export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
   return (
     <aside className="toc-panel">
       <div className="toc-panel__header">
-        <span className="toc-panel__title">Contents</span>
+        <div className="toc-panel__heading">
+          <span className="toc-panel__kicker">Navigation</span>
+          <span className="toc-panel__title">Contents</span>
+        </div>
         <span className="toc-panel__meta">{headings.length} headings</span>
       </div>
       <nav className="toc-panel__nav">
