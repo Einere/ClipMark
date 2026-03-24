@@ -9,7 +9,8 @@ describe("Toast", () => {
       createElement(Toast, { message: "Saved" }),
     );
 
-    expect(markup).toContain("toast toast--info");
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain("text-on-surface");
     expect(markup).toContain("Saved");
     expect(markup).toContain('role="status"');
   });
@@ -19,7 +20,8 @@ describe("Toast", () => {
       createElement(Toast, { message: "File not found", tone: "error" }),
     );
 
-    expect(markup).toContain("toast toast--error");
+    expect(markup).toContain("bg-error");
+    expect(markup).toContain("text-on-error");
     expect(markup).toContain("File not found");
   });
 });

@@ -31,10 +31,12 @@ describe("MarkdownEditor", () => {
 
     const injectedTheme = Array.from(document.head.querySelectorAll("style"))
       .map((style) => style.textContent ?? "")
-      .find((text) => text.includes("rgba(31, 92, 255, 0.06)"));
+      .find((text) => text.includes("rgba(0, 91, 192, 0.08)"));
 
     expect(injectedTheme).toBeDefined();
     expect(injectedTheme).toMatch(/\.cm-focused\s+\.cm-activeLine/);
+    expect(injectedTheme).toContain("var(--surface-base)");
+    expect(injectedTheme).toContain("var(--color-surface-tint)");
 
     await act(async () => {
       root.unmount();

@@ -1,3 +1,8 @@
+import {
+  designSystem,
+  getButtonClasses,
+} from "../../lib/design-system";
+
 type UnsavedChangesDialogProps = {
   confirmLabel: string;
   description: string;
@@ -22,24 +27,24 @@ export function UnsavedChangesDialog({
   }
 
   return (
-    <div className="dialog-backdrop" role="presentation">
+    <div className={designSystem.dialogBackdrop} role="presentation">
       <div
         aria-labelledby="unsaved-dialog-title"
         aria-modal="true"
-        className="dialog-card"
+        className={designSystem.dialogCard}
         role="dialog"
       >
-        <h2 className="dialog-card__title" id="unsaved-dialog-title">
+        <h2 className={designSystem.dialogTitle} id="unsaved-dialog-title">
           {title}
         </h2>
-        <p className="dialog-card__body">
+        <p className={designSystem.dialogBody}>
           <strong>{filename}</strong> {description}
         </p>
-        <div className="dialog-card__actions">
-          <button className="button-secondary" onClick={onDiscard} type="button">
+        <div className={designSystem.dialogActions}>
+          <button className={getButtonClasses("secondary")} onClick={onDiscard} type="button">
             {confirmLabel}
           </button>
-          <button className="button-primary" onClick={onSave} type="button">
+          <button className={getButtonClasses("primary")} onClick={onSave} type="button">
             Save
           </button>
         </div>

@@ -112,7 +112,7 @@ describe("MarkdownPreview", () => {
 
     const image = container.querySelector("img");
     expect(image?.getAttribute("src")).toBe("https://example.com/diagram.png");
-    expect(container.querySelector("button.preview-uri-card__button")).toBeNull();
+    expect(container.textContent).not.toContain("Open externally");
   });
 
   it("renders images as explicit external-open affordances when external media autoload is disabled", async () => {
@@ -128,7 +128,9 @@ describe("MarkdownPreview", () => {
 
     expect(container.querySelector("img")).toBeNull();
 
-    const button = container.querySelector("button.preview-uri-card__button");
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (item) => item.textContent?.includes("Open externally"),
+    );
     expect(button?.textContent).toContain("Open externally");
 
     await act(async () => {
@@ -188,7 +190,9 @@ describe("MarkdownPreview", () => {
 
     expect(container.querySelector("video")).toBeNull();
 
-    const button = container.querySelector("button.preview-uri-card__button");
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (item) => item.textContent?.includes("Open externally"),
+    );
     expect(button?.textContent).toContain("Open externally");
 
     await act(async () => {

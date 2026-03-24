@@ -2,6 +2,10 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import {
+  designSystem,
+  getButtonClasses,
+} from "../../lib/design-system";
+import {
   openExternalUri,
   resolvePreviewUri,
   type ResolvedPreviewUri,
@@ -80,7 +84,7 @@ export function MarkdownPreview({
 }: MarkdownPreviewProps) {
   return (
     <div
-      className="preview markdown-body"
+      className={`${designSystem.preview} markdown-body`}
       onAuxClick={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
@@ -188,12 +192,12 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">
+              <span className={designSystem.previewUriCard} data-preview-uri={externalUri ?? undefined}>
+                <span className={designSystem.previewUriLabel}>
                   {alt?.trim() || "External media"}
                 </span>
                 <button
-                  className="preview-uri-card__button"
+                  className={getButtonClasses("secondary")}
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {
@@ -221,10 +225,10 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">External video</span>
+              <span className={designSystem.previewUriCard} data-preview-uri={externalUri ?? undefined}>
+                <span className={designSystem.previewUriLabel}>External video</span>
                 <button
-                  className="preview-uri-card__button"
+                  className={getButtonClasses("secondary")}
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {
@@ -252,10 +256,10 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="preview-uri-card__label">External audio</span>
+              <span className={designSystem.previewUriCard} data-preview-uri={externalUri ?? undefined}>
+                <span className={designSystem.previewUriLabel}>External audio</span>
                 <button
-                  className="preview-uri-card__button"
+                  className={getButtonClasses("secondary")}
                   disabled={!externalUri}
                   onClick={() => {
                     if (!externalUri) {

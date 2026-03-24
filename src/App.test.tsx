@@ -171,7 +171,9 @@ describe("App close window session", () => {
 
     expect(hideWindow).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Open a recent archive or start a new Markdown file.");
-    expect(container.querySelector("button.footer-bar__path-button")).toBeNull();
+    expect(
+      Array.from(container.querySelectorAll('button[title="Click to copy file path"]')).length,
+    ).toBe(0);
   });
 
   it("creates a new document when New is selected while the window is hidden", async () => {

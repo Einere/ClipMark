@@ -36,13 +36,12 @@ describe("EditorWorkspace", () => {
       }),
     );
 
-    expect(markup).toContain('<div class="panel__header"><span>Preview</span></div>');
-    expect(markup).toContain('<footer class="footer-bar">');
-    expect(markup).toContain('class="footer-bar__path footer-bar__path-button"');
-    expect(markup).toContain('type="button"');
+    expect(markup).toContain("<span>Preview</span>");
+    expect(markup).toContain("<footer");
     expect(markup).toContain('title="Click to copy file path"');
+    expect(markup).toContain('type="button"');
     expect(markup).toContain(">\/tmp/note.md</button>");
-    expect(markup).not.toContain('Preview</span><span class="status">');
+    expect(markup).not.toContain(">Preview</span><span");
     expect(markup).not.toContain("</button><span");
   });
 
@@ -75,7 +74,7 @@ describe("EditorWorkspace", () => {
       );
     });
 
-    const button = container.querySelector("button.footer-bar__path-button");
+    const button = container.querySelector('button[title="Click to copy file path"]');
     expect(button).not.toBeNull();
 
     await act(async () => {

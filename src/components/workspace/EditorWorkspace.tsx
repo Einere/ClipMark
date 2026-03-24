@@ -4,6 +4,11 @@ import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
+import {
+  designSystem,
+  getStatusClasses,
+  getWorkspaceLayoutClasses,
+} from "../../lib/design-system";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings } from "../../lib/toc";
@@ -87,16 +92,10 @@ export function EditorWorkspace({
     }
   });
 
-  const workspaceClassName = [
-    "workspace",
-    isTocVisible && isPreviewVisible
-      ? "workspace--all"
-      : isTocVisible
-        ? "workspace--toc-editor"
-        : isPreviewVisible
-          ? "workspace--editor-preview"
-          : "workspace--editor-only",
-  ].join(" ");
+  const workspaceClassName = getWorkspaceLayoutClasses({
+    isPreviewVisible,
+    isTocVisible,
+  });
 
   return (
     <>
@@ -107,17 +106,11 @@ export function EditorWorkspace({
             onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
           />
         ) : null}
-        <section className="panel panel--editor">
-          <div className="panel__header">
+        <section className={designSystem.panel}>
+          <div className={designSystem.panelHeader}>
             <span>Editor</span>
             {documentStatus ? (
-              <span
-                className={
-                  documentStatus === "edited"
-                    ? "status status--dirty"
-                    : "status"
-                }
-              >
+              <span className={getStatusClasses(documentStatus === "edited")}>
                 {documentStatus}
               </span>
             ) : null}
@@ -130,8 +123,8 @@ export function EditorWorkspace({
           />
         </section>
         {isPreviewVisible ? (
-          <section className="panel panel--preview">
-            <div className="panel__header">
+          <section className={designSystem.panel}>
+            <div className={designSystem.panelHeader}>
               <span>Preview</span>
             </div>
             <DocumentPreviewPane
@@ -143,10 +136,10 @@ export function EditorWorkspace({
         ) : null}
       </main>
 
-      <footer className="footer-bar">
+      <footer className={designSystem.footerBar}>
         {filePath ? (
           <button
-            className="footer-bar__path footer-bar__path-button"
+            className={`${designSystem.footerPath} ${designSystem.footerPathButton}`}
             onClick={() => void handlePathCopy()}
             title="Click to copy file path"
             type="button"
@@ -154,7 +147,7 @@ export function EditorWorkspace({
             {filePath}
           </button>
         ) : (
-          <span className="footer-bar__path">Unsaved local document</span>
+          <span className={designSystem.footerPath}>Unsaved local document</span>
         )}
       </footer>
     </>

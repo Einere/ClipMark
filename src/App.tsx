@@ -16,6 +16,7 @@ import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
 import { useDocumentDirty } from "./lib/document-store";
+import { designSystem } from "./lib/design-system";
 import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
@@ -461,7 +462,7 @@ export default function App({ initialPreferences }: AppProps) {
       };
 
   return (
-    <div className="app-shell">
+    <div className={designSystem.appShell}>
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
@@ -497,7 +498,7 @@ export default function App({ initialPreferences }: AppProps) {
 
       <input
         accept=".md,text/markdown,text/plain"
-        className="file-input"
+        className={designSystem.fileInput}
         onChange={session.handleOpenFile}
         ref={session.fileInputRef}
         type="file"

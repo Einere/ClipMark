@@ -1,4 +1,8 @@
 import type { RecentFile } from "../../lib/recent-files";
+import {
+  designSystem,
+  getButtonClasses,
+} from "../../lib/design-system";
 
 type WelcomeScreenProps = {
   onNew: () => void;
@@ -14,44 +18,44 @@ export function WelcomeScreen({
   recentFiles,
 }: WelcomeScreenProps) {
   return (
-    <main className="welcome-screen">
-      <section className="welcome-card">
-        <p className="welcome-card__eyebrow">ClipMark</p>
-        <h1 className="welcome-card__title">
+    <main className={designSystem.welcomeScreen}>
+      <section className={designSystem.welcomeCard}>
+        <p className={designSystem.eyebrow}>ClipMark</p>
+        <h1 className={designSystem.welcomeTitle}>
           Open a recent archive or start a new Markdown file.
         </h1>
-        <p className="welcome-card__body">
+        <p className={designSystem.welcomeBody}>
           ClipMark keeps web clipping and Markdown cleanup lightweight. Open an
           existing file or create a new note to begin.
         </p>
-        <div className="welcome-card__actions">
-          <button className="button-primary" onClick={onNew} type="button">
+        <div className={designSystem.welcomeActions}>
+          <button className={getButtonClasses("primary")} onClick={onNew} type="button">
             New Markdown File
           </button>
-          <button className="button-secondary" onClick={onOpen} type="button">
+          <button className={getButtonClasses("secondary")} onClick={onOpen} type="button">
             Open Markdown File
           </button>
         </div>
       </section>
 
-      <section className="welcome-card">
-        <div className="recent-files__header">
+      <section className={designSystem.welcomeCard}>
+        <div className={designSystem.recentFilesHeader}>
           <strong>Recent Files</strong>
-          <span className="status">{recentFiles.length} items</span>
+          <span className={designSystem.status}>{recentFiles.length} items</span>
         </div>
         {recentFiles.length === 0 ? (
-          <p className="toc__empty">No recent files yet.</p>
+          <p className={designSystem.tocEmpty}>No recent files yet.</p>
         ) : (
-          <div className="recent-files__list">
+          <div className={designSystem.recentFilesList}>
             {recentFiles.map((file) => (
               <button
-                className="recent-files__item"
+                className={designSystem.recentFileItem}
                 key={file.path}
                 onClick={() => onOpenRecent(file.path)}
                 type="button"
               >
                 <span>{file.filename}</span>
-                <span className="status">{file.path}</span>
+                <span className={designSystem.status}>{file.path}</span>
               </button>
             ))}
           </div>

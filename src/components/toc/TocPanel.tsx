@@ -1,4 +1,5 @@
 import type { Heading } from "../../lib/toc";
+import { designSystem } from "../../lib/design-system";
 
 type TocPanelProps = {
   headings: Heading[];
@@ -7,18 +8,18 @@ type TocPanelProps = {
 
 export function TocPanel({ headings, onSelectHeading }: TocPanelProps) {
   return (
-    <aside className="panel panel--toc">
-      <div className="panel__header">
+    <aside className={`${designSystem.panel} ${designSystem.panelToc}`}>
+      <div className={designSystem.panelHeader}>
         <span>Contents</span>
-        <span className="status">{headings.length} headings</span>
+        <span className={designSystem.status}>{headings.length} headings</span>
       </div>
-      <nav className="toc">
+      <nav className={designSystem.toc}>
         {headings.length === 0 ? (
-          <p className="toc__empty">Add headings to build a table of contents.</p>
+          <p className={designSystem.tocEmpty}>Add headings to build a table of contents.</p>
         ) : (
           headings.map((heading) => (
             <button
-              className="toc__item"
+              className={designSystem.tocItem}
               key={`${heading.id}-${heading.line}`}
               onClick={() => onSelectHeading(heading.line)}
               style={{ paddingLeft: `${heading.depth * 0.75}rem` }}
