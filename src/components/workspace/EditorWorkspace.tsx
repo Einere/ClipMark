@@ -4,11 +4,15 @@ import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
-import { cn } from "../../lib/cn";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
-import { extractHeadings } from "../../lib/toc";
+import { extractHeadings, getActiveHeadingLine } from "../../lib/toc";
+import { summarizeDocument } from "../../lib/document-metrics";
 import type { DocumentStatus } from "../../lib/window-state";
+import {
+  EditorViewStateProvider,
+  useActiveEditorLine,
+} from "../../hooks/useEditorViewState";
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -24,42 +28,65 @@ type EditorWorkspaceProps = {
   onEditorFocusChange: (focused: boolean) => void;
 };
 
+function formatDocumentStatus(documentStatus: DocumentStatus | null) {
+  if (documentStatus === "edited") {
+    return "Unsaved";
+  }
+
+  if (documentStatus === "saved") {
+    return "Saved";
+  }
+
+  return "Draft";
+}
+
+function getFileLabel(filePath: string | null) {
+  if (!filePath) {
+    return "Unsaved local document";
+  }
+
+  const segments = filePath.split(/[\\/]/);
+  return segments.at(-1) ?? filePath;
+}
+
 function DocumentPreviewPane({
-  documentStore,
+  markdown,
   filePath,
   isExternalMediaAutoLoadEnabled,
 }: {
-  documentStore: DocumentStore;
+  markdown: string;
   filePath: string | null;
   isExternalMediaAutoLoadEnabled: boolean;
 }) {
-  const markdown = useDocumentMarkdown(documentStore);
-  const deferredMarkdown = useDeferredValue(markdown);
-
   return (
     <MarkdownPreview
       filePath={filePath}
       isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-      markdown={deferredMarkdown}
+      markdown={markdown}
     />
   );
 }
 
 function DocumentTocPane({
-  documentStore,
+  headings,
   onSelectHeading,
 }: {
-  documentStore: DocumentStore;
+  headings: ReturnType<typeof extractHeadings>;
   onSelectHeading: (line: number) => void;
 }) {
-  const markdown = useDocumentMarkdown(documentStore);
-  const deferredMarkdown = useDeferredValue(markdown);
-  const headings = useMemo(
-    () => extractHeadings(deferredMarkdown),
-    [deferredMarkdown],
+  const activeEditorLine = useActiveEditorLine();
+  const activeHeadingLine = useMemo(
+    () => getActiveHeadingLine(headings, activeEditorLine),
+    [activeEditorLine, headings],
   );
 
-  return <TocPanel headings={headings} onSelectHeading={onSelectHeading} />;
+  return (
+    <TocPanel
+      activeHeadingLine={activeHeadingLine}
+      headings={headings}
+      onSelectHeading={onSelectHeading}
+    />
+  );
 }
 
 export function EditorWorkspace({
@@ -75,6 +102,17 @@ export function EditorWorkspace({
   onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
+  const markdown = useDocumentMarkdown(documentStore);
+  const deferredMarkdown = useDeferredValue(markdown);
+  const headings = useMemo(
+    () => extractHeadings(deferredMarkdown),
+    [deferredMarkdown],
+  );
+  const documentMetrics = useMemo(
+    () => summarizeDocument(markdown),
+    [markdown],
+  );
+  const isDocumentEmpty = markdown.trim().length === 0;
   const handlePathCopy = useEffectEvent(async () => {
     if (!filePath) {
       return;
@@ -87,76 +125,92 @@ export function EditorWorkspace({
       onPathCopyError();
     }
   });
-
-  const workspaceClassName = cn(
-    "grid min-h-0 gap-4",
-    isTocVisible
-      ? isPreviewVisible
-        ? "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1.08fr)_minmax(21.25rem,0.88fr)]"
-        : "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1fr)]"
-      : isPreviewVisible
-        ? "grid-cols-1 xl:grid-cols-[minmax(0,1.16fr)_minmax(21.25rem,0.84fr)]"
-        : "grid-cols-1",
-  );
-
-  const documentStatusClassName = cn(
-    "cm-status",
-    documentStatus === "edited" && "cm-status-dirty",
-  );
-
+  const visibleStatusLabel = formatDocumentStatus(documentStatus);
   return (
-    <>
-      <main className={workspaceClassName}>
-        {isTocVisible ? (
-          <DocumentTocPane
-            documentStore={documentStore}
-            onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
-          />
-        ) : null}
-        <section className="cm-panel">
-          <div className="cm-panel-header">
-            <span>Editor</span>
-            {documentStatus ? (
-              <span className={documentStatusClassName}>
-                {documentStatus}
-              </span>
-            ) : null}
-          </div>
-          <MarkdownEditor
-            documentKey={documentKey}
-            onFocusChange={onEditorFocusChange}
-            ref={editorRef}
-            store={documentStore}
-          />
-        </section>
-        {isPreviewVisible ? (
-          <section className="cm-panel">
-            <div className="cm-panel-header">
-              <span>Preview</span>
-            </div>
-            <DocumentPreviewPane
-              documentStore={documentStore}
-              filePath={filePath}
-              isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+    <EditorViewStateProvider documentKey={documentKey}>
+      <div className="editor-workspace">
+        <main
+          className="editor-workspace__main"
+          data-has-preview={isPreviewVisible}
+          data-has-toc={isTocVisible}
+        >
+          {isTocVisible ? (
+            <DocumentTocPane
+              headings={headings}
+              onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
             />
-          </section>
-        ) : null}
-      </main>
-
-      <footer className="cm-footer-bar">
-        {filePath ? (
-          <button
-            className="cm-footer-path cm-footer-path-button"
-            onClick={() => void handlePathCopy()}
-            title="Click to copy file path"
-            type="button"
+          ) : null}
+          <section
+            className="editor-workspace__panel"
+            data-panel="editor"
           >
-            {filePath}
-          </button>
-        ) : (
-          <span className="cm-footer-path">Unsaved local document</span>
-        )}
-      </footer>
-    </>
+            <div className="editor-workspace__panel-header">
+              <div className="editor-workspace__panel-heading">
+                <span className="editor-workspace__panel-kicker">Writing</span>
+              </div>
+            </div>
+            <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
+              <div className="editor-workspace__editor-surface">
+                <MarkdownEditor
+                  documentKey={documentKey}
+                  onFocusChange={onEditorFocusChange}
+                  ref={editorRef}
+                  store={documentStore}
+                />
+              </div>
+            </div>
+          </section>
+          {isPreviewVisible ? (
+            <section className="editor-workspace__panel" data-panel="preview">
+              <div className="editor-workspace__panel-header">
+                <div className="editor-workspace__panel-heading">
+                  <span className="editor-workspace__panel-kicker">Reading</span>
+                </div>
+              </div>
+              <div className="editor-workspace__panel-body">
+                {isDocumentEmpty ? (
+                  <div className="editor-workspace__preview-empty-state">
+                    <p className="editor-workspace__preview-empty-kicker">Preview</p>
+                    <h2 className="editor-workspace__preview-empty-title">
+                      Start writing in the editor to build a clean reading view here.
+                    </h2>
+                  </div>
+                ) : (
+                  <DocumentPreviewPane
+                    markdown={deferredMarkdown}
+                    filePath={filePath}
+                    isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                  />
+                )}
+              </div>
+            </section>
+          ) : null}
+        </main>
+
+        <footer className="editor-workspace__footer">
+          <div className="editor-workspace__footer-primary">
+            <span className="editor-workspace__footer-label">File</span>
+            {filePath ? (
+              <button
+                className="editor-workspace__path-button"
+                onClick={() => void handlePathCopy()}
+                title="Click to copy file path"
+                type="button"
+              >
+                {filePath}
+              </button>
+            ) : (
+              <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
+            )}
+          </div>
+          <div className="editor-workspace__footer-meta" aria-label="Document summary">
+            <span>{visibleStatusLabel}</span>
+            <span>{documentMetrics.wordCount} words</span>
+            <span>{documentMetrics.lineCount} lines</span>
+            <span>{headings.length} headings</span>
+          </div>
+        </footer>
+      </div>
+    </EditorViewStateProvider>
   );
 }

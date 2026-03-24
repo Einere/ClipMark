@@ -41,6 +41,8 @@ const TOAST_DURATION_MS = 3200;
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
+
+/* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
 export default function App({ initialPreferences }: AppProps) {
   const preferences = initialPreferences ?? DEFAULT_APP_PREFERENCES;
   const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
@@ -460,7 +462,7 @@ export default function App({ initialPreferences }: AppProps) {
       };
 
   return (
-    <div >
+    <div className="app-shell">
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
@@ -496,7 +498,7 @@ export default function App({ initialPreferences }: AppProps) {
 
       <input
         accept=".md,text/markdown,text/plain"
-        className="invisible hidden"
+        hidden
         onChange={session.handleOpenFile}
         ref={session.fileInputRef}
         type="file"

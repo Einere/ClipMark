@@ -24,20 +24,20 @@ export function UnsavedChangesDialog({
   }
 
   return (
-    <div className="cm-dialog-backdrop" role="presentation">
+    <div className="dialog-backdrop" role="presentation">
       <div
         aria-labelledby="unsaved-dialog-title"
         aria-modal="true"
-        className="cm-dialog-card"
+        className="dialog-panel"
         role="dialog"
       >
-        <h2 className="cm-dialog-title" id="unsaved-dialog-title">
+        <h2 className="dialog-title" id="unsaved-dialog-title">
           {title}
         </h2>
-        <p className="cm-dialog-body">
+        <p className="dialog-description">
           <strong>{filename}</strong> {description}
         </p>
-        <div className="cm-dialog-actions">
+        <div className="dialog-actions">
           <Button onClick={onDiscard} variant="secondary">
             {confirmLabel}
           </Button>
