@@ -460,7 +460,7 @@ export default function App({ initialPreferences }: AppProps) {
       };
 
   return (
-    <>
+    <div >
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={() => requestAction({ type: "new" })}
@@ -503,6 +503,6 @@ export default function App({ initialPreferences }: AppProps) {
       />
 
       {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
-    </>
+    </div>
   );
 }
