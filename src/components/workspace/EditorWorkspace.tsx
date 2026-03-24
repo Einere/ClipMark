@@ -4,7 +4,6 @@ import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
 import { TocPanel } from "../toc/TocPanel";
-import { cn } from "../../lib/cn";
 import type { DocumentStore } from "../../lib/document-store";
 import { useDocumentMarkdown } from "../../lib/document-store";
 import { extractHeadings } from "../../lib/toc";
@@ -88,36 +87,20 @@ export function EditorWorkspace({
     }
   });
 
-  const workspaceClassName = cn(
-    "grid min-h-0 gap-4",
-    isTocVisible
-      ? isPreviewVisible
-        ? "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1.08fr)_minmax(21.25rem,0.88fr)]"
-        : "grid-cols-1 xl:grid-cols-[minmax(14rem,15rem)_minmax(0,1fr)]"
-      : isPreviewVisible
-        ? "grid-cols-1 xl:grid-cols-[minmax(0,1.16fr)_minmax(21.25rem,0.84fr)]"
-        : "grid-cols-1",
-  );
-
-  const documentStatusClassName = cn(
-    "cm-status",
-    documentStatus === "edited" && "cm-status-dirty",
-  );
-
   return (
     <>
-      <main className={workspaceClassName}>
+      <main>
         {isTocVisible ? (
           <DocumentTocPane
             documentStore={documentStore}
             onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
           />
         ) : null}
-        <section className="cm-panel">
-          <div className="cm-panel-header">
+        <section>
+          <div>
             <span>Editor</span>
             {documentStatus ? (
-              <span className={documentStatusClassName}>
+              <span>
                 {documentStatus}
               </span>
             ) : null}
@@ -127,11 +110,11 @@ export function EditorWorkspace({
             onFocusChange={onEditorFocusChange}
             ref={editorRef}
             store={documentStore}
-          />
+        />
         </section>
         {isPreviewVisible ? (
-          <section className="cm-panel">
-            <div className="cm-panel-header">
+          <section>
+            <div>
               <span>Preview</span>
             </div>
             <DocumentPreviewPane
@@ -143,10 +126,9 @@ export function EditorWorkspace({
         ) : null}
       </main>
 
-      <footer className="cm-footer-bar">
+      <footer>
         {filePath ? (
           <button
-            className="cm-footer-path cm-footer-path-button"
             onClick={() => void handlePathCopy()}
             title="Click to copy file path"
             type="button"
@@ -154,7 +136,7 @@ export function EditorWorkspace({
             {filePath}
           </button>
         ) : (
-          <span className="cm-footer-path">Unsaved local document</span>
+          <span>Unsaved local document</span>
         )}
       </footer>
     </>

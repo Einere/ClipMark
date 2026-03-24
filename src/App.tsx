@@ -496,6 +496,7 @@ export default function App({ initialPreferences }: AppProps) {
 
       <input
         accept=".md,text/markdown,text/plain"
+        hidden
         className="invisible hidden"
         onChange={session.handleOpenFile}
         ref={session.fileInputRef}

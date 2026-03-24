@@ -1,2 +1,2 @@
-export { Button, buttonVariants } from "./Button";
+export { Button } from "./Button";
 export { Toast } from "./Toast";

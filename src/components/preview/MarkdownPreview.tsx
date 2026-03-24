@@ -81,7 +81,6 @@ export function MarkdownPreview({
 }: MarkdownPreviewProps) {
   return (
     <div
-      className="cm-preview markdown-body"
       onAuxClick={(event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) {
@@ -133,9 +132,7 @@ export function MarkdownPreview({
           ol: ({ children }) => <ol>{children}</ol>,
           li: ({ children }) => <li>{children}</li>,
           pre: ({ children }) => <pre>{children}</pre>,
-          code: ({ children, className }) => (
-            <code className={className}>{children}</code>
-          ),
+          code: ({ children }) => <code>{children}</code>,
           em: ({ children }) => <em>{children}</em>,
           strong: ({ children }) => <strong>{children}</strong>,
           del: ({ children }) => <del>{children}</del>,
@@ -189,8 +186,8 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="cm-preview-uri-label">
+              <span data-preview-uri={externalUri ?? undefined}>
+                <span>
                   {alt?.trim() || "External media"}
                 </span>
                 <Button
@@ -220,8 +217,8 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="cm-preview-uri-label">External video</span>
+              <span data-preview-uri={externalUri ?? undefined}>
+                <span>External video</span>
                 <Button
                   disabled={!externalUri}
                   onClick={() => {
@@ -249,8 +246,8 @@ export function MarkdownPreview({
             }
 
             return (
-              <span className="cm-preview-uri-card" data-preview-uri={externalUri ?? undefined}>
-                <span className="cm-preview-uri-label">External audio</span>
+              <span data-preview-uri={externalUri ?? undefined}>
+                <span>External audio</span>
                 <Button
                   disabled={!externalUri}
                   onClick={() => {

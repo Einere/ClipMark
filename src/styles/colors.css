@@ -1,0 +1,10 @@
+@theme {
+  --color-primary: #0366d6;
+  --color-secondary: #24292f;
+  --color-tertiary: #4078c0;
+  --color-neutral: #f6f8fa;
+  --color-surface-snow: #f8f9fb;
+  --color-surface-ghost: #ffffff;
+  --color-surface-secondary: #f2f4f6;
+  --color-stroke-mist: #e1e4e8;
+}

@@ -28,34 +28,6 @@ export type MarkdownEditorHandle = {
   focusHeadingLine: (line: number) => void;
 };
 
-const editorTheme = EditorView.theme({
-  "&": {
-    backgroundColor: "var(--surface-base)",
-    color: "var(--color-on-surface)",
-    height: "100%",
-  },
-  ".cm-scroller": {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    lineHeight: "1.55",
-    overflow: "auto",
-  },
-  ".cm-content": {
-    caretColor: "var(--color-surface-tint)",
-    padding: "1rem 1.1rem 2rem",
-  },
-  ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--color-surface-tint)",
-  },
-  "&.cm-focused .cm-activeLine": {
-    backgroundColor: "rgba(0, 91, 192, 0.08)",
-  },
-  ".cm-gutters": {
-    backgroundColor: "var(--surface-base)",
-    border: "none",
-    color: "var(--color-on-surface-muted)",
-  },
-});
-
 export const MarkdownEditor = forwardRef<
   MarkdownEditorHandle,
   MarkdownEditorProps
@@ -80,7 +52,6 @@ export const MarkdownEditor = forwardRef<
           basicSetup,
           markdown(),
           keymap.of([indentWithTab]),
-          editorTheme,
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -175,5 +146,5 @@ export const MarkdownEditor = forwardRef<
     },
   }));
 
-  return <div className="editor-root" ref={rootRef} />;
+  return <div ref={rootRef} />;
 });
