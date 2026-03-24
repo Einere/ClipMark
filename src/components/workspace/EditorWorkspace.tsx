@@ -191,7 +191,7 @@ export function EditorWorkspace({
               title="Click to copy file path"
               type="button"
             >
-              {getFileLabel(filePath)}
+              {filePath}
             </button>
           ) : (
             <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
