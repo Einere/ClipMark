@@ -10,6 +10,7 @@
   --slate-700: #4c514b;
   --slate-800: #353a35;
   --slate-900: #252a26;
+  --slate-950: #171b18;
 
   --blue-100: #e7efff;
   --blue-200: #d3e1ff;
@@ -20,14 +21,19 @@
   --blue-700: #33549a;
 
   --red-100: #fce9e8;
+  --red-200: #f5d1cd;
   --red-500: #c15f56;
   --red-600: #a84d46;
 
   --color-bg-canvas: var(--slate-50);
   --color-bg-subtle: var(--slate-100);
-  --color-bg-panel: rgb(255 255 255 / 0.9);
+  --color-bg-panel: rgb(255 255 252 / 0.9);
   --color-bg-panel-hover: #f5f6f2;
   --color-bg-elevated: #fbfbf8;
+  --color-bg-overlay: rgb(255 255 252 / 0.92);
+  --color-bg-backdrop: rgb(28 32 30 / 0.4);
+  --color-bg-page-start: rgb(251 251 248 / 0.98);
+  --color-bg-page-end: rgb(246 247 242 / 0.96);
   --color-bg-header-start: rgb(249 249 245 / 0.98);
   --color-bg-header-end: rgb(245 246 241 / 0.94);
 
@@ -43,6 +49,9 @@
   --color-accent-border: color-mix(in srgb, var(--blue-700) 62%, white);
   --color-accent-text: var(--blue-700);
   --color-accent-contrast: #f8fbff;
+  --color-accent-surface: color-mix(in srgb, var(--blue-600) 94%, white);
+  --color-accent-surface-hover: var(--color-accent-hover);
+  --color-accent-surface-active: color-mix(in srgb, var(--blue-700) 92%, black);
 
   --color-danger-surface: var(--red-100);
   --color-danger-border: color-mix(in srgb, var(--red-500) 36%, white);
@@ -50,8 +59,59 @@
 
   --color-focus-ring: color-mix(in srgb, var(--blue-500) 55%, white);
   --color-selection-bg: color-mix(in srgb, var(--blue-200) 72%, white);
+  --color-selection-bg-strong: color-mix(in srgb, var(--color-selection-bg) 92%, white);
   --color-editor-active-line: rgb(239 239 233 / 0.38);
   --color-editor-gutter-bg: rgb(248 248 243 / 0.9);
   --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 82%, white);
   --color-editor-selection-match: color-mix(in srgb, var(--color-accent-text) 14%, white);
+  --color-button-secondary-hover-bg: rgb(255 255 252 / 0.74);
+  --color-button-secondary-hover-border: var(--color-text-soft);
+  --color-button-secondary-active-bg: var(--color-bg-subtle);
+  --color-surface-selected: color-mix(in srgb, var(--color-bg-subtle) 72%, white);
+}
+
+:root[data-theme="dark"] {
+  --color-bg-canvas: var(--slate-950);
+  --color-bg-subtle: #232924;
+  --color-bg-panel: rgb(30 35 32 / 0.94);
+  --color-bg-panel-hover: #2b312d;
+  --color-bg-elevated: #1d221f;
+  --color-bg-overlay: rgb(31 36 33 / 0.96);
+  --color-bg-backdrop: rgb(7 10 9 / 0.58);
+  --color-bg-page-start: rgb(28 33 30 / 0.98);
+  --color-bg-page-end: rgb(18 22 20 / 0.98);
+  --color-bg-header-start: rgb(35 40 37 / 0.96);
+  --color-bg-header-end: rgb(27 32 29 / 0.94);
+
+  --color-text-strong: #f3f2ec;
+  --color-text-muted: #d0d1c7;
+  --color-text-soft: #9ca095;
+
+  --color-border-subtle: #353c37;
+  --color-border-strong: #444c46;
+
+  --color-accent-solid: #5e83d8;
+  --color-accent-hover: #88aaf0;
+  --color-accent-border: color-mix(in srgb, var(--blue-400) 58%, black);
+  --color-accent-text: #b4cbfb;
+  --color-accent-contrast: var(--slate-950);
+  --color-accent-surface: color-mix(in srgb, var(--blue-500) 78%, black);
+  --color-accent-surface-hover: color-mix(in srgb, var(--blue-400) 82%, black);
+  --color-accent-surface-active: color-mix(in srgb, var(--blue-300) 68%, black);
+
+  --color-danger-surface: color-mix(in srgb, var(--red-600) 20%, var(--slate-950));
+  --color-danger-border: color-mix(in srgb, var(--red-500) 52%, black);
+  --color-danger-text: var(--red-200);
+
+  --color-focus-ring: color-mix(in srgb, var(--blue-400) 72%, white);
+  --color-selection-bg: color-mix(in srgb, var(--blue-500) 44%, black);
+  --color-selection-bg-strong: color-mix(in srgb, var(--blue-400) 36%, black);
+  --color-editor-active-line: rgb(120 144 196 / 0.14);
+  --color-editor-gutter-bg: rgb(24 29 26 / 0.9);
+  --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 84%, black);
+  --color-editor-selection-match: color-mix(in srgb, var(--blue-300) 24%, black);
+  --color-button-secondary-hover-bg: rgb(41 47 43 / 0.94);
+  --color-button-secondary-hover-border: var(--color-border-strong);
+  --color-button-secondary-active-bg: #262c28;
+  --color-surface-selected: color-mix(in srgb, var(--color-bg-subtle) 82%, white 6%);
 }

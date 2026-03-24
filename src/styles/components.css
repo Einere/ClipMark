@@ -54,13 +54,13 @@
 }
 
 .ui-button[data-variant="primary"] {
-  --button-bg: color-mix(in srgb, var(--color-accent-solid) 94%, white);
-  --button-border: color-mix(in srgb, var(--color-accent-border) 82%, white);
+  --button-bg: var(--color-accent-surface);
+  --button-border: var(--color-accent-border);
   --button-color: var(--color-accent-contrast);
-  --button-hover-bg: var(--color-accent-hover);
-  --button-hover-border: color-mix(in srgb, var(--color-accent-hover) 78%, white);
+  --button-hover-bg: var(--color-accent-surface-hover);
+  --button-hover-border: var(--color-accent-hover);
   --button-hover-color: var(--color-accent-contrast);
-  --button-active-bg: color-mix(in srgb, var(--color-accent-hover) 92%, black);
+  --button-active-bg: var(--color-accent-surface-active);
   --button-shadow: none;
 }
 
@@ -68,10 +68,10 @@
   --button-bg: transparent;
   --button-border: var(--color-border-strong);
   --button-color: var(--color-text-strong);
-  --button-hover-bg: rgb(255 255 255 / 0.7);
-  --button-hover-border: var(--color-text-soft);
+  --button-hover-bg: var(--color-button-secondary-hover-bg);
+  --button-hover-border: var(--color-button-secondary-hover-border);
   --button-hover-color: var(--color-text-strong);
-  --button-active-bg: var(--color-bg-subtle);
+  --button-active-bg: var(--color-button-secondary-active-bg);
 }
 
 .ui-button[data-variant="tertiary"] {
@@ -106,7 +106,7 @@
   padding: 0.875rem 1rem;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  background: rgb(255 255 255 / 0.92);
+  background: var(--color-bg-overlay);
   box-shadow: var(--shadow-floating);
   color: var(--color-text-strong);
   backdrop-filter: blur(16px);
@@ -124,7 +124,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-5);
-  background: rgb(28 32 30 / 0.4);
+  background: var(--color-bg-backdrop);
   z-index: 30;
 }
 
@@ -162,7 +162,7 @@
   grid-template-rows: 1fr auto;
   gap: clamp(2rem, 3vw, 3rem);
   padding: clamp(1.5rem, 3vw, 2.5rem);
-  background: linear-gradient(180deg, rgb(251 251 248 / 0.98), rgb(246 247 242 / 0.96));
+  background: linear-gradient(180deg, var(--color-bg-page-start), var(--color-bg-page-end));
 }
 
 .welcome-screen__inner {
@@ -310,7 +310,7 @@
   grid-template-rows: 1fr auto;
   gap: clamp(0.55rem, 1vw, 0.8rem);
   padding: clamp(0.9rem, 1.8vw, 1.35rem);
-  background: linear-gradient(180deg, rgb(251 251 248 / 0.98), rgb(246 247 242 / 0.96));
+  background: linear-gradient(180deg, var(--color-bg-page-start), var(--color-bg-page-end));
   overflow: hidden;
 }
 
@@ -587,7 +587,7 @@
 }
 
 .markdown-editor .cm-selectionBackground {
-  background-color: color-mix(in srgb, var(--color-selection-bg) 92%, white);
+  background-color: var(--color-selection-bg-strong);
 }
 
 .markdown-preview {
@@ -779,7 +779,7 @@
 }
 
 .toc-panel__item[data-active="true"] {
-  background: color-mix(in srgb, var(--color-bg-subtle) 72%, white);
+  background: var(--color-surface-selected);
   color: var(--color-text-strong);
   font-weight: var(--font-weight-semibold);
 }

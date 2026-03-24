@@ -32,8 +32,10 @@ import {
 import {
   DEFAULT_APP_PREFERENCES,
   saveAppPreferences,
+  type ThemeMode,
   type AppPreferences,
 } from "./lib/preview-preferences";
+import { applyTheme, subscribeToSystemTheme } from "./lib/theme";
 
 const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
@@ -50,6 +52,7 @@ export default function App({ initialPreferences }: AppProps) {
   );
   const [isPreviewVisible, setIsPreviewVisible] = useState(preferences.isPreviewVisible);
   const [isTocVisible, setIsTocVisible] = useState(preferences.isTocVisible);
+  const [themeMode, setThemeMode] = useState(preferences.themeMode);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
@@ -115,12 +118,26 @@ export default function App({ initialPreferences }: AppProps) {
       autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
       isPreviewVisible,
       isTocVisible,
+      themeMode,
     });
   }, [
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
   ]);
+
+  useEffect(() => {
+    applyTheme(themeMode);
+
+    if (themeMode !== "system") {
+      return;
+    }
+
+    return subscribeToSystemTheme(() => {
+      applyTheme("system");
+    });
+  }, [themeMode]);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
@@ -327,6 +344,10 @@ export default function App({ initialPreferences }: AppProps) {
     setIsExternalMediaAutoLoadEnabled((value) => !value);
   });
 
+  const handleMenuSetThemeMode = useEffectEvent((nextThemeMode: ThemeMode) => {
+    setThemeMode(nextThemeMode);
+  });
+
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
 
   const handleCloseRequested = useEffectEvent(async () => {
@@ -411,6 +432,7 @@ export default function App({ initialPreferences }: AppProps) {
     onSaveAs: () => {
       void handleMenuSave(true);
     },
+    onSetThemeMode: handleMenuSetThemeMode,
     onToggleExternalMedia: handleMenuToggleExternalMedia,
     onTogglePreview: handleMenuTogglePreview,
     onToggleToc: handleMenuToggleToc,
@@ -420,6 +442,7 @@ export default function App({ initialPreferences }: AppProps) {
     handleMenuOpen,
     handleMenuOpenRecent,
     handleMenuSave,
+    handleMenuSetThemeMode,
     handleMenuToggleExternalMedia,
     handleMenuTogglePreview,
     handleMenuToggleToc,
@@ -435,6 +458,7 @@ export default function App({ initialPreferences }: AppProps) {
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
     recentFiles: session.recentFiles,
   }), [
     isWindowVisible,
@@ -444,6 +468,7 @@ export default function App({ initialPreferences }: AppProps) {
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
     session.recentFiles,
   ]);
 

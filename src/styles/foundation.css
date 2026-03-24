@@ -28,3 +28,9 @@
   --sidebar-toc: 16rem;
   --sidebar-preview: minmax(20rem, 32rem);
 }
+
+:root[data-theme="dark"] {
+  --shadow-soft: 0 14px 36px rgb(0 0 0 / 0.28);
+  --shadow-floating: 0 24px 72px rgb(0 0 0 / 0.42);
+  --shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}

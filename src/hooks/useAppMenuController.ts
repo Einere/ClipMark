@@ -23,6 +23,7 @@ export function useAppMenuController(
       onOpenRecent: (path) => handlersRef.current.onOpenRecent(path),
       onSave: () => handlersRef.current.onSave(),
       onSaveAs: () => handlersRef.current.onSaveAs(),
+      onSetThemeMode: (themeMode) => handlersRef.current.onSetThemeMode(themeMode),
       onToggleExternalMedia: () => handlersRef.current.onToggleExternalMedia(),
       onTogglePreview: () => handlersRef.current.onTogglePreview(),
       onToggleToc: () => handlersRef.current.onToggleToc(),

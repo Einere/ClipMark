@@ -1,5 +1,6 @@
 import type { MenuItem } from "@tauri-apps/api/menu/menuItem";
 import type { Submenu } from "@tauri-apps/api/menu/submenu";
+import type { ThemeMode } from "./preview-preferences";
 import type { RecentFile } from "./recent-files";
 import { isTauriRuntime } from "./file-system";
 
@@ -11,6 +12,7 @@ export type MenuHandlers = {
   onCopyFilePath: () => void;
   onSave: () => void;
   onSaveAs: () => void;
+  onSetThemeMode: (themeMode: ThemeMode) => void;
   onToggleExternalMedia: () => void;
   onTogglePreview: () => void;
   onToggleToc: () => void;
@@ -25,6 +27,7 @@ export type MenuState = {
   isExternalMediaAutoLoadEnabled: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
+  themeMode: ThemeMode;
   recentFiles: RecentFile[];
 };
 
@@ -90,10 +93,35 @@ export async function setupAppMenu(
     text: "Load External Media",
   });
 
+  const themeSystemItem = await CheckMenuItem.new({
+    action: () => handlers.onSetThemeMode("system"),
+    id: "app-theme-system",
+    text: "System",
+  });
+
+  const themeLightItem = await CheckMenuItem.new({
+    action: () => handlers.onSetThemeMode("light"),
+    id: "app-theme-light",
+    text: "Light",
+  });
+
+  const themeDarkItem = await CheckMenuItem.new({
+    action: () => handlers.onSetThemeMode("dark"),
+    id: "app-theme-dark",
+    text: "Dark",
+  });
+
+  const themeSubmenu = await Submenu.new({
+    text: "Theme",
+    items: [themeSystemItem, themeLightItem, themeDarkItem],
+  });
+
   const appSubmenu = await Submenu.new({
     text: "ClipMark",
     items: [
       await PredefinedMenuItem.new({ item: { About: null } }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      themeSubmenu,
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Services" }),
       await PredefinedMenuItem.new({ item: "Separator" }),
@@ -213,6 +241,12 @@ export async function setupAppMenu(
 
       if (!lastState || lastState.isTocVisible !== state.isTocVisible) {
         updates.push(tocItem.setChecked(state.isTocVisible));
+      }
+
+      if (!lastState || lastState.themeMode !== state.themeMode) {
+        updates.push(themeSystemItem.setChecked(state.themeMode === "system"));
+        updates.push(themeLightItem.setChecked(state.themeMode === "light"));
+        updates.push(themeDarkItem.setChecked(state.themeMode === "dark"));
       }
 
       await Promise.all(updates);
