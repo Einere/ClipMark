@@ -26,17 +26,13 @@ describe("WelcomeRecentFileButton", () => {
 
     await act(async () => {
       root.render(
-        createElement(
-          "ul",
-          null,
-          createElement(WelcomeRecentFileButton, {
-            file: {
-              filename: "notes.md",
-              path: "/docs/notes.md",
-            },
-            onOpenRecent,
-          }),
-        ),
+        createElement(WelcomeRecentFileButton, {
+          file: {
+            filename: "notes.md",
+            path: "/docs/notes.md",
+          },
+          onOpenRecent,
+        }),
       );
     });
 

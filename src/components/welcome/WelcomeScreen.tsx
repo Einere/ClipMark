@@ -90,11 +90,12 @@ export function WelcomeScreen({
             ) : (
               <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
                 {recentFiles.map((file) => (
-                  <WelcomeRecentFileButton
-                    file={file}
-                    key={file.path}
-                    onOpenRecent={onOpenRecent}
-                  />
+                  <li key={file.path}>
+                    <WelcomeRecentFileButton
+                      file={file}
+                      onOpenRecent={onOpenRecent}
+                    />
+                  </li>
                 ))}
               </ul>
             )}
