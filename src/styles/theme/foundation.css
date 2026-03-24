@@ -1,0 +1,9 @@
+@theme {
+  --radius: 8px;
+
+  --shadow-ambient: 0 12px 40px rgba(25, 28, 30, 0.06);
+  --shadow-lifted: 0 18px 45px rgba(25, 28, 30, 0.08);
+  --shadow-dialog: 0 24px 60px rgba(25, 28, 30, 0.12);
+
+  --breakpoint-xl: 75rem;
+}

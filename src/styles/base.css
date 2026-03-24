@@ -1,0 +1,55 @@
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  html {
+    color-scheme: light;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    --surface-base: var(--color-surface);
+    --surface-section: var(--color-surface-container-low);
+    --surface-elevated: var(--color-surface-container-lowest);
+    --motion-fast: 120ms;
+    --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body {
+    min-width: 0;
+    font-family: var(--font-sans);
+    line-height: var(--leading-body-md);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-on-surface);
+    background:
+      radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary-container) 26%, transparent) 0%, transparent 36%),
+      radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, transparent 42%),
+      linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 86%, white) 0%, var(--color-background) 100%);
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  a {
+    color: var(--color-tertiary);
+    text-decoration-color: color-mix(in srgb, var(--color-tertiary) 28%, transparent);
+    text-underline-offset: 0.16em;
+  }
+}
