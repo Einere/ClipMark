@@ -94,7 +94,6 @@ export function EditorWorkspace({
   onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
-  const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [activeEditorLine, setActiveEditorLine] = useState<number | null>(1);
   const markdown = useDocumentMarkdown(documentStore);
   const deferredMarkdown = useDeferredValue(markdown);
@@ -112,7 +111,6 @@ export function EditorWorkspace({
   );
   const isDocumentEmpty = markdown.trim().length === 0;
   const handleEditorFocus = useEffectEvent((focused: boolean) => {
-    setIsEditorFocused(focused);
     onEditorFocusChange(focused);
   });
   const handlePathCopy = useEffectEvent(async () => {
@@ -128,7 +126,6 @@ export function EditorWorkspace({
     }
   });
   const visibleStatusLabel = formatDocumentStatus(documentStatus);
-
   return (
     <div className="editor-workspace">
       <main
@@ -145,7 +142,6 @@ export function EditorWorkspace({
         ) : null}
         <section
           className="editor-workspace__panel"
-          data-focused={isEditorFocused}
           data-panel="editor"
         >
           <div className="editor-workspace__panel-header">
@@ -177,7 +173,7 @@ export function EditorWorkspace({
                 <div className="editor-workspace__preview-empty-state">
                   <p className="editor-workspace__preview-empty-kicker">Preview</p>
                   <h2 className="editor-workspace__preview-empty-title">
-                    Rendered output appears here when the document has content.
+                    Start writing in the editor to build a clean reading view here.
                   </h2>
                 </div>
               ) : (
