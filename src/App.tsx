@@ -103,7 +103,7 @@ export default function App({ initialPreferences }: AppProps) {
 
   const isDirty = useDocumentDirty(
     session.documentStore,
-    session.savedMarkdown,
+    session.savedRevision,
     !session.isWelcomeVisible,
   );
   const activeFilename = session.isWelcomeVisible

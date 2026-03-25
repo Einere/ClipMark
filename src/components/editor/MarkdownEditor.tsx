@@ -8,7 +8,17 @@ import {
 import { tags } from "@lezer/highlight";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  bracketMatching,
+  foldGutter,
+  HighlightStyle,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import {
+  highlightSelectionMatches,
+  search,
+  searchKeymap,
+} from "@codemirror/search";
 import {
   dropCursor,
   EditorView,
@@ -54,6 +64,7 @@ export const MarkdownEditor = forwardRef<
   ref,
 ) {
   const editorViewStateStore = useEditorViewStateStore();
+  const applyingExternalDocumentRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastDocumentKeyRef = useRef(documentKey);
@@ -73,16 +84,22 @@ export const MarkdownEditor = forwardRef<
         extensions: [
           minimalSetup,
           markdown(),
+          search(),
           lineNumbers(),
+          foldGutter(),
           highlightActiveLineGutter(),
+          bracketMatching(),
           dropCursor(),
           highlightActiveLine(),
+          highlightSelectionMatches(),
           syntaxHighlighting(markdownEditorHighlightStyle),
-          keymap.of([indentWithTab]),
+          keymap.of([...searchKeymap, indentWithTab]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              store.setMarkdown(update.state.doc.toString());
+              if (!applyingExternalDocumentRef.current) {
+                store.notifyMarkdownChanged();
+              }
             }
 
             if (update.docChanged || update.selectionSet) {
@@ -123,12 +140,14 @@ export const MarkdownEditor = forwardRef<
     });
 
     viewRef.current = view;
+    const disconnectMarkdownSource = store.connectMarkdownSource(() => view.state.doc.toString());
     editorViewStateStore.setActiveLine(
       view.state.doc.lineAt(view.state.selection.main.head).number,
     );
     editorViewStateStore.setFocused(view.hasFocus);
 
     return () => {
+      disconnectMarkdownSource();
       view.destroy();
       viewRef.current = null;
     };
@@ -146,6 +165,7 @@ export const MarkdownEditor = forwardRef<
 
     lastDocumentKeyRef.current = documentKey;
     const currentValue = view.state.doc.toString();
+    applyingExternalDocumentRef.current = true;
     view.dispatch({
       changes: {
         from: 0,
@@ -155,6 +175,7 @@ export const MarkdownEditor = forwardRef<
       selection: EditorSelection.cursor(0),
       scrollIntoView: true,
     });
+    applyingExternalDocumentRef.current = false;
     editorViewStateStore.setActiveLine(1);
     editorViewStateStore.setFocused(true);
     view.focus();
