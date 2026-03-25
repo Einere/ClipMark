@@ -8,7 +8,17 @@ import {
 import { tags } from "@lezer/highlight";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  bracketMatching,
+  foldGutter,
+  HighlightStyle,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import {
+  highlightSelectionMatches,
+  search,
+  searchKeymap,
+} from "@codemirror/search";
 import {
   dropCursor,
   EditorView,
@@ -73,12 +83,16 @@ export const MarkdownEditor = forwardRef<
         extensions: [
           minimalSetup,
           markdown(),
+          search(),
           lineNumbers(),
+          foldGutter(),
           highlightActiveLineGutter(),
+          bracketMatching(),
           dropCursor(),
           highlightActiveLine(),
+          highlightSelectionMatches(),
           syntaxHighlighting(markdownEditorHighlightStyle),
-          keymap.of([indentWithTab]),
+          keymap.of([...searchKeymap, indentWithTab]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
