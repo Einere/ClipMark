@@ -114,7 +114,7 @@
   --button-hover-bg: var(--color-bg-subtle);
   --button-hover-border: transparent;
   --button-hover-color: var(--color-text-strong);
-  --button-active-bg: color-mix(in srgb, var(--color-bg-subtle) 84%, black 4%);
+  --button-active-bg: var(--color-button-tertiary-active-bg);
 }
 
 @supports (corner-shape: squircle) {
