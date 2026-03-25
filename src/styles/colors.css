@@ -113,7 +113,7 @@
 
   --color-focus-ring: color-mix(in srgb, var(--blue-400) 72%, white);
   --color-selection-bg: rgb(84 98 120 / 0.11);
-  --color-selection-bg-strong: rgb(96 110 134 / 0.18);
+  --color-selection-bg-strong: rgb(122 138 168 / 0.28);
 
   /* Editor semantic tokens */
   --color-editor-active-line: rgb(120 144 196 / 0.14);
