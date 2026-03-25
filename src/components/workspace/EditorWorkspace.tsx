@@ -12,6 +12,7 @@ import type { DocumentStatus } from "../../lib/window-state";
 import {
   EditorViewStateProvider,
   useActiveEditorLine,
+  useEditorViewState,
 } from "../../hooks/useEditorViewState";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useIdleValue } from "../../hooks/useIdleValue";
@@ -63,6 +64,7 @@ function DocumentPreviewPane({
   filePath: string | null;
   isExternalMediaAutoLoadEnabled: boolean;
 }) {
+  const { activeLine, isFocused } = useEditorViewState();
   const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
   const debouncedPreviewMarkdown = useDebouncedValue(markdown, PREVIEW_DEBOUNCE_MS);
   const previewMarkdown = useIdleValue(debouncedPreviewMarkdown, {
@@ -83,7 +85,9 @@ function DocumentPreviewPane({
 
   return (
     <MarkdownPreview
+      activeLine={activeLine}
       filePath={filePath}
+      isAutoScrollEnabled={isFocused}
       isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
       markdown={previewMarkdown}
     />

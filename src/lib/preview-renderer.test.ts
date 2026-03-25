@@ -9,7 +9,9 @@ describe("renderPreviewHtml", () => {
       markdown: "# Heading Here\n\n[Docs](./reference.md)",
     });
 
-    expect(html).toContain("<h1 id=\"heading-here\">Heading Here</h1>");
+    expect(html).toContain(
+      "<h1 data-source-line-start=\"1\" data-source-line-end=\"1\" id=\"heading-here\">Heading Here</h1>",
+    );
     expect(html).toContain("href=\"file:///tmp/docs/reference.md\"");
     expect(html).toContain("data-preview-uri=\"file:///tmp/docs/reference.md\"");
   });
@@ -22,6 +24,7 @@ describe("renderPreviewHtml", () => {
     });
 
     expect(html).toContain("markdown-preview__media-card");
+    expect(html).toContain("data-source-line-start=\"1\"");
     expect(html).toContain("data-preview-open-uri=\"https://example.com/spec.png\"");
     expect(html).not.toContain("<img");
   });
