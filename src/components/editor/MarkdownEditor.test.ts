@@ -58,14 +58,13 @@ describe("MarkdownEditor highlighting", () => {
     cleanupHandlers.push(() => renderer.cleanup());
 
     renderer.render(
-      createElement(
-        EditorViewStateProvider,
-        { documentKey: 1 },
-        createElement(MarkdownEditor, {
+      createElement(EditorViewStateProvider, {
+        children: createElement(MarkdownEditor, {
           documentKey: 1,
           store: createDocumentStore("alpha beta gamma"),
         }),
-      ),
+        documentKey: 1,
+      }),
     );
 
     const editorContent = renderer.container.querySelector(".cm-content");
@@ -93,14 +92,13 @@ describe("MarkdownEditor highlighting", () => {
     cleanupHandlers.push(() => renderer.cleanup());
 
     renderer.render(
-      createElement(
-        EditorViewStateProvider,
-        { documentKey: 1 },
-        createElement(MarkdownEditor, {
+      createElement(EditorViewStateProvider, {
+        children: createElement(MarkdownEditor, {
           documentKey: 1,
           store: createDocumentStore("(alpha)\n# Heading\n\nBody\n"),
         }),
-      ),
+        documentKey: 1,
+      }),
     );
 
     const editorContent = renderer.container.querySelector(".cm-content");
@@ -120,14 +118,13 @@ describe("MarkdownEditor highlighting", () => {
     const store = createDocumentStore("alpha");
 
     renderer.render(
-      createElement(
-        EditorViewStateProvider,
-        { documentKey: 1 },
-        createElement(MarkdownEditor, {
+      createElement(EditorViewStateProvider, {
+        children: createElement(MarkdownEditor, {
           documentKey: 1,
           store,
         }),
-      ),
+        documentKey: 1,
+      }),
     );
 
     const editorContent = renderer.container.querySelector(".cm-content");

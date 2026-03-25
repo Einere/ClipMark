@@ -14,8 +14,10 @@ import {
   useActiveEditorLine,
 } from "../../hooks/useEditorViewState";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { useIdleValue } from "../../hooks/useIdleValue";
 
 const PREVIEW_DEBOUNCE_MS = 120;
+const PREVIEW_IDLE_TIMEOUT_MS = 250;
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -62,7 +64,10 @@ function DocumentPreviewPane({
   isExternalMediaAutoLoadEnabled: boolean;
 }) {
   const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
-  const previewMarkdown = useDebouncedValue(markdown, PREVIEW_DEBOUNCE_MS);
+  const debouncedPreviewMarkdown = useDebouncedValue(markdown, PREVIEW_DEBOUNCE_MS);
+  const previewMarkdown = useIdleValue(debouncedPreviewMarkdown, {
+    timeoutMs: PREVIEW_IDLE_TIMEOUT_MS,
+  });
   const isDocumentEmpty = markdown.trim().length === 0;
 
   if (isDocumentEmpty) {
