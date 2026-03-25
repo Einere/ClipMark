@@ -30,6 +30,7 @@ describe("preview-preferences", () => {
       autoLoadExternalMedia: false,
       isPreviewVisible: false,
       isTocVisible: true,
+      themeMode: "dark",
     });
 
     expect(invoke).toHaveBeenCalledWith("save_app_preferences", {
@@ -37,6 +38,7 @@ describe("preview-preferences", () => {
         autoLoadExternalMedia: false,
         isPreviewVisible: false,
         isTocVisible: true,
+        themeMode: "dark",
       },
     });
   });

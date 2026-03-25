@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   startTransition,
   useEffect,
   useEffectEvent,
@@ -9,9 +11,8 @@ import {
 import { flushSync } from "react-dom";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
-import { Toast } from "./components/ui";
+import { Toast } from "./components/ui/Toast";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
-import { EditorWorkspace } from "./components/workspace/EditorWorkspace";
 import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
@@ -32,15 +33,35 @@ import {
 import {
   DEFAULT_APP_PREFERENCES,
   saveAppPreferences,
+  type ThemeMode,
   type AppPreferences,
 } from "./lib/preview-preferences";
+import { applyTheme, subscribeToSystemTheme } from "./lib/theme";
 
 const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
+const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspace")
+  .then((module) => ({ default: module.EditorWorkspace })));
 
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
+
+export function AppShellFallback() {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="app-shell app-shell--loading"
+      role="status"
+    >
+      <div className="app-shell__fallback">
+        <p className="app-shell__fallback-kicker">Opening editor</p>
+        <p className="app-shell__fallback-message">Preparing your writing workspace.</p>
+      </div>
+    </div>
+  );
+}
 
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
 export default function App({ initialPreferences }: AppProps) {
@@ -50,6 +71,7 @@ export default function App({ initialPreferences }: AppProps) {
   );
   const [isPreviewVisible, setIsPreviewVisible] = useState(preferences.isPreviewVisible);
   const [isTocVisible, setIsTocVisible] = useState(preferences.isTocVisible);
+  const [themeMode, setThemeMode] = useState(preferences.themeMode);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
@@ -115,12 +137,26 @@ export default function App({ initialPreferences }: AppProps) {
       autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
       isPreviewVisible,
       isTocVisible,
+      themeMode,
     });
   }, [
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
   ]);
+
+  useEffect(() => {
+    applyTheme(themeMode);
+
+    if (themeMode !== "system") {
+      return;
+    }
+
+    return subscribeToSystemTheme(() => {
+      applyTheme("system");
+    });
+  }, [themeMode]);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
@@ -327,6 +363,10 @@ export default function App({ initialPreferences }: AppProps) {
     setIsExternalMediaAutoLoadEnabled((value) => !value);
   });
 
+  const handleMenuSetThemeMode = useEffectEvent((nextThemeMode: ThemeMode) => {
+    setThemeMode(nextThemeMode);
+  });
+
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
 
   const handleCloseRequested = useEffectEvent(async () => {
@@ -411,6 +451,7 @@ export default function App({ initialPreferences }: AppProps) {
     onSaveAs: () => {
       void handleMenuSave(true);
     },
+    onSetThemeMode: handleMenuSetThemeMode,
     onToggleExternalMedia: handleMenuToggleExternalMedia,
     onTogglePreview: handleMenuTogglePreview,
     onToggleToc: handleMenuToggleToc,
@@ -420,6 +461,7 @@ export default function App({ initialPreferences }: AppProps) {
     handleMenuOpen,
     handleMenuOpenRecent,
     handleMenuSave,
+    handleMenuSetThemeMode,
     handleMenuToggleExternalMedia,
     handleMenuTogglePreview,
     handleMenuToggleToc,
@@ -435,6 +477,7 @@ export default function App({ initialPreferences }: AppProps) {
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
     recentFiles: session.recentFiles,
   }), [
     isWindowVisible,
@@ -444,6 +487,7 @@ export default function App({ initialPreferences }: AppProps) {
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    themeMode,
     session.recentFiles,
   ]);
 
@@ -471,19 +515,21 @@ export default function App({ initialPreferences }: AppProps) {
           recentFiles={session.recentFiles}
         />
       ) : (
-        <EditorWorkspace
-          documentKey={session.editorDocumentKey}
-          documentStore={session.documentStore}
-          documentStatus={visibleDocumentStatus}
-          editorRef={editorRef}
-          filePath={session.filePath}
-          isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-          isPreviewVisible={isPreviewVisible}
-          isTocVisible={isTocVisible}
-          onEditorFocusChange={handleEditorFocusChange}
-          onPathCopy={() => showToast("Copied the file path to the clipboard.")}
-          onPathCopyError={() => showToast("Could not copy the file path.", "error")}
-        />
+        <Suspense fallback={<AppShellFallback />}>
+          <EditorWorkspace
+            documentKey={session.editorDocumentKey}
+            documentStore={session.documentStore}
+            documentStatus={visibleDocumentStatus}
+            editorRef={editorRef}
+            filePath={session.filePath}
+            isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+            isPreviewVisible={isPreviewVisible}
+            isTocVisible={isTocVisible}
+            onEditorFocusChange={handleEditorFocusChange}
+            onPathCopy={() => showToast("Copied the file path to the clipboard.")}
+            onPathCopyError={() => showToast("Could not copy the file path.", "error")}
+          />
+        </Suspense>
       )}
 
       <UnsavedChangesDialog

@@ -30,12 +30,39 @@ use url::Url;
 
 const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
+fn default_true() -> bool {
+    true
+}
+
+fn default_theme_mode() -> ThemeMode {
+    ThemeMode::System
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum ThemeMode {
+    System,
+    Light,
+    Dark,
+}
+
+impl Default for ThemeMode {
+    fn default() -> Self {
+        Self::System
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AppPreferences {
+    #[serde(default = "default_true")]
     auto_load_external_media: bool,
+    #[serde(default = "default_true")]
     is_preview_visible: bool,
+    #[serde(default = "default_true")]
     is_toc_visible: bool,
+    #[serde(default = "default_theme_mode")]
+    theme_mode: ThemeMode,
 }
 
 impl Default for AppPreferences {
@@ -44,6 +71,7 @@ impl Default for AppPreferences {
             auto_load_external_media: true,
             is_preview_visible: true,
             is_toc_visible: true,
+            theme_mode: ThemeMode::System,
         }
     }
 }
@@ -445,6 +473,7 @@ fn main() {
 mod tests {
     use super::{
         load_preferences_from_disk, save_preferences_to_disk, validate_external_url, AppPreferences,
+        ThemeMode,
     };
     use std::fs;
 
@@ -477,11 +506,39 @@ mod tests {
             auto_load_external_media: false,
             is_preview_visible: false,
             is_toc_visible: true,
+            theme_mode: ThemeMode::Dark,
         };
 
         save_preferences_to_disk(&path, &preferences).expect("should save preferences");
 
         assert_eq!(load_preferences_from_disk(&path), preferences);
+
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn preferences_preserve_existing_values_when_theme_mode_is_missing() {
+        let path = std::env::temp_dir().join("clipmark-test-legacy-preferences.json");
+
+        fs::write(
+            &path,
+            r#"{
+  "autoLoadExternalMedia": false,
+  "isPreviewVisible": true,
+  "isTocVisible": false
+}"#,
+        )
+        .expect("should write legacy preferences");
+
+        assert_eq!(
+            load_preferences_from_disk(&path),
+            AppPreferences {
+                auto_load_external_media: false,
+                is_preview_visible: true,
+                is_toc_visible: false,
+                theme_mode: ThemeMode::System,
+            }
+        );
 
         let _ = fs::remove_file(&path);
     }

@@ -1,16 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "./file-system";
 
+export type ThemeMode = "system" | "light" | "dark";
+
 export type AppPreferences = {
   autoLoadExternalMedia: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
+  themeMode: ThemeMode;
 };
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autoLoadExternalMedia: true,
   isPreviewVisible: true,
   isTocVisible: true,
+  themeMode: "system",
 };
 
 export async function loadAppPreferences(): Promise<AppPreferences> {

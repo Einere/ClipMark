@@ -1,57 +1,153 @@
 :root {
-  --slate-0: #fcfcfa;
-  --slate-50: #f7f7f4;
-  --slate-100: #efefe9;
-  --slate-200: #e1e1d8;
-  --slate-300: #cdcec4;
-  --slate-400: #a5a79e;
-  --slate-500: #7c8077;
-  --slate-600: #62675f;
-  --slate-700: #4c514b;
-  --slate-800: #353a35;
-  --slate-900: #252a26;
+  /* Primitive palette: neutral */
+  --slate-0: oklch(0.992 0.004 95);
+  --slate-50: oklch(0.982 0.005 95);
+  --slate-100: oklch(0.952 0.007 95);
+  --slate-200: oklch(0.904 0.009 95);
+  --slate-300: oklch(0.844 0.011 95);
+  --slate-400: oklch(0.71 0.012 110);
+  --slate-500: oklch(0.59 0.012 135);
+  --slate-600: oklch(0.49 0.012 140);
+  --slate-700: oklch(0.4 0.012 145);
+  --slate-800: oklch(0.31 0.011 145);
+  --slate-900: oklch(0.245 0.01 145);
+  --slate-950: oklch(0.185 0.009 145);
 
-  --blue-100: #e7efff;
-  --blue-200: #d3e1ff;
-  --blue-300: #b4cbfb;
-  --blue-400: #88aaf0;
-  --blue-500: #5e83d8;
-  --blue-600: #3f69c2;
-  --blue-700: #33549a;
+  /* Primitive palette: accent */
+  --blue-100: oklch(0.95 0.03 255);
+  --blue-200: oklch(0.9 0.05 255);
+  --blue-300: oklch(0.83 0.08 255);
+  --blue-400: oklch(0.74 0.11 255);
+  --blue-500: oklch(0.64 0.14 255);
+  --blue-600: oklch(0.56 0.15 255);
+  --blue-700: oklch(0.48 0.13 255);
 
-  --red-100: #fce9e8;
-  --red-500: #c15f56;
-  --red-600: #a84d46;
+  /* Primitive palette: status */
+  --red-100: oklch(0.95 0.025 28);
+  --red-200: oklch(0.89 0.05 28);
+  --red-500: oklch(0.62 0.13 28);
+  --red-600: oklch(0.55 0.13 28);
 
+  /* Semantic tokens: background */
   --color-bg-canvas: var(--slate-50);
   --color-bg-subtle: var(--slate-100);
-  --color-bg-panel: rgb(255 255 255 / 0.9);
-  --color-bg-panel-hover: #f5f6f2;
-  --color-bg-elevated: #fbfbf8;
-  --color-bg-header-start: rgb(249 249 245 / 0.98);
-  --color-bg-header-end: rgb(245 246 241 / 0.94);
+  --color-bg-elevated: var(--slate-0);
 
+  /* Semantic tokens: text */
   --color-text-strong: var(--slate-900);
   --color-text-muted: var(--slate-700);
   --color-text-soft: var(--slate-500);
 
+  /* Semantic tokens: border */
   --color-border-subtle: var(--slate-200);
   --color-border-strong: var(--slate-300);
 
+  /* Semantic tokens: accent */
   --color-accent-solid: var(--blue-600);
   --color-accent-hover: var(--blue-700);
-  --color-accent-border: color-mix(in srgb, var(--blue-700) 62%, white);
   --color-accent-text: var(--blue-700);
-  --color-accent-contrast: #f8fbff;
+  --color-accent-contrast: var(--slate-0);
 
+  /* Semantic tokens: danger */
   --color-danger-surface: var(--red-100);
-  --color-danger-border: color-mix(in srgb, var(--red-500) 36%, white);
   --color-danger-text: var(--red-600);
 
-  --color-focus-ring: color-mix(in srgb, var(--blue-500) 55%, white);
-  --color-selection-bg: color-mix(in srgb, var(--blue-200) 72%, white);
-  --color-editor-active-line: rgb(239 239 233 / 0.38);
-  --color-editor-gutter-bg: rgb(248 248 243 / 0.9);
-  --color-editor-gutter-border: color-mix(in srgb, var(--color-border-subtle) 82%, white);
-  --color-editor-selection-match: color-mix(in srgb, var(--color-accent-text) 14%, white);
+  /* State / derived tokens */
+  --color-bg-panel: color-mix(in oklch, var(--slate-0) 90%, transparent);
+  --color-bg-panel-hover: color-mix(in oklch, var(--slate-50) 72%, var(--slate-100));
+  --color-bg-overlay: color-mix(in oklch, var(--slate-0) 92%, transparent);
+  --color-bg-backdrop: color-mix(in oklch, var(--slate-900) 40%, transparent);
+  --color-bg-page-start: color-mix(in oklch, var(--slate-0) 70%, var(--slate-50));
+  --color-bg-page-end: color-mix(in oklch, var(--slate-50) 68%, var(--slate-100));
+  --color-bg-header-start: color-mix(in oklch, var(--slate-0) 56%, var(--slate-50));
+  --color-bg-header-end: color-mix(in oklch, var(--slate-50) 62%, var(--slate-100));
+
+  --color-accent-border: color-mix(in oklch, var(--color-accent-solid) 58%, white);
+  --color-accent-surface: color-mix(in oklch, var(--color-accent-solid) 92%, white);
+  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 90%, black 2%);
+  --color-accent-surface-active: color-mix(in oklch, var(--color-accent-hover) 86%, black 14%);
+
+  --color-danger-border: color-mix(in oklch, var(--red-500) 36%, white);
+
+  --color-focus-ring: color-mix(in oklch, var(--blue-500) 55%, white);
+  --color-selection-bg: color-mix(in oklch, var(--blue-200) 72%, white);
+  --color-selection-bg-strong: color-mix(in oklch, var(--color-selection-bg) 92%, white);
+  --color-surface-selected: color-mix(in oklch, var(--color-bg-subtle) 72%, white);
+
+  --color-button-secondary-hover-bg: color-mix(in oklch, var(--slate-0) 74%, transparent);
+  --color-button-secondary-hover-border: var(--color-text-soft);
+  --color-button-secondary-active-bg: var(--color-bg-subtle);
+  --color-button-tertiary-active-bg: color-mix(in oklch, var(--color-bg-subtle) 84%, black 4%);
+
+  /* Component exceptions */
+  --color-editor-active-line: color-mix(in oklch, var(--slate-100) 38%, transparent);
+  --color-editor-link: var(--color-accent-text);
+  --color-editor-caret: var(--color-accent-text);
+  --color-editor-gutter-bg: color-mix(in oklch, var(--slate-50) 90%, transparent);
+  --color-editor-gutter-border: color-mix(in oklch, var(--color-border-subtle) 82%, white);
+  --color-editor-selection-match: color-mix(in oklch, var(--color-accent-text) 14%, white);
+  --color-metric-value: var(--color-text-strong);
+}
+
+:root[data-theme="dark"] {
+  /* Semantic tokens: background */
+  --color-bg-canvas: var(--slate-950);
+  --color-bg-subtle: color-mix(in oklch, var(--slate-800) 74%, var(--slate-900));
+  --color-bg-elevated: color-mix(in oklch, var(--slate-900) 86%, black);
+
+  /* Semantic tokens: text */
+  --color-text-strong: color-mix(in oklch, var(--slate-0) 88%, var(--slate-100));
+  --color-text-muted: color-mix(in oklch, var(--slate-0) 62%, var(--slate-300));
+  --color-text-soft: color-mix(in oklch, var(--slate-0) 38%, var(--slate-500));
+
+  /* Semantic tokens: border */
+  --color-border-subtle: color-mix(in oklch, var(--slate-700) 58%, var(--slate-800));
+  --color-border-strong: color-mix(in oklch, var(--slate-600) 56%, var(--slate-700));
+
+  /* Semantic tokens: accent */
+  --color-accent-solid: var(--blue-500);
+  --color-accent-hover: var(--blue-400);
+  --color-accent-text: var(--blue-300);
+  --color-accent-contrast: var(--slate-950);
+
+  /* Semantic tokens: danger */
+  --color-danger-surface: color-mix(in oklch, var(--red-600) 20%, var(--slate-950));
+  --color-danger-text: var(--red-200);
+
+  /* State / derived tokens */
+  --color-bg-panel: color-mix(in oklch, var(--slate-800) 94%, transparent);
+  --color-bg-panel-hover: color-mix(in oklch, var(--slate-800) 68%, var(--slate-700));
+  --color-bg-overlay: color-mix(in oklch, var(--slate-800) 96%, transparent);
+  --color-bg-backdrop: color-mix(in oklch, black 58%, transparent);
+  --color-bg-page-start: color-mix(in oklch, var(--slate-800) 66%, var(--slate-900));
+  --color-bg-page-end: color-mix(in oklch, var(--slate-900) 84%, var(--slate-950));
+  --color-bg-header-start: color-mix(in oklch, var(--slate-700) 60%, var(--slate-800));
+  --color-bg-header-end: color-mix(in oklch, var(--slate-800) 74%, var(--slate-900));
+
+  --color-accent-border: color-mix(in oklch, var(--color-accent-solid) 58%, black);
+  --color-accent-surface: color-mix(in oklch, var(--color-accent-solid) 78%, black);
+  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 82%, black);
+  --color-accent-surface-active: color-mix(in oklch, var(--blue-300) 68%, black);
+
+  --color-danger-border: color-mix(in oklch, var(--red-500) 52%, black);
+
+  --color-focus-ring: color-mix(in oklch, var(--blue-400) 72%, white);
+  --color-selection-bg: oklch(0.5 0.04 255 / 0.11);
+  --color-selection-bg-strong: oklch(0.64 0.05 255 / 0.28);
+  --color-surface-selected: color-mix(in oklch, var(--color-bg-subtle) 82%, white 6%);
+
+  --color-button-secondary-hover-bg: color-mix(in oklch, var(--slate-700) 72%, transparent);
+  --color-button-secondary-hover-border: var(--color-border-strong);
+  --color-button-secondary-active-bg: color-mix(in oklch, var(--slate-800) 78%, var(--slate-900));
+  --color-button-tertiary-active-bg: color-mix(in oklch, var(--color-bg-subtle) 80%, black 8%);
+
+  /* Component exceptions */
+  --color-editor-active-line: oklch(0.58 0.045 255 / 0.14);
+  --color-editor-link: var(--color-accent-text);
+  --color-editor-caret: color-mix(in oklch, var(--blue-200) 72%, white);
+  --color-editor-gutter-bg: color-mix(in oklch, var(--slate-900) 90%, transparent);
+  --color-editor-gutter-border: color-mix(in oklch, var(--color-border-subtle) 84%, black);
+  /* Tuned separately to keep selection ranges distinct from the active line. */
+  --color-editor-selection-match: oklch(0.66 0.045 255 / 0.18);
+  --color-metric-value: color-mix(in oklch, var(--slate-0) 78%, var(--slate-100));
 }

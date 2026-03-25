@@ -38,6 +38,7 @@ function createHandlers(label: string) {
     onOpenRecent: vi.fn(),
     onSave: vi.fn(),
     onSaveAs: vi.fn(),
+    onSetThemeMode: vi.fn(),
     onToggleExternalMedia: vi.fn(),
     onTogglePreview: vi.fn(),
     onToggleToc: vi.fn(() => label),
@@ -54,6 +55,7 @@ function createState(): MenuState {
     isExternalMediaAutoLoadEnabled: true,
     isPreviewVisible: true,
     isTocVisible: true,
+    themeMode: "system",
     recentFiles: [],
   };
 }
@@ -127,11 +129,14 @@ describe("useAppMenuController", () => {
 
     await act(async () => {
       capturedHandlers?.onToggleToc();
+      capturedHandlers?.onSetThemeMode("dark");
       capturedHandlers?.onOpenRecent("/tmp/recent.md");
     });
 
     expect(firstHandlers.onToggleToc).not.toHaveBeenCalled();
     expect(secondHandlers.onToggleToc).toHaveBeenCalledTimes(1);
+    expect(firstHandlers.onSetThemeMode).not.toHaveBeenCalled();
+    expect(secondHandlers.onSetThemeMode).toHaveBeenCalledWith("dark");
     expect(firstHandlers.onOpenRecent).not.toHaveBeenCalled();
     expect(secondHandlers.onOpenRecent).toHaveBeenCalledWith("/tmp/recent.md");
     expect(setupAppMenu).toHaveBeenCalledTimes(1);

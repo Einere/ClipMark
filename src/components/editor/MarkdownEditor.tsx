@@ -5,11 +5,20 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
+import { tags } from "@lezer/highlight";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
-import { EditorView, keymap } from "@codemirror/view";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { basicSetup } from "codemirror";
+import { minimalSetup } from "codemirror";
 import type { DocumentStore } from "../../lib/document-store";
 import { useEditorViewStateStore } from "../../hooks/useEditorViewState";
 import {
@@ -22,6 +31,14 @@ type MarkdownEditorProps = {
   onFocusChange?: (isFocused: boolean) => void;
   store: DocumentStore;
 };
+
+export const markdownEditorHighlightStyle = HighlightStyle.define([
+  {
+    // Syntax token colors belong in HighlightStyle, while selection/caret stay in CSS.
+    tag: [tags.link, tags.url],
+    color: "var(--color-editor-link)",
+  },
+]);
 
 export type MarkdownEditorHandle = {
   focus: () => void;
@@ -54,8 +71,13 @@ export const MarkdownEditor = forwardRef<
       state: EditorState.create({
         doc: store.getMarkdown(),
         extensions: [
-          basicSetup,
+          minimalSetup,
           markdown(),
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          dropCursor(),
+          highlightActiveLine(),
+          syntaxHighlighting(markdownEditorHighlightStyle),
           keymap.of([indentWithTab]),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {

@@ -110,6 +110,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onSetThemeMode: vi.fn(),
       onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
@@ -124,6 +125,7 @@ describe("setupAppMenu", () => {
       isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: false,
+      themeMode: "dark",
       recentFiles: [
         {
           filename: "clipmark.md",
@@ -155,11 +157,19 @@ describe("setupAppMenu", () => {
     const externalMediaItem = createdMenuItems.get("view-toggle-external-media") as {
       setChecked: ReturnType<typeof vi.fn>;
     };
+    const themeDarkItem = createdMenuItems.get("app-theme-dark") as {
+      setChecked: ReturnType<typeof vi.fn>;
+    };
+    const themeSystemItem = createdMenuItems.get("app-theme-system") as {
+      setChecked: ReturnType<typeof vi.fn>;
+    };
 
     expect(saveItem.setEnabled).toHaveBeenCalledWith(true);
     expect(externalMediaItem.setChecked).toHaveBeenCalledWith(true);
     expect(previewItem.setChecked).toHaveBeenCalledWith(true);
     expect(previewItem.setEnabled).toHaveBeenCalledWith(true);
+    expect(themeDarkItem.setChecked).toHaveBeenCalledWith(true);
+    expect(themeSystemItem.setChecked).toHaveBeenCalledWith(false);
 
     await controller?.dispose();
     expect(close).toHaveBeenCalledTimes(1);
@@ -174,6 +184,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onSetThemeMode: vi.fn(),
       onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
@@ -188,6 +199,7 @@ describe("setupAppMenu", () => {
       isExternalMediaAutoLoadEnabled: false,
       isPreviewVisible: false,
       isTocVisible: true,
+      themeMode: "system",
       recentFiles: [],
     });
 
@@ -225,6 +237,7 @@ describe("setupAppMenu", () => {
       onOpenRecent: vi.fn(),
       onSave: vi.fn(),
       onSaveAs: vi.fn(),
+      onSetThemeMode: vi.fn(),
       onToggleExternalMedia: vi.fn(),
       onTogglePreview: vi.fn(),
       onToggleToc: vi.fn(),
@@ -244,6 +257,7 @@ describe("setupAppMenu", () => {
       isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: true,
+      themeMode: "light",
       recentFiles: [
         { filename: "clipmark.md", path: "/tmp/clipmark.md" },
       ],
@@ -261,6 +275,7 @@ describe("setupAppMenu", () => {
       isExternalMediaAutoLoadEnabled: true,
       isPreviewVisible: true,
       isTocVisible: true,
+      themeMode: "light",
       recentFiles: [
         { filename: "clipmark.md", path: "/tmp/clipmark.md" },
       ],
@@ -268,5 +283,30 @@ describe("setupAppMenu", () => {
 
     expect(recentSubmenu.append).not.toHaveBeenCalled();
     expect(recentSubmenu.remove).not.toHaveBeenCalled();
+  });
+
+  it("invokes the requested theme handler from the app menu", async () => {
+    const onSetThemeMode = vi.fn();
+    await setupAppMenu({
+      onClearRecentFiles: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onNew: vi.fn(),
+      onOpen: vi.fn(),
+      onOpenRecent: vi.fn(),
+      onSave: vi.fn(),
+      onSaveAs: vi.fn(),
+      onSetThemeMode,
+      onToggleExternalMedia: vi.fn(),
+      onTogglePreview: vi.fn(),
+      onToggleToc: vi.fn(),
+    });
+
+    const themeLightItem = createdMenuItems.get("app-theme-light") as unknown as {
+      action: () => void;
+    };
+
+    themeLightItem.action();
+
+    expect(onSetThemeMode).toHaveBeenCalledWith("light");
   });
 });
