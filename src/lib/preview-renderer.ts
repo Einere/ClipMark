@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import type Token from "markdown-it/lib/token.mjs";
 import markdownItTaskLists from "markdown-it-task-lists";
 import {
   resolvePreviewUri,
@@ -59,6 +60,23 @@ const ALLOWED_MARKDOWN_ELEMENTS = new Set([
 ]);
 
 const VOID_TAGS = new Set(["br", "hr", "img", "input"]);
+const SOURCE_LINE_TAGS = new Set([
+  "blockquote",
+  "details",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "table",
+  "ul",
+]);
 
 const markdownRenderer = new MarkdownIt({
   html: true,
@@ -69,6 +87,12 @@ const markdownRenderer = new MarkdownIt({
     label: false,
     labelAfter: false,
   });
+
+markdownRenderer.core.ruler.push("source-line-metadata", (state) => {
+  for (const token of state.tokens) {
+    attachSourceLineMetadata(token);
+  }
+});
 
 function textNode(value: string): PreviewNode {
   return {
@@ -102,9 +126,14 @@ function getTextContent(nodes: PreviewNode[]): string {
     .join("");
 }
 
-function createMediaCard(label: string, externalUri: string | null): PreviewNode {
+function createMediaCard(
+  label: string,
+  externalUri: string | null,
+  sourceLineProperties: Record<string, string>,
+): PreviewNode {
   return elementNode("span", {
     className: ["markdown-preview__media-card"],
+    ...sourceLineProperties,
     ...(externalUri ? { "data-preview-uri": externalUri } : {}),
   }, [
     elementNode("span", {}, [textNode(label)]),
@@ -154,6 +183,7 @@ function sanitizeDomNode(
   const sanitizedChildren = Array.from(node.childNodes).flatMap((child) =>
     sanitizeDomNode(child, input)
   );
+  const sourceLineProperties = getSourceLineProperties(node);
 
   if (!ALLOWED_MARKDOWN_ELEMENTS.has(tagName)) {
     return sanitizedChildren;
@@ -164,6 +194,7 @@ function sanitizeDomNode(
     const externalUri = resolved.kind === "external" ? resolved.uri : null;
 
     return [elementNode("a", {
+      ...sourceLineProperties,
       ...(externalUri ? {
         "data-preview-uri": externalUri,
         href: externalUri,
@@ -181,12 +212,19 @@ function sanitizeDomNode(
 
     if (input.isExternalMediaAutoLoadEnabled && externalUri) {
       return [elementNode("img", {
+        ...sourceLineProperties,
         ...(alt ? { alt } : {}),
         src: externalUri,
       })];
     }
 
-    return [createMediaCard(alt?.trim() || "External media", externalUri)];
+    return [
+      createMediaCard(
+        alt?.trim() || "External media",
+        externalUri,
+        sourceLineProperties,
+      ),
+    ];
   }
 
   if (tagName === "video" || tagName === "audio") {
@@ -194,6 +232,7 @@ function sanitizeDomNode(
 
     if (input.isExternalMediaAutoLoadEnabled && externalUri) {
       return [elementNode(tagName, {
+        ...sourceLineProperties,
         controls: true,
         src: externalUri,
       }, sanitizedChildren)];
@@ -203,24 +242,28 @@ function sanitizeDomNode(
       createMediaCard(
         tagName === "video" ? "External video" : "External audio",
         externalUri,
+        sourceLineProperties,
       ),
     ];
   }
 
   if (/^h[1-6]$/.test(tagName)) {
     return [elementNode(tagName, {
+      ...sourceLineProperties,
       id: slugifyHeading(getTextContent(sanitizedChildren)),
     }, sanitizedChildren)];
   }
 
   if (tagName === "details") {
     return [elementNode("details", {
+      ...sourceLineProperties,
       ...(node.hasAttribute("open") ? { open: true } : {}),
     }, sanitizedChildren)];
   }
 
   if (tagName === "input") {
     return [elementNode("input", {
+      ...sourceLineProperties,
       ...(node.hasAttribute("checked") ? { checked: true } : {}),
       ...(node.hasAttribute("disabled") ? { disabled: true } : {}),
       readonly: true,
@@ -228,7 +271,7 @@ function sanitizeDomNode(
     })];
   }
 
-  return [elementNode(tagName, {}, sanitizedChildren)];
+  return [elementNode(tagName, sourceLineProperties, sanitizedChildren)];
 }
 
 function escapeHtml(value: string) {
@@ -240,6 +283,26 @@ function escapeHtml(value: string) {
 
 function escapeAttribute(value: string) {
   return escapeHtml(value).replaceAll("\"", "&quot;");
+}
+
+function attachSourceLineMetadata(token: Token) {
+  if (!token.map || !SOURCE_LINE_TAGS.has(token.tag)) {
+    return;
+  }
+
+  const [lineStart, lineEnd] = token.map;
+  token.attrSet("data-source-line-start", String(lineStart + 1));
+  token.attrSet("data-source-line-end", String(Math.max(lineStart + 1, lineEnd)));
+}
+
+function getSourceLineProperties(element: Element) {
+  const lineStart = element.getAttribute("data-source-line-start");
+  const lineEnd = element.getAttribute("data-source-line-end");
+
+  return {
+    ...(lineStart ? { "data-source-line-start": lineStart } : {}),
+    ...(lineEnd ? { "data-source-line-end": lineEnd } : {}),
+  };
 }
 
 function serializeProperties(properties: Record<string, string | boolean | string[]>) {
