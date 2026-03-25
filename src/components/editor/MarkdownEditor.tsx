@@ -27,6 +27,7 @@ type MarkdownEditorProps = {
 
 export const markdownEditorHighlightStyle = HighlightStyle.define([
   {
+    // Syntax token colors belong in HighlightStyle, while selection/caret stay in CSS.
     tag: [tags.link, tags.url],
     color: "var(--color-editor-link)",
   },

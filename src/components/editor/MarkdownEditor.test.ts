@@ -12,5 +12,10 @@ describe("MarkdownEditor highlighting", () => {
 
     expect(highlightingFor(state, [tags.link])).toBeTruthy();
     expect(highlightingFor(state, [tags.url])).toBeTruthy();
+    expect(markdownEditorHighlightStyle.specs).toEqual([
+      expect.objectContaining({
+        color: "var(--color-editor-link)",
+      }),
+    ]);
   });
 });
