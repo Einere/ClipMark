@@ -2,6 +2,39 @@
   min-height: 100vh;
 }
 
+.app-shell--loading {
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.app-shell__fallback {
+  width: min(100%, 28rem);
+  display: grid;
+  gap: var(--space-2);
+  padding: clamp(1.25rem, 2.6vw, 1.75rem);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+  box-shadow: var(--shadow-floating);
+}
+
+.app-shell__fallback-kicker {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size--1);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell__fallback-message {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-tight);
+}
+
 .ui-button {
   --button-bg: transparent;
   --button-border: transparent;

@@ -9,7 +9,9 @@ import {
   useState,
 } from "react";
 import { flushSync } from "react-dom";
+import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
+import { Toast } from "./components/ui/Toast";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useDocumentSession } from "./hooks/useDocumentSession";
@@ -40,17 +42,25 @@ const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspace")
   .then((module) => ({ default: module.EditorWorkspace })));
-const UnsavedChangesDialog = lazy(() => import("./components/dialog/UnsavedChangesDialog")
-  .then((module) => ({ default: module.UnsavedChangesDialog })));
-const Toast = lazy(() => import("./components/ui")
-  .then((module) => ({ default: module.Toast })));
 
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
 
-function AppShellFallback() {
-  return <div className="app-shell" aria-busy="true" />;
+export function AppShellFallback() {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="app-shell app-shell--loading"
+      role="status"
+    >
+      <div className="app-shell__fallback">
+        <p className="app-shell__fallback-kicker">Opening editor</p>
+        <p className="app-shell__fallback-message">Preparing your writing workspace.</p>
+      </div>
+    </div>
+  );
 }
 
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
@@ -522,17 +532,15 @@ export default function App({ initialPreferences }: AppProps) {
         </Suspense>
       )}
 
-      <Suspense fallback={null}>
-        <UnsavedChangesDialog
-          confirmLabel={dialogState.confirmLabel}
-          description={dialogState.description}
-          filename={activeFilename}
-          onDiscard={() => void resolvePendingActionWithDiscard()}
-          onSave={() => void resolvePendingActionWithSave()}
-          open={pendingAction !== null}
-          title={dialogState.title}
-        />
-      </Suspense>
+      <UnsavedChangesDialog
+        confirmLabel={dialogState.confirmLabel}
+        description={dialogState.description}
+        filename={activeFilename}
+        onDiscard={() => void resolvePendingActionWithDiscard()}
+        onSave={() => void resolvePendingActionWithSave()}
+        open={pendingAction !== null}
+        title={dialogState.title}
+      />
 
       <input
         accept=".md,text/markdown,text/plain"
@@ -542,9 +550,7 @@ export default function App({ initialPreferences }: AppProps) {
         type="file"
       />
 
-      <Suspense fallback={null}>
-        {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
-      </Suspense>
+      {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
     </div>
   );
 }
