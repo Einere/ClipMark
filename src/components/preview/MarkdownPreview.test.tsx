@@ -87,4 +87,24 @@ describe("MarkdownPreview", () => {
 
     expect(openExternalUri).toHaveBeenCalledWith("https://example.com/spec.png");
   });
+
+  it("opens resolved links through delegated keyboard handling", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+    renderer.render();
+
+    const link = renderer.container.querySelector(
+      "[data-preview-uri='file:///tmp/docs/reference.md']",
+    );
+    expect(link).toBeInstanceOf(HTMLElement);
+
+    act(() => {
+      link?.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        key: "Enter",
+      }));
+    });
+
+    expect(openExternalUri).toHaveBeenCalledWith("file:///tmp/docs/reference.md");
+  });
 });

@@ -38,6 +38,39 @@ describe("renderPreviewHtml", () => {
     expect(html).not.toContain("markdown-preview__media-card");
   });
 
+  it("resolves relative media paths against the current file when auto-load is enabled", () => {
+    const html = renderPreviewHtml({
+      filePath: "/tmp/docs/note.md",
+      isExternalMediaAutoLoadEnabled: true,
+      markdown: "![Spec image](./assets/spec.png)",
+    });
+
+    expect(html).toContain("src=\"file:///tmp/docs/assets/spec.png\"");
+  });
+
+  it("renders task list inputs as readonly checkboxes", () => {
+    const html = renderPreviewHtml({
+      filePath: null,
+      isExternalMediaAutoLoadEnabled: false,
+      markdown: "- [x] Done\n- [ ] Pending",
+    });
+
+    expect(html).toContain("<input checked readonly type=\"checkbox\">");
+    expect(html).toContain("<input readonly type=\"checkbox\">");
+  });
+
+  it("drops blocked links instead of exposing unsafe href attributes", () => {
+    const html = renderPreviewHtml({
+      filePath: null,
+      isExternalMediaAutoLoadEnabled: false,
+      markdown: "<a href=\"javascript:alert('x')\">Bad</a>",
+    });
+
+    expect(html).toContain("<a>Bad</a>");
+    expect(html).not.toContain("href=");
+    expect(html).not.toContain("data-preview-uri=");
+  });
+
   it("strips disallowed raw html while preserving allowed nodes", () => {
     const html = renderPreviewHtml({
       filePath: null,
