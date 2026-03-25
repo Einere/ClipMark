@@ -12,8 +12,33 @@ export default defineConfig({
           }
 
           if (
+            id.includes("/react/")
+            || id.includes("/react-dom/")
+            || id.includes("/scheduler/")
+          ) {
+            return "framework";
+          }
+
+          if (
+            id.includes("/@tauri-apps/")
+          ) {
+            return "native";
+          }
+
+          if (
+            id.includes("/@codemirror/lang-markdown/")
+          ) {
+            return "editor-markdown";
+          }
+
+          if (
+            id.includes("/codemirror/")
+          ) {
+            return "editor-setup";
+          }
+
+          if (
             id.includes("/@codemirror/")
-            || id.includes("/codemirror/")
             || id.includes("/@lezer/")
           ) {
             return "editor";

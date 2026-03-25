@@ -9,9 +9,16 @@ import { tags } from "@lezer/highlight";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorView, keymap } from "@codemirror/view";
+import {
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { basicSetup } from "codemirror";
+import { minimalSetup } from "codemirror";
 import type { DocumentStore } from "../../lib/document-store";
 import { useEditorViewStateStore } from "../../hooks/useEditorViewState";
 import {
@@ -64,8 +71,12 @@ export const MarkdownEditor = forwardRef<
       state: EditorState.create({
         doc: store.getMarkdown(),
         extensions: [
-          basicSetup,
+          minimalSetup,
           markdown(),
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          dropCursor(),
+          highlightActiveLine(),
           syntaxHighlighting(markdownEditorHighlightStyle),
           keymap.of([indentWithTab]),
           EditorView.lineWrapping,
