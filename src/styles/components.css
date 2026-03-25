@@ -586,43 +586,51 @@
   outline: none;
 }
 
+/* NOTE: 에디터 본문 스타일 (좌측 줄 라인 영역 제외) */
 .markdown-editor .cm-content {
   caret-color: var(--color-editor-caret);
   max-width: 76ch;
   padding-bottom: 30vh;
 }
 
+/* NOTE: 캐럿 스타일 */
 .markdown-editor .cm-cursor,
 .markdown-editor .cm-dropCursor {
   border-left-color: var(--color-editor-caret);
 }
 
+/* NOTE: 현재 캐럿이 있는 줄에 대한 스타일 */
 .markdown-editor .cm-activeLine,
 .markdown-editor .cm-activeLineGutter {
   background-color: var(--color-editor-active-line);
 }
 
+/* NOTE: 에디터 좌측 줄 번호 영역 스타일 */
 .markdown-editor .cm-gutters {
   border-right: 1px solid var(--color-editor-gutter-border);
   background: var(--color-editor-gutter-bg);
   color: var(--color-text-soft);
 }
 
+/* NOTE: 에디터 좌측 줄 번호 영역의 각 칸 스타일 */
 .markdown-editor .cm-lineNumbers .cm-gutterElement {
   padding: 0 0.55rem 0 0.7rem;
   font-variant-numeric: tabular-nums;
 }
 
+/* NOTE: 에디터에 포커스가 있는 상태에서 실제 셀렉션 영역 스타일 */
 .markdown-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
 .markdown-editor .cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
   background-color: var(--color-selection-bg-strong);
 }
 
+/* NOTE: 셀렉션 된 텍스트와 매칭되는 다른 텍스트 영역 스타일 */
 .markdown-editor .cm-selectionMatch {
   background-color: var(--color-editor-selection-match);
   border-radius: var(--radius-sm);
 }
 
+/* NOTE: 에디터에 포커스가 없는 상태에서 실제 셀렉션 영역 스타일 */
 .markdown-editor .cm-editor > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
   background-color: var(--color-selection-bg-strong);
 }
