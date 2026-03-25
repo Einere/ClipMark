@@ -113,4 +113,43 @@ describe("MarkdownEditor highlighting", () => {
     expect(renderer.container.querySelector(".cm-foldGutter")).toBeTruthy();
     expect(renderer.container.querySelector(".cm-matchingBracket")).toBeTruthy();
   });
+
+  it("keeps editor changes lazily synchronized through the document store source", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+    const store = createDocumentStore("alpha");
+
+    renderer.render(
+      createElement(
+        EditorViewStateProvider,
+        { documentKey: 1 },
+        createElement(MarkdownEditor, {
+          documentKey: 1,
+          store,
+        }),
+      ),
+    );
+
+    const editorContent = renderer.container.querySelector(".cm-content");
+    expect(editorContent).toBeTruthy();
+
+    const pasteEvent = new Event("paste", {
+      bubbles: true,
+      cancelable: true,
+    }) as Event & { clipboardData?: DataTransfer };
+
+    pasteEvent.clipboardData = {
+      getData(type: string) {
+        return type === "text/plain" ? "beta" : "";
+      },
+    } as DataTransfer;
+
+    act(() => {
+      (editorContent as HTMLElement).dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      editorContent?.dispatchEvent(pasteEvent);
+    });
+
+    expect(store.getRevision()).toBe(1);
+    expect(store.getMarkdown()).toBe("betaalpha");
+  });
 });

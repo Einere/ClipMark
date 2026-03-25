@@ -34,4 +34,33 @@ describe("createDocumentStore", () => {
 
     expect(store.getMarkdown()).toBe("new");
   });
+
+  it("defers markdown serialization until it is read from a connected source", () => {
+    const store = createDocumentStore("old");
+    const readMarkdown = vi.fn(() => "new");
+
+    const disconnect = store.connectMarkdownSource(readMarkdown);
+
+    store.notifyMarkdownChanged();
+
+    expect(readMarkdown).not.toHaveBeenCalled();
+    expect(store.getRevision()).toBe(1);
+    expect(store.getMarkdown()).toBe("new");
+    expect(readMarkdown).toHaveBeenCalledTimes(1);
+
+    disconnect();
+  });
+
+  it("syncs a pending source update before disconnecting the source", () => {
+    const store = createDocumentStore("old");
+    const readMarkdown = vi.fn(() => "new");
+
+    const disconnect = store.connectMarkdownSource(readMarkdown);
+    store.notifyMarkdownChanged();
+
+    disconnect();
+
+    expect(store.getMarkdown()).toBe("new");
+    expect(readMarkdown).toHaveBeenCalledTimes(1);
+  });
 });

@@ -33,7 +33,7 @@ export function useDocumentSession({
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>(() => loadRecentFiles());
   const [filePath, setFilePath] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | null>(null);
-  const [savedMarkdown, setSavedMarkdown] = useState("");
+  const [savedRevision, setSavedRevision] = useState(0);
   const [editorDocumentKey, setEditorDocumentKey] = useState(0);
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [documentStore] = useState<DocumentStore>(() => createDocumentStore(""));
@@ -52,7 +52,7 @@ export function useDocumentSession({
     setFilePath(document.path);
     setFilename(document.filename);
     documentStore.replaceMarkdown(document.markdown);
-    setSavedMarkdown(document.markdown);
+    setSavedRevision(documentStore.getRevision());
     bumpDocumentKey();
 
     if (document.path) {
@@ -65,7 +65,7 @@ export function useDocumentSession({
     setFilePath(null);
     setFilename(UNTITLED_FILENAME);
     documentStore.replaceMarkdown("");
-    setSavedMarkdown("");
+    setSavedRevision(documentStore.getRevision());
     bumpDocumentKey();
   });
 
@@ -74,7 +74,7 @@ export function useDocumentSession({
     setFilePath(null);
     setFilename(null);
     documentStore.replaceMarkdown("");
-    setSavedMarkdown("");
+    setSavedRevision(documentStore.getRevision());
     bumpDocumentKey();
   });
 
@@ -140,7 +140,7 @@ export function useDocumentSession({
   const applySavedDocument = useEffectEvent((saved: SavedDocument) => {
     setFilePath(saved.path);
     setFilename(saved.filename);
-    setSavedMarkdown(documentStore.getMarkdown());
+    setSavedRevision(documentStore.getRevision());
     setRecentFiles((files) => addRecentFile(files, saved.path));
   });
 
@@ -179,7 +179,7 @@ export function useDocumentSession({
     openWithPicker,
     openWithPickerWithoutShowingWindow,
     recentFiles,
-    savedMarkdown,
+    savedRevision,
     saveDocument,
   };
 }
