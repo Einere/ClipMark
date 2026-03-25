@@ -13,6 +13,9 @@ import {
   EditorViewStateProvider,
   useActiveEditorLine,
 } from "../../hooks/useEditorViewState";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+
+const PREVIEW_DEBOUNCE_MS = 120;
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -50,31 +53,51 @@ function getFileLabel(filePath: string | null) {
 }
 
 function DocumentPreviewPane({
-  markdown,
+  documentStore,
   filePath,
   isExternalMediaAutoLoadEnabled,
 }: {
-  markdown: string;
+  documentStore: DocumentStore;
   filePath: string | null;
   isExternalMediaAutoLoadEnabled: boolean;
 }) {
+  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
+  const previewMarkdown = useDebouncedValue(markdown, PREVIEW_DEBOUNCE_MS);
+  const isDocumentEmpty = markdown.trim().length === 0;
+
+  if (isDocumentEmpty) {
+    return (
+      <div className="editor-workspace__preview-empty-state">
+        <p className="editor-workspace__preview-empty-kicker">Preview</p>
+        <h2 className="editor-workspace__preview-empty-title">
+          Start writing in the editor to build a clean reading view here.
+        </h2>
+      </div>
+    );
+  }
+
   return (
     <MarkdownPreview
       filePath={filePath}
       isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-      markdown={markdown}
+      markdown={previewMarkdown}
     />
   );
 }
 
 function DocumentTocPane({
-  headings,
+  documentStore,
   onSelectHeading,
 }: {
-  headings: ReturnType<typeof extractHeadings>;
+  documentStore: DocumentStore;
   onSelectHeading: (line: number) => void;
 }) {
   const activeEditorLine = useActiveEditorLine();
+  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
+  const headings = useMemo(
+    () => extractHeadings(markdown),
+    [markdown],
+  );
   const activeHeadingLine = useMemo(
     () => getActiveHeadingLine(headings, activeEditorLine),
     [activeEditorLine, headings],
@@ -86,6 +109,34 @@ function DocumentTocPane({
       headings={headings}
       onSelectHeading={onSelectHeading}
     />
+  );
+}
+
+function DocumentFooterMeta({
+  documentStatus,
+  documentStore,
+}: {
+  documentStatus: DocumentStatus | null;
+  documentStore: DocumentStore;
+}) {
+  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
+  const headings = useMemo(
+    () => extractHeadings(markdown),
+    [markdown],
+  );
+  const documentMetrics = useMemo(
+    () => summarizeDocument(markdown),
+    [markdown],
+  );
+  const visibleStatusLabel = formatDocumentStatus(documentStatus);
+
+  return (
+    <div className="editor-workspace__footer-meta" aria-label="Document summary">
+      <span>{visibleStatusLabel}</span>
+      <span>{documentMetrics.wordCount} words</span>
+      <span>{documentMetrics.lineCount} lines</span>
+      <span>{headings.length} headings</span>
+    </div>
   );
 }
 
@@ -102,17 +153,6 @@ export function EditorWorkspace({
   onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
-  const markdown = useDocumentMarkdown(documentStore);
-  const deferredMarkdown = useDeferredValue(markdown);
-  const headings = useMemo(
-    () => extractHeadings(deferredMarkdown),
-    [deferredMarkdown],
-  );
-  const documentMetrics = useMemo(
-    () => summarizeDocument(markdown),
-    [markdown],
-  );
-  const isDocumentEmpty = markdown.trim().length === 0;
   const handlePathCopy = useEffectEvent(async () => {
     if (!filePath) {
       return;
@@ -125,7 +165,6 @@ export function EditorWorkspace({
       onPathCopyError();
     }
   });
-  const visibleStatusLabel = formatDocumentStatus(documentStatus);
   return (
     <EditorViewStateProvider documentKey={documentKey}>
       <div className="editor-workspace">
@@ -136,7 +175,7 @@ export function EditorWorkspace({
         >
           {isTocVisible ? (
             <DocumentTocPane
-              headings={headings}
+              documentStore={documentStore}
               onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
             />
           ) : null}
@@ -168,20 +207,11 @@ export function EditorWorkspace({
                 </div>
               </div>
               <div className="editor-workspace__panel-body">
-                {isDocumentEmpty ? (
-                  <div className="editor-workspace__preview-empty-state">
-                    <p className="editor-workspace__preview-empty-kicker">Preview</p>
-                    <h2 className="editor-workspace__preview-empty-title">
-                      Start writing in the editor to build a clean reading view here.
-                    </h2>
-                  </div>
-                ) : (
-                  <DocumentPreviewPane
-                    markdown={deferredMarkdown}
-                    filePath={filePath}
-                    isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-                  />
-                )}
+                <DocumentPreviewPane
+                  documentStore={documentStore}
+                  filePath={filePath}
+                  isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                />
               </div>
             </section>
           ) : null}
@@ -203,12 +233,10 @@ export function EditorWorkspace({
               <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
             )}
           </div>
-          <div className="editor-workspace__footer-meta" aria-label="Document summary">
-            <span>{visibleStatusLabel}</span>
-            <span>{documentMetrics.wordCount} words</span>
-            <span>{documentMetrics.lineCount} lines</span>
-            <span>{headings.length} headings</span>
-          </div>
+          <DocumentFooterMeta
+            documentStatus={documentStatus}
+            documentStore={documentStore}
+          />
         </footer>
       </div>
     </EditorViewStateProvider>
