@@ -53,11 +53,11 @@ export function WelcomeScreen({
               <h2 className="welcome-screen__section-title" id="welcome-recent-files-title">
                 Recent Files
               </h2>
-              <p className="welcome-screen__section-meta">
-                {recentFiles.length === 0
-                  ? "Ready"
-                  : `${recentFiles.length} file${recentFiles.length === 1 ? "" : "s"}`}
-              </p>
+              {recentFiles.length > 0 ? (
+                <p className="welcome-screen__section-meta">
+                  {`${recentFiles.length} file${recentFiles.length === 1 ? "" : "s"}`}
+                </p>
+              ) : null}
             </header>
             {recentFiles.length === 0 ? (
               <p className="welcome-screen__empty-state">
