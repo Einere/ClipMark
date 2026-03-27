@@ -98,6 +98,10 @@ export default function App({ initialPreferences }: AppProps) {
     }, TOAST_DURATION_MS);
   });
 
+  const handlePreferencesSaveError = useEffectEvent(() => {
+    showToast("Could not save app preferences.", "error");
+  });
+
   const session = useDocumentSession({
     onError: (message) => showToast(message, "error"),
     onInfo: (message) => showToast(message, "info"),
@@ -142,8 +146,11 @@ export default function App({ initialPreferences }: AppProps) {
       previewPanelWidth,
       tocPanelWidth,
       themeMode,
+    }).catch(() => {
+      handlePreferencesSaveError();
     });
   }, [
+    handlePreferencesSaveError,
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,

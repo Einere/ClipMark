@@ -22,6 +22,18 @@
   --duration-fast: 140ms;
   --duration-base: 220ms;
   --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-panel-width-enter: 320ms;
+  --duration-panel-width-exit: 240ms;
+  --duration-panel-content-enter: 280ms;
+  --duration-panel-content-exit: 180ms;
+  --duration-panel-handle-enter: 200ms;
+  --duration-panel-handle-exit: 140ms;
+  --ease-panel-width-enter: cubic-bezier(0.2, 0.9, 0.24, 1);
+  --ease-panel-width-exit: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-panel-content-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-panel-content-exit: cubic-bezier(0.35, 0, 0.2, 1);
+  --ease-panel-handle-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-panel-handle-exit: cubic-bezier(0.4, 0, 0.2, 1);
 
   --container-page: 88rem;
   --container-reading: 48rem;

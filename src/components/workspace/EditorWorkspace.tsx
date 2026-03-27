@@ -24,6 +24,7 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
+const STACKED_PANEL_LAYOUT_BREAKPOINT_PX = 1024;
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -46,11 +47,108 @@ type EditorWorkspaceProps = {
 };
 
 type PanelKind = "preview" | "toc";
+type PanelVisibilityState = "closed" | "entering" | "closing" | "open";
 
 type PanelWidthsState = {
   preview: number | null;
   toc: number | null;
 };
+
+function getReducedMotionPreference() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function parseDurationMs(value: string) {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return 0;
+  }
+
+  if (normalized.endsWith("ms")) {
+    const parsed = Number(normalized.slice(0, -2));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  if (normalized.endsWith("s")) {
+    const parsed = Number(normalized.slice(0, -1));
+    return Number.isFinite(parsed) ? parsed * 1000 : 0;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getPanelExitTransitionMs() {
+  if (typeof window === "undefined" || typeof getComputedStyle !== "function") {
+    return 220;
+  }
+
+  const rootStyles = getComputedStyle(document.documentElement);
+  const durations = [
+    rootStyles.getPropertyValue("--duration-panel-width-exit"),
+    rootStyles.getPropertyValue("--duration-panel-content-exit"),
+    rootStyles.getPropertyValue("--duration-panel-handle-exit"),
+  ].map(parseDurationMs);
+
+  return Math.max(...durations, 220);
+}
+
+function usePanelPresence(isVisible: boolean) {
+  const [state, setState] = useState<PanelVisibilityState>(isVisible ? "open" : "closed");
+
+  useEffect(() => {
+    if (isVisible) {
+      setState((current) => {
+        if (current === "open") {
+          return current;
+        }
+
+        return getReducedMotionPreference() ? "open" : "entering";
+      });
+
+      if (getReducedMotionPreference()) {
+        return;
+      }
+
+      const frameId = window.requestAnimationFrame(() => {
+        setState("open");
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    if (state === "closed") {
+      return;
+    }
+
+    setState("closing");
+
+    if (getReducedMotionPreference()) {
+      setState("closed");
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setState("closed");
+    }, getPanelExitTransitionMs());
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isVisible, state]);
+
+  return {
+    isMounted: state !== "closed",
+    state,
+  };
+}
 
 function formatDocumentStatus(documentStatus: DocumentStatus | null) {
   if (documentStatus === "edited") {
@@ -77,11 +175,13 @@ function DocumentPreviewPane({
   documentStore,
   filePath,
   isExternalMediaAutoLoadEnabled,
+  isLayoutTransitioning,
   layoutVersion,
 }: {
   documentStore: DocumentStore;
   filePath: string | null;
   isExternalMediaAutoLoadEnabled: boolean;
+  isLayoutTransitioning: boolean;
   layoutVersion: number;
 }) {
   const { activeLine, isFocused } = useEditorViewState();
@@ -109,6 +209,7 @@ function DocumentPreviewPane({
       filePath={filePath}
       isAutoScrollEnabled={isFocused}
       isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+      isLayoutTransitioning={isLayoutTransitioning}
       layoutVersion={layoutVersion}
       markdown={previewMarkdown}
     />
@@ -204,6 +305,19 @@ export function EditorWorkspace({
     preview: initialPreviewPanelWidth,
     toc: initialTocPanelWidth,
   });
+  const previewPresence = usePanelPresence(isPreviewVisible);
+  const tocPresence = usePanelPresence(isTocVisible);
+  const hasRenderedPreview = previewPresence.isMounted;
+  const hasRenderedToc = tocPresence.isMounted;
+  const isPreviewExpanded = isPreviewVisible && previewPresence.state !== "entering";
+  const isTocExpanded = isTocVisible && tocPresence.state !== "entering";
+  const isStackedPanelLayout = containerWidth !== null && containerWidth < STACKED_PANEL_LAYOUT_BREAKPOINT_PX;
+  const isPanelLayoutTransitioning =
+    previewPresence.state === "entering" ||
+    previewPresence.state === "closing" ||
+    tocPresence.state === "entering" ||
+    tocPresence.state === "closing";
+  const isResizingPanels = activeResizer !== null;
 
   useEffect(() => {
     setPanelWidths({
@@ -219,15 +333,15 @@ export function EditorWorkspace({
   const effectivePanelWidths = useMemo(() => {
     return getEffectivePanelWidths({
       containerWidth,
-      hasPreview: isPreviewVisible,
-      hasToc: isTocVisible,
+      hasPreview: hasRenderedPreview,
+      hasToc: hasRenderedToc,
       previewWidth: panelWidths.preview,
       tocWidth: panelWidths.toc,
     });
   }, [
     containerWidth,
-    isPreviewVisible,
-    isTocVisible,
+    hasRenderedPreview,
+    hasRenderedToc,
     panelWidths.preview,
     panelWidths.toc,
   ]);
@@ -328,8 +442,8 @@ export function EditorWorkspace({
         : dragState.initialWidth - deltaX;
       const nextWidth = clampPanelWidth(dragState.kind, requestedWidth, {
         containerWidth,
-        hasPreview: isPreviewVisible,
-        hasToc: isTocVisible,
+        hasPreview: hasRenderedPreview,
+        hasToc: hasRenderedToc,
         siblingWidth: dragState.kind === "toc"
           ? effectivePanelWidths.previewWidth
           : effectivePanelWidths.tocWidth,
@@ -362,8 +476,8 @@ export function EditorWorkspace({
     effectivePanelWidths.previewWidth,
     effectivePanelWidths.tocWidth,
     finalizeResize,
-    isPreviewVisible,
-    isTocVisible,
+    hasRenderedPreview,
+    hasRenderedToc,
   ]);
 
   function startResize(kind: PanelKind, event: ReactPointerEvent<HTMLDivElement>) {
@@ -390,7 +504,7 @@ export function EditorWorkspace({
       ? effectivePanelWidths.tocWidth
       : effectivePanelWidths.previewWidth;
 
-    if (currentWidth === null) {
+    if (currentWidth === null || isStackedPanelLayout) {
       return;
     }
 
@@ -399,8 +513,8 @@ export function EditorWorkspace({
       : effectivePanelWidths.tocWidth;
     const maxWidth = getMaxAllowedPanelWidth({
       containerWidth,
-      hasPreview: isPreviewVisible,
-      hasToc: isTocVisible,
+      hasPreview: hasRenderedPreview,
+      hasToc: hasRenderedToc,
       kind,
       siblingWidth,
     });
@@ -410,8 +524,8 @@ export function EditorWorkspace({
     if (event.key === "Home") {
       nextWidth = clampPanelWidth(kind, 0, {
         containerWidth,
-        hasPreview: isPreviewVisible,
-        hasToc: isTocVisible,
+        hasPreview: hasRenderedPreview,
+        hasToc: hasRenderedToc,
         siblingWidth,
       });
     } else if (event.key === "End") {
@@ -434,8 +548,8 @@ export function EditorWorkspace({
 
     const clampedWidth = clampPanelWidth(kind, nextWidth, {
       containerWidth,
-      hasPreview: isPreviewVisible,
-      hasToc: isTocVisible,
+      hasPreview: hasRenderedPreview,
+      hasToc: hasRenderedToc,
       siblingWidth,
     });
     const nextPanelWidths = kind === "toc"
@@ -452,47 +566,59 @@ export function EditorWorkspace({
       <div className="editor-workspace">
         <main
           className="editor-workspace__main"
-          data-has-preview={isPreviewVisible}
-          data-has-toc={isTocVisible}
+          data-has-preview={hasRenderedPreview}
+          data-has-toc={hasRenderedToc}
+          data-layout-mode={isStackedPanelLayout ? "stacked" : "split"}
+          data-resizing={isResizingPanels}
           ref={mainRef}
         >
-          {isTocVisible ? (
+          {hasRenderedToc ? (
             <>
               <div
                 className="editor-workspace__panel-shell"
-                style={{ width: `${effectivePanelWidths.tocWidth ?? 0}px` }}
+                data-expanded={isTocExpanded}
+                data-panel-state={tocPresence.state}
+                data-panel-kind="toc"
+                style={{
+                  width: isStackedPanelLayout
+                    ? "100%"
+                    : `${isTocVisible ? (effectivePanelWidths.tocWidth ?? 0) : 0}px`,
+                }}
               >
                 <DocumentTocPane
                   documentStore={documentStore}
                   onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
                 />
               </div>
-              <div
-                aria-controls="editor-workspace-editor-panel"
-                aria-label="Resize table of contents panel"
-                aria-orientation="vertical"
-                aria-valuemax={getMaxAllowedPanelWidth({
-                  containerWidth,
-                  hasPreview: isPreviewVisible,
-                  hasToc: isTocVisible,
-                  kind: "toc",
-                  siblingWidth: effectivePanelWidths.previewWidth,
-                })}
-                aria-valuemin={clampPanelWidth("toc", 0, {
-                  containerWidth,
-                  hasPreview: isPreviewVisible,
-                  hasToc: isTocVisible,
-                  siblingWidth: effectivePanelWidths.previewWidth,
-                })}
-                aria-valuenow={effectivePanelWidths.tocWidth ?? undefined}
-                className="editor-workspace__resize-handle"
-                data-active={activeResizer === "toc"}
-                data-panel-resizer="toc"
-                onKeyDown={(event) => resizeWithKeyboard("toc", event)}
-                onPointerDown={(event) => startResize("toc", event)}
-                role="separator"
-                tabIndex={0}
-              />
+              {hasRenderedToc && !isStackedPanelLayout ? (
+                <div
+                  aria-controls="editor-workspace-editor-panel"
+                  aria-label="Resize table of contents panel"
+                  aria-orientation="vertical"
+                  aria-valuemax={getMaxAllowedPanelWidth({
+                    containerWidth,
+                    hasPreview: hasRenderedPreview,
+                    hasToc: hasRenderedToc,
+                    kind: "toc",
+                    siblingWidth: effectivePanelWidths.previewWidth,
+                  })}
+                  aria-valuemin={clampPanelWidth("toc", 0, {
+                    containerWidth,
+                    hasPreview: hasRenderedPreview,
+                    hasToc: hasRenderedToc,
+                    siblingWidth: effectivePanelWidths.previewWidth,
+                  })}
+                  aria-valuenow={effectivePanelWidths.tocWidth ?? undefined}
+                  className="editor-workspace__resize-handle"
+                  data-active={activeResizer === "toc"}
+                  data-expanded={isTocExpanded}
+                  data-panel-resizer="toc"
+                  onKeyDown={(event) => resizeWithKeyboard("toc", event)}
+                  onPointerDown={(event) => startResize("toc", event)}
+                  role="separator"
+                  tabIndex={isTocVisible ? 0 : -1}
+                />
+              ) : null}
             </>
           ) : null}
           <section
@@ -516,38 +642,47 @@ export function EditorWorkspace({
               </div>
             </div>
           </section>
-          {isPreviewVisible ? (
+          {hasRenderedPreview ? (
             <>
-              <div
-                aria-controls="editor-workspace-editor-panel"
-                aria-label="Resize preview panel"
-                aria-orientation="vertical"
-                aria-valuemax={getMaxAllowedPanelWidth({
-                  containerWidth,
-                  hasPreview: isPreviewVisible,
-                  hasToc: isTocVisible,
-                  kind: "preview",
-                  siblingWidth: effectivePanelWidths.tocWidth,
-                })}
-                aria-valuemin={clampPanelWidth("preview", 0, {
-                  containerWidth,
-                  hasPreview: isPreviewVisible,
-                  hasToc: isTocVisible,
-                  siblingWidth: effectivePanelWidths.tocWidth,
-                })}
-                aria-valuenow={effectivePanelWidths.previewWidth ?? undefined}
-                className="editor-workspace__resize-handle"
-                data-active={activeResizer === "preview"}
-                data-panel-resizer="preview"
-                onKeyDown={(event) => resizeWithKeyboard("preview", event)}
-                onPointerDown={(event) => startResize("preview", event)}
-                role="separator"
-                tabIndex={0}
-              />
+              {hasRenderedPreview && !isStackedPanelLayout ? (
+                <div
+                  aria-controls="editor-workspace-editor-panel"
+                  aria-label="Resize preview panel"
+                  aria-orientation="vertical"
+                  aria-valuemax={getMaxAllowedPanelWidth({
+                    containerWidth,
+                    hasPreview: hasRenderedPreview,
+                    hasToc: hasRenderedToc,
+                    kind: "preview",
+                    siblingWidth: effectivePanelWidths.tocWidth,
+                  })}
+                  aria-valuemin={clampPanelWidth("preview", 0, {
+                    containerWidth,
+                    hasPreview: hasRenderedPreview,
+                    hasToc: hasRenderedToc,
+                    siblingWidth: effectivePanelWidths.tocWidth,
+                  })}
+                  aria-valuenow={effectivePanelWidths.previewWidth ?? undefined}
+                  className="editor-workspace__resize-handle"
+                  data-active={activeResizer === "preview"}
+                  data-expanded={isPreviewExpanded}
+                  data-panel-resizer="preview"
+                  onKeyDown={(event) => resizeWithKeyboard("preview", event)}
+                  onPointerDown={(event) => startResize("preview", event)}
+                  role="separator"
+                  tabIndex={isPreviewVisible ? 0 : -1}
+                />
+              ) : null}
               <section
                 className="editor-workspace__panel editor-workspace__panel--preview"
                 data-panel="preview"
-                style={{ width: `${effectivePanelWidths.previewWidth ?? 0}px` }}
+                data-expanded={isPreviewExpanded}
+                data-panel-state={previewPresence.state}
+                style={{
+                  width: isStackedPanelLayout
+                    ? "100%"
+                    : `${isPreviewVisible ? (effectivePanelWidths.previewWidth ?? 0) : 0}px`,
+                }}
               >
                 <div className="editor-workspace__panel-header">
                   <div className="editor-workspace__panel-heading">
@@ -559,6 +694,7 @@ export function EditorWorkspace({
                     documentStore={documentStore}
                     filePath={filePath}
                     isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                    isLayoutTransitioning={isPanelLayoutTransitioning}
                     layoutVersion={layoutVersion}
                   />
                 </div>

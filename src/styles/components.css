@@ -365,6 +365,12 @@
   display: flex;
 }
 
+.editor-workspace__main[data-layout-mode="stacked"] {
+  flex-direction: column;
+  align-items: stretch;
+  overflow: auto;
+}
+
 .editor-workspace__panel,
 .toc-panel {
   min-height: 0;
@@ -380,15 +386,50 @@
 
 .editor-workspace__panel-shell,
 .editor-workspace__panel--preview {
+  --panel-shift: 0.7rem;
+  --panel-width-duration: var(--duration-panel-width-enter);
+  --panel-width-ease: var(--ease-panel-width-enter);
+  --panel-content-duration: var(--duration-panel-content-enter);
+  --panel-content-ease: var(--ease-panel-content-enter);
   min-width: 0;
   min-height: 0;
   flex: 0 0 auto;
   height: 100%;
   overflow: hidden;
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    width var(--panel-width-duration) var(--panel-width-ease),
+    opacity var(--panel-content-duration) var(--panel-content-ease),
+    transform var(--panel-content-duration) var(--panel-content-ease);
+  will-change: opacity, transform;
 }
 
 .editor-workspace__panel-shell {
   display: flex;
+}
+
+.editor-workspace__panel-shell[data-panel-state="entering"],
+.editor-workspace__panel-shell[data-panel-state="closing"] {
+  opacity: 0;
+  transform: translateX(calc(var(--panel-shift) * -1));
+  pointer-events: none;
+}
+
+.editor-workspace__panel--preview[data-panel-state="entering"],
+.editor-workspace__panel--preview[data-panel-state="closing"] {
+  opacity: 0;
+  transform: translateX(var(--panel-shift));
+  pointer-events: none;
+}
+
+.editor-workspace__panel-shell[data-panel-state="closing"],
+.editor-workspace__panel--preview[data-panel-state="closing"] {
+  --panel-shift: 0.5rem;
+  --panel-width-duration: var(--duration-panel-width-exit);
+  --panel-width-ease: var(--ease-panel-width-exit);
+  --panel-content-duration: var(--duration-panel-content-exit);
+  --panel-content-ease: var(--ease-panel-content-exit);
 }
 
 .editor-workspace__panel-shell > .toc-panel {
@@ -403,7 +444,49 @@
   flex: 1 1 auto;
 }
 
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel-shell,
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel,
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel--preview {
+  width: 100%;
+  height: auto;
+}
+
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel-shell,
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel--preview {
+  flex: 0 0 auto;
+}
+
+.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel[data-panel="editor"] {
+  flex: 1 1 26rem;
+}
+
+.editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__panel-body--editor,
+.editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__editor-surface {
+  min-height: 24rem;
+}
+
+.editor-workspace__main[data-layout-mode="stacked"] .toc-panel__nav,
+.editor-workspace__main[data-layout-mode="stacked"] .markdown-preview {
+  max-height: min(32rem, 42vh);
+}
+
+.editor-workspace__main[data-resizing="true"] .editor-workspace__panel-shell,
+.editor-workspace__main[data-resizing="true"] .editor-workspace__panel--preview,
+.editor-workspace__main[data-resizing="true"] .editor-workspace__resize-handle {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-workspace__panel-shell,
+  .editor-workspace__panel--preview {
+    transition: none;
+    will-change: auto;
+  }
+}
+
 .editor-workspace__resize-handle {
+  --panel-handle-duration: var(--duration-panel-handle-enter);
+  --panel-handle-ease: var(--ease-panel-handle-enter);
   width: 0.75rem;
   min-width: 0.75rem;
   min-height: 0;
@@ -414,6 +497,21 @@
   touch-action: none;
   color: inherit;
   outline: none;
+  transition:
+    width var(--panel-handle-duration) var(--panel-handle-ease),
+    min-width var(--panel-handle-duration) var(--panel-handle-ease),
+    opacity var(--panel-handle-duration) var(--panel-handle-ease),
+    transform var(--panel-handle-duration) var(--panel-handle-ease);
+}
+
+.editor-workspace__resize-handle[data-expanded="false"] {
+  --panel-handle-duration: var(--duration-panel-handle-exit);
+  --panel-handle-ease: var(--ease-panel-handle-exit);
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  transform: scaleX(0.8);
+  pointer-events: none;
 }
 
 .editor-workspace__resize-handle::before {
@@ -937,6 +1035,11 @@
   .editor-workspace__preview-empty-state {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__panel-body--editor,
+  .editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__editor-surface {
+    min-height: 20rem;
   }
 
   .ui-toast {

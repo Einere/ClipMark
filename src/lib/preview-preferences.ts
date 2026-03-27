@@ -21,12 +21,29 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   themeMode: "system",
 };
 
+function normalizePanelWidth(width: number | null) {
+  if (width === null) {
+    return null;
+  }
+
+  return Number.isFinite(width) ? Math.round(width) : null;
+}
+
+function normalizeAppPreferences(preferences: AppPreferences): AppPreferences {
+  return {
+    ...preferences,
+    previewPanelWidth: normalizePanelWidth(preferences.previewPanelWidth),
+    tocPanelWidth: normalizePanelWidth(preferences.tocPanelWidth),
+  };
+}
+
 export async function loadAppPreferences(): Promise<AppPreferences> {
   if (!isTauriRuntime()) {
     return DEFAULT_APP_PREFERENCES;
   }
 
-  return invoke<AppPreferences>("load_app_preferences");
+  const preferences = await invoke<AppPreferences>("load_app_preferences");
+  return normalizeAppPreferences(preferences);
 }
 
 export async function saveAppPreferences(
@@ -36,5 +53,7 @@ export async function saveAppPreferences(
     return;
   }
 
-  await invoke("save_app_preferences", { preferences });
+  await invoke("save_app_preferences", {
+    preferences: normalizeAppPreferences(preferences),
+  });
 }

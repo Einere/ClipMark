@@ -12,6 +12,7 @@ type MarkdownPreviewProps = {
   filePath: string | null;
   isAutoScrollEnabled: boolean;
   isExternalMediaAutoLoadEnabled: boolean;
+  isLayoutTransitioning?: boolean;
   layoutVersion?: number;
 };
 
@@ -39,6 +40,7 @@ export function MarkdownPreview({
   filePath,
   isAutoScrollEnabled,
   isExternalMediaAutoLoadEnabled,
+  isLayoutTransitioning = false,
   layoutVersion = 0,
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function MarkdownPreview({
     });
   }, [filePath, isExternalMediaAutoLoadEnabled, markdown]);
   const syncPreviewScroll = useEffectEvent(() => {
-    if (!isAutoScrollEnabled || activeLine === null) {
+    if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
       return;
     }
 
@@ -121,15 +123,15 @@ export function MarkdownPreview({
 
     lastSyncedLineRef.current = null;
     syncPreviewScroll();
-  }, [previewHtml, syncPreviewScroll]);
+  }, [isLayoutTransitioning, previewHtml, syncPreviewScroll]);
 
   useEffect(() => {
     syncPreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, syncPreviewScroll]);
+  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, syncPreviewScroll]);
 
   useEffect(() => {
     const container = rootRef.current;
-    if (!container || typeof ResizeObserver === "undefined") {
+    if (!container || typeof ResizeObserver === "undefined" || isLayoutTransitioning) {
       return;
     }
 
@@ -142,12 +144,12 @@ export function MarkdownPreview({
     return () => {
       observer.disconnect();
     };
-  }, [syncPreviewScroll]);
+  }, [isLayoutTransitioning, syncPreviewScroll]);
 
   useEffect(() => {
     lastSyncedLineRef.current = null;
     syncPreviewScroll();
-  }, [layoutVersion, syncPreviewScroll]);
+  }, [isLayoutTransitioning, layoutVersion, syncPreviewScroll]);
 
   return (
     <div
