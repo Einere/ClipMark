@@ -41,6 +41,7 @@ describe("Toast", () => {
 
     const toast = renderer.container.querySelector("[role='status']");
     expect(toast?.getAttribute("data-variant")).toBe("info");
+    expect(toast?.getAttribute("data-phase")).toBe("enter");
     expect(toast?.getAttribute("aria-live")).toBe("polite");
     expect(toast?.textContent).toContain("Saved.");
     expect(toast?.textContent).toContain("Note");
@@ -74,5 +75,16 @@ describe("Toast", () => {
     expect(toast?.getAttribute("data-variant")).toBe("warning");
     expect(toast?.textContent).toContain("Review recommended");
     expect(toast?.textContent).toContain("Check the imported markdown before saving.");
+  });
+
+  it("renders the exit phase when closing", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+
+    renderer.render(<Toast message="Saved." phase="exit" variant="success" />);
+
+    const toast = renderer.container.querySelector("[role='status']");
+    expect(toast?.getAttribute("data-phase")).toBe("exit");
+    expect(toast?.getAttribute("data-variant")).toBe("success");
   });
 });
