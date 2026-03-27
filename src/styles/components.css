@@ -343,56 +343,6 @@
   gap: var(--space-3);
 }
 
-.welcome-screen__toast-demo {
-  display: grid;
-  gap: var(--space-4);
-  max-width: 34rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid color-mix(in oklch, var(--color-accent-border) 32%, var(--color-border-subtle));
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklch, var(--slate-0) 72%, transparent),
-      transparent
-    ),
-    color-mix(in oklch, var(--color-bg-panel) 88%, var(--blue-100) 12%);
-  box-shadow: var(--shadow-soft);
-}
-
-.welcome-screen__toast-demo-copy {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.welcome-screen__toast-demo-kicker {
-  margin: 0;
-  color: var(--color-accent-text);
-  font-size: var(--font-size--1);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.welcome-screen__toast-demo-title {
-  margin: 0;
-  font-size: var(--font-size-2);
-  line-height: var(--line-height-tight);
-  letter-spacing: -0.02em;
-}
-
-.welcome-screen__toast-demo-description {
-  margin: 0;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
-.welcome-screen__toast-demo-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 .welcome-screen__recent-card {
   display: grid;
   gap: var(--space-4);
@@ -1117,7 +1067,6 @@
   }
 
   .welcome-screen__actions,
-  .welcome-screen__toast-demo-actions,
   .dialog-actions,
   .welcome-screen__footer,
   .editor-workspace__footer {
