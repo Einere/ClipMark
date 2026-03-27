@@ -61,6 +61,32 @@ function getToastDuration(variant: ToastVariant) {
   }
 }
 
+function getToastDemoPayload(variant: ToastVariant) {
+  switch (variant) {
+    case "success":
+      return {
+        message: "Saved a clean Markdown draft to your local workspace.",
+        title: "Export complete",
+      };
+    case "warning":
+      return {
+        message: "Review pasted formatting before publishing this note.",
+        title: "Needs a quick check",
+      };
+    case "error":
+      return {
+        message: "ClipMark could not write the file. Try another location or filename.",
+        title: "Save failed",
+      };
+    case "info":
+    default:
+      return {
+        message: "You can reopen recent Markdown files directly from this welcome screen.",
+        title: "Helpful tip",
+      };
+  }
+}
+
 export function AppShellFallback() {
   return (
     <div
@@ -541,6 +567,10 @@ export default function App({ initialPreferences }: AppProps) {
           onNew={() => requestAction({ type: "new" })}
           onOpen={() => requestAction({ type: "open" })}
           onOpenRecent={(path) => requestAction({ path, type: "openRecent" })}
+          onToastDemo={(variant) => {
+            const payload = getToastDemoPayload(variant);
+            showToast(payload.message, variant, payload.title);
+          }}
           recentFiles={session.recentFiles}
         />
       ) : (

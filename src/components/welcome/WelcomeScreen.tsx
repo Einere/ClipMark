@@ -1,3 +1,4 @@
+import type { ToastVariant } from "../ui/Toast";
 import packageJson from "../../../package.json";
 import type { RecentFile } from "../../lib/recent-files";
 import { WelcomeRecentFileButton } from "./WelcomeRecentFileButton";
@@ -7,6 +8,7 @@ type WelcomeScreenProps = {
   onNew: () => void;
   onOpen: () => void;
   onOpenRecent: (path: string) => void;
+  onToastDemo: (variant: ToastVariant) => void;
   recentFiles: RecentFile[];
 };
 
@@ -14,6 +16,7 @@ export function WelcomeScreen({
   onNew,
   onOpen,
   onOpenRecent,
+  onToastDemo,
   recentFiles,
 }: WelcomeScreenProps) {
   const appVersionLabel = `v${packageJson.version}`;
@@ -43,6 +46,33 @@ export function WelcomeScreen({
               Open Existing File
             </Button>
           </nav>
+
+          <section aria-labelledby="welcome-toast-demo-title" className="welcome-screen__toast-demo">
+            <div className="welcome-screen__toast-demo-copy">
+              <p className="welcome-screen__toast-demo-kicker">Temporary QA controls</p>
+              <h2 className="welcome-screen__toast-demo-title" id="welcome-toast-demo-title">
+                Preview toast variants
+              </h2>
+              <p className="welcome-screen__toast-demo-description">
+                Use these temporary buttons to inspect toast rendering in light and dark
+                mode without opening a document.
+              </p>
+            </div>
+            <div className="welcome-screen__toast-demo-actions">
+              <Button variant="tertiary" onClick={() => onToastDemo("info")}>
+                Info Toast
+              </Button>
+              <Button variant="tertiary" onClick={() => onToastDemo("success")}>
+                Success Toast
+              </Button>
+              <Button variant="tertiary" onClick={() => onToastDemo("warning")}>
+                Warning Toast
+              </Button>
+              <Button variant="tertiary" onClick={() => onToastDemo("error")}>
+                Error Toast
+              </Button>
+            </div>
+          </section>
         </section>
 
         <section
