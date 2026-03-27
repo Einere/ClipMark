@@ -1,5 +1,5 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(512 512) scale(1.3) translate(-512 -512) translate(0 34)">
+  <g transform="translate(512 512) scale(1.34) translate(-512 -512) translate(0 40)">
     <g transform="translate(512 512) rotate(-14) translate(-512 -512)">
     <path
       d="M300 202C300 173.281 323.281 150 352  150H684C712.719 150 736 173.281 736 202V712L646 802H352C323.281 802 300 778.719 300 750V202Z"
