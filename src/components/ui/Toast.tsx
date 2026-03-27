@@ -1,7 +1,9 @@
 export type ToastVariant = "error" | "info" | "success" | "warning";
+export type ToastPhase = "enter" | "exit";
 
 type ToastProps = {
   message: string;
+  phase?: ToastPhase;
   title?: string;
   variant?: ToastVariant;
 };
@@ -40,6 +42,7 @@ const TOAST_META: Record<ToastVariant, {
 
 export function Toast({
   message,
+  phase = "enter",
   title,
   variant = "info",
 }: ToastProps) {
@@ -50,6 +53,7 @@ export function Toast({
       aria-atomic="true"
       aria-live={meta.live}
       className="ui-toast"
+      data-phase={phase}
       data-variant={variant}
       role={meta.role}
     >
