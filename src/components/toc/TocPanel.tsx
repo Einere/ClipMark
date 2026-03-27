@@ -35,9 +35,10 @@ export function TocPanel({
                   paddingLeft: `calc(0.7rem + ${(heading.depth - 1) * 0.8}rem)`,
                 } as CSSProperties
               }
+              title={heading.text}
               type="button"
             >
-              {heading.text}
+              <span className="toc-panel__item-label">{heading.text}</span>
             </button>
           ))
         )}
