@@ -12,6 +12,8 @@ type MarkdownPreviewProps = {
   filePath: string | null;
   isAutoScrollEnabled: boolean;
   isExternalMediaAutoLoadEnabled: boolean;
+  isLayoutTransitioning?: boolean;
+  layoutVersion?: number;
 };
 
 type PreviewAnchorElement = PreviewScrollAnchor & {
@@ -38,6 +40,8 @@ export function MarkdownPreview({
   filePath,
   isAutoScrollEnabled,
   isExternalMediaAutoLoadEnabled,
+  isLayoutTransitioning = false,
+  layoutVersion = 0,
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
@@ -50,7 +54,7 @@ export function MarkdownPreview({
     });
   }, [filePath, isExternalMediaAutoLoadEnabled, markdown]);
   const syncPreviewScroll = useEffectEvent(() => {
-    if (!isAutoScrollEnabled || activeLine === null) {
+    if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
       return;
     }
 
@@ -119,11 +123,33 @@ export function MarkdownPreview({
 
     lastSyncedLineRef.current = null;
     syncPreviewScroll();
-  }, [previewHtml, syncPreviewScroll]);
+  }, [isLayoutTransitioning, previewHtml, syncPreviewScroll]);
 
   useEffect(() => {
     syncPreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, syncPreviewScroll]);
+  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, syncPreviewScroll]);
+
+  useEffect(() => {
+    const container = rootRef.current;
+    if (!container || typeof ResizeObserver === "undefined" || isLayoutTransitioning) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      lastSyncedLineRef.current = null;
+      syncPreviewScroll();
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isLayoutTransitioning, syncPreviewScroll]);
+
+  useEffect(() => {
+    lastSyncedLineRef.current = null;
+    syncPreviewScroll();
+  }, [isLayoutTransitioning, layoutVersion, syncPreviewScroll]);
 
   return (
     <div

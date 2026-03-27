@@ -60,6 +60,71 @@ afterEach(() => {
 });
 
 describe("MarkdownPreview", () => {
+  it("re-syncs preview scrolling when the layout version changes", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+    renderer.render({
+      activeLine: 5,
+      layoutVersion: 0,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+
+    const topByLineStart = new Map([
+      [1, 16],
+      [3, 180],
+      [5, 520],
+      [7, 760],
+    ]);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function getClientHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function getScrollHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 1200 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function getRect(this: HTMLElement) {
+      if (this.classList.contains("markdown-preview")) {
+        return new DOMRect(0, 0, 320, 400);
+      }
+
+      const lineStart = Number(this.dataset.sourceLineStart ?? NaN);
+      const top = topByLineStart.get(lineStart);
+      if (top !== undefined) {
+        return new DOMRect(0, top, 320, 48);
+      }
+
+      return new DOMRect(0, 0, 0, 0);
+    });
+    const scrollTo = vi.fn(function setScrollTop(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+    });
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+      writable: true,
+    });
+    cleanupHandlers.push(() => {
+      if (originalScrollTo) {
+        Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+          configurable: true,
+          value: originalScrollTo,
+          writable: true,
+        });
+        return;
+      }
+
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
+    });
+
+    renderer.render({
+      activeLine: 5,
+      layoutVersion: 1,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+
+    expect(scrollTo).toHaveBeenCalled();
+  });
+
   it("opens resolved links through delegated click handling", () => {
     const renderer = createTestRenderer();
     cleanupHandlers.push(() => renderer.cleanup());

@@ -30,6 +30,8 @@ describe("preview-preferences", () => {
       autoLoadExternalMedia: false,
       isPreviewVisible: false,
       isTocVisible: true,
+      previewPanelWidth: 480,
+      tocPanelWidth: 260,
       themeMode: "dark",
     });
 
@@ -38,7 +40,31 @@ describe("preview-preferences", () => {
         autoLoadExternalMedia: false,
         isPreviewVisible: false,
         isTocVisible: true,
+        previewPanelWidth: 480,
+        tocPanelWidth: 260,
         themeMode: "dark",
+      },
+    });
+  });
+
+  it("rounds panel widths before persisting preferences", async () => {
+    await saveAppPreferences({
+      autoLoadExternalMedia: true,
+      isPreviewVisible: true,
+      isTocVisible: true,
+      previewPanelWidth: 457.99609375,
+      tocPanelWidth: 255.5,
+      themeMode: "system",
+    });
+
+    expect(invoke).toHaveBeenLastCalledWith("save_app_preferences", {
+      preferences: {
+        autoLoadExternalMedia: true,
+        isPreviewVisible: true,
+        isTocVisible: true,
+        previewPanelWidth: 458,
+        tocPanelWidth: 256,
+        themeMode: "system",
       },
     });
   });
