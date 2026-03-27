@@ -37,15 +37,29 @@ import {
   type AppPreferences,
 } from "./lib/preview-preferences";
 import { applyTheme, subscribeToSystemTheme } from "./lib/theme";
+import type { ToastVariant } from "./components/ui/Toast";
 
 const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
+const TOAST_WARNING_DURATION_MS = 4200;
+const TOAST_ERROR_DURATION_MS = 5600;
 const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspace")
   .then((module) => ({ default: module.EditorWorkspace })));
 
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
+
+function getToastDuration(variant: ToastVariant) {
+  switch (variant) {
+    case "error":
+      return TOAST_ERROR_DURATION_MS;
+    case "warning":
+      return TOAST_WARNING_DURATION_MS;
+    default:
+      return TOAST_DURATION_MS;
+  }
+}
 
 export function AppShellFallback() {
   return (
@@ -78,24 +92,26 @@ export default function App({ initialPreferences }: AppProps) {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
     message: string;
-    tone: "error" | "info";
+    title?: string;
+    variant: ToastVariant;
   } | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
   const showToast = useEffectEvent((
     message: string,
-    tone: "error" | "info" = "info",
+    variant: ToastVariant = "info",
+    title?: string,
   ) => {
     if (toastTimeoutRef.current !== null) {
       window.clearTimeout(toastTimeoutRef.current);
     }
 
-    setToast({ message, tone });
+    setToast({ message, title, variant });
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(null);
       toastTimeoutRef.current = null;
-    }, TOAST_DURATION_MS);
+    }, getToastDuration(variant));
   });
 
   const handlePreferencesSaveError = useEffectEvent(() => {
@@ -545,7 +561,7 @@ export default function App({ initialPreferences }: AppProps) {
               setPreviewPanelWidth(previewPanelWidth);
               setTocPanelWidth(tocPanelWidth);
             }}
-            onPathCopy={() => showToast("Copied the file path to the clipboard.")}
+            onPathCopy={() => showToast("Copied the file path to the clipboard.", "success")}
             onPathCopyError={() => showToast("Could not copy the file path.", "error")}
           />
         </Suspense>
@@ -569,7 +585,13 @@ export default function App({ initialPreferences }: AppProps) {
         type="file"
       />
 
-      {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
+      {toast ? (
+        <Toast
+          message={toast.message}
+          title={toast.title}
+          variant={toast.variant}
+        />
+      ) : null}
     </div>
   );
 }
