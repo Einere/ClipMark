@@ -346,33 +346,4 @@ describe("EditorWorkspace", () => {
     ).toBe("true");
   });
 
-  it("switches to stacked layout on narrow widths and hides resize handles", () => {
-    const renderer = createTestRenderer();
-    cleanupHandlers.push(() => renderer.cleanup());
-
-    renderer.render(
-      <EditorWorkspace
-        documentKey={6}
-        documentStatus="saved"
-        documentStore={createDocumentStore("# Heading\n\nBody")}
-        editorRef={createRef<MarkdownEditorHandle>()}
-        filePath="/Users/einere/notes/research.md"
-        initialPreviewPanelWidth={480}
-        initialTocPanelWidth={260}
-        isExternalMediaAutoLoadEnabled={false}
-        isPreviewVisible
-        isTocVisible
-        onEditorFocusChange={() => undefined}
-        onPanelWidthsChange={() => undefined}
-        onPathCopy={() => undefined}
-        onPathCopyError={() => undefined}
-      />,
-    );
-
-    const main = setMainWidth(renderer, 900);
-
-    expect(main?.getAttribute("data-layout-mode")).toBe("stacked");
-    expect(renderer.container.querySelector("[data-panel-resizer='toc']")).toBeNull();
-    expect(renderer.container.querySelector("[data-panel-resizer='preview']")).toBeNull();
-  });
 });

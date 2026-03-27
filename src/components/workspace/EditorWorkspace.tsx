@@ -24,7 +24,6 @@ import {
 
 const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
-const STACKED_PANEL_LAYOUT_BREAKPOINT_PX = 1024;
 
 type EditorWorkspaceProps = {
   documentKey: number;
@@ -311,7 +310,6 @@ export function EditorWorkspace({
   const hasRenderedToc = tocPresence.isMounted;
   const isPreviewExpanded = isPreviewVisible && previewPresence.state !== "entering";
   const isTocExpanded = isTocVisible && tocPresence.state !== "entering";
-  const isStackedPanelLayout = containerWidth !== null && containerWidth < STACKED_PANEL_LAYOUT_BREAKPOINT_PX;
   const isPanelLayoutTransitioning =
     previewPresence.state === "entering" ||
     previewPresence.state === "closing" ||
@@ -504,7 +502,7 @@ export function EditorWorkspace({
       ? effectivePanelWidths.tocWidth
       : effectivePanelWidths.previewWidth;
 
-    if (currentWidth === null || isStackedPanelLayout) {
+    if (currentWidth === null) {
       return;
     }
 
@@ -568,7 +566,6 @@ export function EditorWorkspace({
           className="editor-workspace__main"
           data-has-preview={hasRenderedPreview}
           data-has-toc={hasRenderedToc}
-          data-layout-mode={isStackedPanelLayout ? "stacked" : "split"}
           data-resizing={isResizingPanels}
           ref={mainRef}
         >
@@ -580,9 +577,7 @@ export function EditorWorkspace({
                 data-panel-state={tocPresence.state}
                 data-panel-kind="toc"
                 style={{
-                  width: isStackedPanelLayout
-                    ? "100%"
-                    : `${isTocVisible ? (effectivePanelWidths.tocWidth ?? 0) : 0}px`,
+                  width: `${isTocVisible ? (effectivePanelWidths.tocWidth ?? 0) : 0}px`,
                 }}
               >
                 <DocumentTocPane
@@ -590,7 +585,7 @@ export function EditorWorkspace({
                   onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
                 />
               </div>
-              {hasRenderedToc && !isStackedPanelLayout ? (
+              {hasRenderedToc ? (
                 <div
                   aria-controls="editor-workspace-editor-panel"
                   aria-label="Resize table of contents panel"
@@ -644,7 +639,7 @@ export function EditorWorkspace({
           </section>
           {hasRenderedPreview ? (
             <>
-              {hasRenderedPreview && !isStackedPanelLayout ? (
+              {hasRenderedPreview ? (
                 <div
                   aria-controls="editor-workspace-editor-panel"
                   aria-label="Resize preview panel"
@@ -679,9 +674,7 @@ export function EditorWorkspace({
                 data-expanded={isPreviewExpanded}
                 data-panel-state={previewPresence.state}
                 style={{
-                  width: isStackedPanelLayout
-                    ? "100%"
-                    : `${isPreviewVisible ? (effectivePanelWidths.previewWidth ?? 0) : 0}px`,
+                  width: `${isPreviewVisible ? (effectivePanelWidths.previewWidth ?? 0) : 0}px`,
                 }}
               >
                 <div className="editor-workspace__panel-header">

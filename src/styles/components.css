@@ -365,12 +365,6 @@
   display: flex;
 }
 
-.editor-workspace__main[data-layout-mode="stacked"] {
-  flex-direction: column;
-  align-items: stretch;
-  overflow: auto;
-}
-
 .editor-workspace__panel,
 .toc-panel {
   min-height: 0;
@@ -442,32 +436,6 @@
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-}
-
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel-shell,
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel,
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel--preview {
-  width: 100%;
-  height: auto;
-}
-
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel-shell,
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel--preview {
-  flex: 0 0 auto;
-}
-
-.editor-workspace__main[data-layout-mode="stacked"] > .editor-workspace__panel[data-panel="editor"] {
-  flex: 1 1 26rem;
-}
-
-.editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__panel-body--editor,
-.editor-workspace__main[data-layout-mode="stacked"] .editor-workspace__editor-surface {
-  min-height: 24rem;
-}
-
-.editor-workspace__main[data-layout-mode="stacked"] .toc-panel__nav,
-.editor-workspace__main[data-layout-mode="stacked"] .markdown-preview {
-  max-height: min(32rem, 42vh);
 }
 
 .editor-workspace__main[data-resizing="true"] .editor-workspace__panel-shell,
