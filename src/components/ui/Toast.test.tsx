@@ -40,17 +40,39 @@ describe("Toast", () => {
     renderer.render(<Toast message="Saved." />);
 
     const toast = renderer.container.querySelector("[role='status']");
-    expect(toast?.getAttribute("data-tone")).toBe("info");
+    expect(toast?.getAttribute("data-variant")).toBe("info");
+    expect(toast?.getAttribute("aria-live")).toBe("polite");
     expect(toast?.textContent).toContain("Saved.");
+    expect(toast?.textContent).toContain("Note");
   });
 
-  it("renders the error tone when requested", () => {
+  it("renders the error variant as an assertive alert", () => {
     const renderer = createTestRenderer();
     cleanupHandlers.push(() => renderer.cleanup());
 
-    renderer.render(<Toast message="Failed." tone="error" />);
+    renderer.render(<Toast message="Failed." variant="error" />);
+
+    const toast = renderer.container.querySelector("[role='alert']");
+    expect(toast?.getAttribute("data-variant")).toBe("error");
+    expect(toast?.getAttribute("aria-live")).toBe("assertive");
+    expect(toast?.textContent).toContain("Error");
+  });
+
+  it("renders custom title and warning variant", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+
+    renderer.render(
+      <Toast
+        message="Check the imported markdown before saving."
+        title="Review recommended"
+        variant="warning"
+      />,
+    );
 
     const toast = renderer.container.querySelector("[role='status']");
-    expect(toast?.getAttribute("data-tone")).toBe("error");
+    expect(toast?.getAttribute("data-variant")).toBe("warning");
+    expect(toast?.textContent).toContain("Review recommended");
+    expect(toast?.textContent).toContain("Check the imported markdown before saving.");
   });
 });

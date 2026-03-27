@@ -51,6 +51,12 @@
   /* Semantic tokens: danger */
   --color-danger-surface: var(--red-100);
   --color-danger-text: var(--red-600);
+  --amber-100: oklch(0.965 0.028 92);
+  --amber-500: oklch(0.71 0.12 82);
+  --amber-700: oklch(0.55 0.1 72);
+  --green-100: oklch(0.965 0.022 155);
+  --green-500: oklch(0.69 0.11 155);
+  --green-700: oklch(0.5 0.095 155);
 
   /* State / derived tokens */
   --color-bg-panel: color-mix(in oklch, var(--slate-0) 90%, transparent);
@@ -68,6 +74,22 @@
   --color-accent-surface-active: color-mix(in oklch, var(--color-accent-hover) 86%, black 14%);
 
   --color-danger-border: color-mix(in oklch, var(--red-500) 36%, white);
+  --color-toast-info-surface: color-mix(in oklch, var(--slate-0) 96%, var(--blue-100));
+  --color-toast-info-border: color-mix(in oklch, var(--blue-300) 28%, white);
+  --color-toast-info-icon-bg: color-mix(in oklch, var(--blue-100) 84%, white);
+  --color-toast-info-icon-color: var(--blue-700);
+  --color-toast-success-surface: color-mix(in oklch, var(--green-100) 72%, white);
+  --color-toast-success-border: color-mix(in oklch, var(--green-500) 34%, white);
+  --color-toast-success-icon-bg: color-mix(in oklch, var(--green-100) 88%, white);
+  --color-toast-success-icon-color: var(--green-700);
+  --color-toast-warning-surface: color-mix(in oklch, var(--amber-100) 82%, white);
+  --color-toast-warning-border: color-mix(in oklch, var(--amber-500) 36%, white);
+  --color-toast-warning-icon-bg: color-mix(in oklch, var(--amber-100) 86%, white);
+  --color-toast-warning-icon-color: var(--amber-700);
+  --color-toast-error-surface: var(--color-danger-surface);
+  --color-toast-error-border: var(--color-danger-border);
+  --color-toast-error-icon-bg: color-mix(in oklch, var(--red-100) 76%, white);
+  --color-toast-error-icon-color: var(--red-600);
 
   --color-focus-ring: color-mix(in oklch, var(--blue-500) 55%, white);
   --color-selection-bg: color-mix(in oklch, var(--blue-200) 72%, white);
@@ -130,6 +152,22 @@
   --color-accent-surface-active: color-mix(in oklch, var(--blue-300) 68%, black);
 
   --color-danger-border: color-mix(in oklch, var(--red-500) 52%, black);
+  --color-toast-info-surface: color-mix(in oklch, var(--slate-800) 90%, var(--blue-500) 10%);
+  --color-toast-info-border: color-mix(in oklch, var(--blue-400) 28%, black);
+  --color-toast-info-icon-bg: color-mix(in oklch, var(--blue-500) 18%, black);
+  --color-toast-info-icon-color: var(--blue-200);
+  --color-toast-success-surface: color-mix(in oklch, var(--slate-800) 88%, var(--green-500) 12%);
+  --color-toast-success-border: color-mix(in oklch, var(--green-500) 30%, black);
+  --color-toast-success-icon-bg: color-mix(in oklch, var(--green-500) 18%, black);
+  --color-toast-success-icon-color: color-mix(in oklch, var(--green-100) 88%, white);
+  --color-toast-warning-surface: color-mix(in oklch, var(--slate-800) 88%, var(--amber-500) 12%);
+  --color-toast-warning-border: color-mix(in oklch, var(--amber-500) 30%, black);
+  --color-toast-warning-icon-bg: color-mix(in oklch, var(--amber-500) 18%, black);
+  --color-toast-warning-icon-color: color-mix(in oklch, var(--amber-100) 88%, white);
+  --color-toast-error-surface: var(--color-danger-surface);
+  --color-toast-error-border: var(--color-danger-border);
+  --color-toast-error-icon-bg: color-mix(in oklch, var(--red-500) 22%, black);
+  --color-toast-error-icon-color: color-mix(in oklch, var(--red-100) 90%, white);
 
   --color-focus-ring: color-mix(in oklch, var(--blue-400) 72%, white);
   --color-selection-bg: oklch(0.5 0.04 255 / 0.11);
