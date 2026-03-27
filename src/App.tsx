@@ -43,7 +43,6 @@ const APP_NAME = "ClipMark";
 const TOAST_DURATION_MS = 3200;
 const TOAST_WARNING_DURATION_MS = 4200;
 const TOAST_ERROR_DURATION_MS = 5600;
-const TOAST_EXIT_DURATION_MS = 180;
 const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspace")
   .then((module) => ({ default: module.EditorWorkspace })));
 
@@ -60,6 +59,14 @@ function getToastDuration(variant: ToastVariant) {
     default:
       return TOAST_DURATION_MS;
   }
+}
+
+function prefersReducedToastMotion() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 export function AppShellFallback() {
@@ -100,7 +107,6 @@ export default function App({ initialPreferences }: AppProps) {
   } | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
-  const toastExitTimeoutRef = useRef<number | null>(null);
   const toastIdRef = useRef(0);
 
   const clearToastTimers = useEffectEvent(() => {
@@ -108,14 +114,14 @@ export default function App({ initialPreferences }: AppProps) {
       window.clearTimeout(toastTimeoutRef.current);
       toastTimeoutRef.current = null;
     }
-
-    if (toastExitTimeoutRef.current !== null) {
-      window.clearTimeout(toastExitTimeoutRef.current);
-      toastExitTimeoutRef.current = null;
-    }
   });
 
   const beginToastExit = useEffectEvent(() => {
+    if (prefersReducedToastMotion()) {
+      setToast(null);
+      return;
+    }
+
     setToast((currentToast) => {
       if (!currentToast || currentToast.phase === "exit") {
         return currentToast;
@@ -126,11 +132,6 @@ export default function App({ initialPreferences }: AppProps) {
         phase: "exit",
       };
     });
-
-    toastExitTimeoutRef.current = window.setTimeout(() => {
-      setToast((currentToast) => (currentToast?.phase === "exit" ? null : currentToast));
-      toastExitTimeoutRef.current = null;
-    }, TOAST_EXIT_DURATION_MS);
   });
 
   const showToast = useEffectEvent((
@@ -190,10 +191,6 @@ export default function App({ initialPreferences }: AppProps) {
     return () => {
       if (toastTimeoutRef.current !== null) {
         window.clearTimeout(toastTimeoutRef.current);
-      }
-
-      if (toastExitTimeoutRef.current !== null) {
-        window.clearTimeout(toastExitTimeoutRef.current);
       }
     };
   }, []);
@@ -633,6 +630,13 @@ export default function App({ initialPreferences }: AppProps) {
         <Toast
           key={toast.id}
           message={toast.message}
+          onExitComplete={() => {
+            setToast((currentToast) => (
+              currentToast?.id === toast.id && currentToast.phase === "exit"
+                ? null
+                : currentToast
+            ));
+          }}
           phase={toast.phase}
           title={toast.title}
           variant={toast.variant}

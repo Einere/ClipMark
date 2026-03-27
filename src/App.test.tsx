@@ -140,8 +140,15 @@ describe("App toast lifecycle", () => {
     toast = renderer.container.querySelector("[role='status']");
     expect(toast?.getAttribute("data-phase")).toBe("exit");
 
+    toast = renderer.container.querySelector("[role='status']");
+    expect(toast?.getAttribute("data-phase")).toBe("exit");
+
     act(() => {
-      vi.advanceTimersByTime(180);
+      const animationEndEvent = new Event("animationend", { bubbles: true });
+      Object.defineProperty(animationEndEvent, "animationName", {
+        value: "ui-toast-exit",
+      });
+      toast?.dispatchEvent(animationEndEvent);
     });
 
     toast = renderer.container.querySelector("[role='status']");
