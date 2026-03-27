@@ -83,10 +83,13 @@ describe("EditorWorkspace", () => {
         documentStore={createDocumentStore("# Heading\n\nBody")}
         editorRef={createRef<MarkdownEditorHandle>()}
         filePath="/Users/einere/notes/research.md"
+        initialPreviewPanelWidth={480}
+        initialTocPanelWidth={260}
         isExternalMediaAutoLoadEnabled={false}
         isPreviewVisible
         isTocVisible
         onEditorFocusChange={() => undefined}
+        onPanelWidthsChange={() => undefined}
         onPathCopy={() => undefined}
         onPathCopyError={() => undefined}
       />,
@@ -117,10 +120,13 @@ describe("EditorWorkspace", () => {
         documentStore={createDocumentStore("")}
         editorRef={createRef<MarkdownEditorHandle>()}
         filePath={null}
+        initialPreviewPanelWidth={null}
+        initialTocPanelWidth={null}
         isExternalMediaAutoLoadEnabled={false}
         isPreviewVisible
         isTocVisible={false}
         onEditorFocusChange={() => undefined}
+        onPanelWidthsChange={() => undefined}
         onPathCopy={() => undefined}
         onPathCopyError={() => undefined}
       />,
@@ -131,5 +137,62 @@ describe("EditorWorkspace", () => {
     expect(renderer.container.textContent).toContain(
       "Start writing in the editor to build a clean reading view here.",
     );
+  });
+
+  it("renders resize handles and commits keyboard resizing", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+    const onPanelWidthsChange = vi.fn();
+
+    renderer.render(
+      <EditorWorkspace
+        documentKey={3}
+        documentStatus="saved"
+        documentStore={createDocumentStore("# Heading\n\nBody")}
+        editorRef={createRef<MarkdownEditorHandle>()}
+        filePath="/Users/einere/notes/research.md"
+        initialPreviewPanelWidth={480}
+        initialTocPanelWidth={260}
+        isExternalMediaAutoLoadEnabled={false}
+        isPreviewVisible
+        isTocVisible
+        onEditorFocusChange={() => undefined}
+        onPanelWidthsChange={onPanelWidthsChange}
+        onPathCopy={() => undefined}
+        onPathCopyError={() => undefined}
+      />,
+    );
+
+    const main = renderer.container.querySelector(".editor-workspace__main") as HTMLElement | null;
+    const tocHandle = renderer.container.querySelector(
+      "[data-panel-resizer='toc']",
+    ) as HTMLElement | null;
+    const previewHandle = renderer.container.querySelector(
+      "[data-panel-resizer='preview']",
+    ) as HTMLElement | null;
+
+    Object.defineProperty(main, "clientWidth", {
+      configurable: true,
+      value: 1400,
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(tocHandle).toBeTruthy();
+    expect(previewHandle).toBeTruthy();
+
+    act(() => {
+      tocHandle?.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        key: "ArrowRight",
+      }));
+    });
+
+    expect(onPanelWidthsChange).toHaveBeenCalledWith({
+      previewPanelWidth: 480,
+      tocPanelWidth: 276,
+    });
   });
 });

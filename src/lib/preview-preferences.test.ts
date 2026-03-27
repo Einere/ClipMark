@@ -30,6 +30,8 @@ describe("preview-preferences", () => {
       autoLoadExternalMedia: false,
       isPreviewVisible: false,
       isTocVisible: true,
+      previewPanelWidth: 480,
+      tocPanelWidth: 260,
       themeMode: "dark",
     });
 
@@ -38,6 +40,8 @@ describe("preview-preferences", () => {
         autoLoadExternalMedia: false,
         isPreviewVisible: false,
         isTocVisible: true,
+        previewPanelWidth: 480,
+        tocPanelWidth: 260,
         themeMode: "dark",
       },
     });

@@ -349,24 +349,20 @@
 
 .editor-workspace__main {
   min-height: 0;
-  display: grid;
-  grid-template-columns:
-    minmax(15rem, var(--sidebar-toc))
-    minmax(0, 1fr)
-    minmax(22rem, 0.82fr);
-  gap: var(--workspace-gap);
+  display: flex;
+  align-items: stretch;
 }
 
 .editor-workspace__main[data-has-toc="false"] {
-  grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.82fr);
+  display: flex;
 }
 
 .editor-workspace__main[data-has-preview="false"] {
-  grid-template-columns: minmax(15rem, var(--sidebar-toc)) minmax(0, 1fr);
+  display: flex;
 }
 
 .editor-workspace__main[data-has-toc="false"][data-has-preview="false"] {
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
 }
 
 .editor-workspace__panel,
@@ -382,15 +378,63 @@
   position: relative;
 }
 
-.editor-workspace__main > :not(:first-child)::before {
+.editor-workspace__panel-shell,
+.editor-workspace__panel--preview {
+  min-width: 0;
+  min-height: 0;
+  flex: 0 0 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.editor-workspace__panel-shell {
+  display: flex;
+}
+
+.editor-workspace__panel-shell > .toc-panel {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.editor-workspace__panel[data-panel="editor"] {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.editor-workspace__resize-handle {
+  width: 0.75rem;
+  min-width: 0.75rem;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+  color: inherit;
+  outline: none;
+}
+
+.editor-workspace__resize-handle::before {
   content: "";
   position: absolute;
   top: 0.95rem;
   bottom: 0.95rem;
-  left: calc(var(--workspace-gap) / -2);
+  left: 50%;
   width: 1px;
   background: var(--color-border-subtle);
-  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.editor-workspace__resize-handle:hover::before,
+.editor-workspace__resize-handle:focus-visible::before,
+.editor-workspace__resize-handle[data-active="true"]::before {
+  background: var(--color-accent-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-text) 16%, transparent);
 }
 
 .editor-workspace__panel[data-panel="editor"]:focus-within {

@@ -61,6 +61,10 @@ struct AppPreferences {
     is_preview_visible: bool,
     #[serde(default = "default_true")]
     is_toc_visible: bool,
+    #[serde(default)]
+    preview_panel_width: Option<u16>,
+    #[serde(default)]
+    toc_panel_width: Option<u16>,
     #[serde(default = "default_theme_mode")]
     theme_mode: ThemeMode,
 }
@@ -71,6 +75,8 @@ impl Default for AppPreferences {
             auto_load_external_media: true,
             is_preview_visible: true,
             is_toc_visible: true,
+            preview_panel_width: None,
+            toc_panel_width: None,
             theme_mode: ThemeMode::System,
         }
     }
@@ -506,6 +512,8 @@ mod tests {
             auto_load_external_media: false,
             is_preview_visible: false,
             is_toc_visible: true,
+            preview_panel_width: Some(480),
+            toc_panel_width: Some(260),
             theme_mode: ThemeMode::Dark,
         };
 
@@ -536,6 +544,8 @@ mod tests {
                 auto_load_external_media: false,
                 is_preview_visible: true,
                 is_toc_visible: false,
+                preview_panel_width: None,
+                toc_panel_width: None,
                 theme_mode: ThemeMode::System,
             }
         );

@@ -71,6 +71,8 @@ export default function App({ initialPreferences }: AppProps) {
   );
   const [isPreviewVisible, setIsPreviewVisible] = useState(preferences.isPreviewVisible);
   const [isTocVisible, setIsTocVisible] = useState(preferences.isTocVisible);
+  const [previewPanelWidth, setPreviewPanelWidth] = useState(preferences.previewPanelWidth);
+  const [tocPanelWidth, setTocPanelWidth] = useState(preferences.tocPanelWidth);
   const [themeMode, setThemeMode] = useState(preferences.themeMode);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -137,12 +139,16 @@ export default function App({ initialPreferences }: AppProps) {
       autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
       isPreviewVisible,
       isTocVisible,
+      previewPanelWidth,
+      tocPanelWidth,
       themeMode,
     });
   }, [
     isExternalMediaAutoLoadEnabled,
     isPreviewVisible,
     isTocVisible,
+    previewPanelWidth,
+    tocPanelWidth,
     themeMode,
   ]);
 
@@ -522,10 +528,16 @@ export default function App({ initialPreferences }: AppProps) {
             documentStatus={visibleDocumentStatus}
             editorRef={editorRef}
             filePath={session.filePath}
+            initialPreviewPanelWidth={previewPanelWidth}
+            initialTocPanelWidth={tocPanelWidth}
             isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
             isPreviewVisible={isPreviewVisible}
             isTocVisible={isTocVisible}
             onEditorFocusChange={handleEditorFocusChange}
+            onPanelWidthsChange={({ previewPanelWidth, tocPanelWidth }) => {
+              setPreviewPanelWidth(previewPanelWidth);
+              setTocPanelWidth(tocPanelWidth);
+            }}
             onPathCopy={() => showToast("Copied the file path to the clipboard.")}
             onPathCopyError={() => showToast("Could not copy the file path.", "error")}
           />

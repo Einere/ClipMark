@@ -12,6 +12,7 @@ type MarkdownPreviewProps = {
   filePath: string | null;
   isAutoScrollEnabled: boolean;
   isExternalMediaAutoLoadEnabled: boolean;
+  layoutVersion?: number;
 };
 
 type PreviewAnchorElement = PreviewScrollAnchor & {
@@ -38,6 +39,7 @@ export function MarkdownPreview({
   filePath,
   isAutoScrollEnabled,
   isExternalMediaAutoLoadEnabled,
+  layoutVersion = 0,
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
@@ -124,6 +126,28 @@ export function MarkdownPreview({
   useEffect(() => {
     syncPreviewScroll();
   }, [activeLine, isAutoScrollEnabled, syncPreviewScroll]);
+
+  useEffect(() => {
+    const container = rootRef.current;
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      lastSyncedLineRef.current = null;
+      syncPreviewScroll();
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [syncPreviewScroll]);
+
+  useEffect(() => {
+    lastSyncedLineRef.current = null;
+    syncPreviewScroll();
+  }, [layoutVersion, syncPreviewScroll]);
 
   return (
     <div

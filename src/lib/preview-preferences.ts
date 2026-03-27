@@ -7,6 +7,8 @@ export type AppPreferences = {
   autoLoadExternalMedia: boolean;
   isPreviewVisible: boolean;
   isTocVisible: boolean;
+  previewPanelWidth: number | null;
+  tocPanelWidth: number | null;
   themeMode: ThemeMode;
 };
 
@@ -14,6 +16,8 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autoLoadExternalMedia: true,
   isPreviewVisible: true,
   isTocVisible: true,
+  previewPanelWidth: null,
+  tocPanelWidth: null,
   themeMode: "system",
 };
 
