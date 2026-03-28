@@ -5,3 +5,4 @@ coverage
 .idea
 *.log
 src-tauri/target
+.worktrees
