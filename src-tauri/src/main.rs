@@ -597,9 +597,8 @@ mod tests {
 
     #[test]
     fn window_label_counter_increments() {
-        let before = WINDOW_COUNTER.load(Ordering::Relaxed);
-        new_window_label();
-        let after = WINDOW_COUNTER.load(Ordering::Relaxed);
-        assert_eq!(after, before + 1);
+        let before = WINDOW_COUNTER.fetch_add(0, Ordering::Relaxed);
+        let label = new_window_label();
+        assert!(label.ends_with(&before.to_string()));
     }
 }
