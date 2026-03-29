@@ -73,6 +73,14 @@ export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
   };
 }
 
+export async function pickMarkdownFilePath(): Promise<string | null> {
+  try {
+    return await invoke<string | null>("pick_markdown_file");
+  } catch {
+    return null;
+  }
+}
+
 export async function openMarkdownDocumentWithoutShowingWindow(): Promise<OpenedDocument | null> {
   if (!isTauriRuntime()) {
     return null;
