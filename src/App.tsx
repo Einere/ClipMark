@@ -30,6 +30,7 @@ import {
   getDocumentStatus,
   getVisibleDocumentStatus,
 } from "./lib/window-state";
+import type { OpenedDocument } from "./lib/file-system";
 import {
   DEFAULT_APP_PREFERENCES,
   saveAppPreferences,
@@ -47,6 +48,7 @@ const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspac
   .then((module) => ({ default: module.EditorWorkspace })));
 
 type AppProps = {
+  initialDocument?: OpenedDocument | null;
   initialPreferences?: AppPreferences;
 };
 
@@ -86,7 +88,7 @@ export function AppShellFallback() {
 }
 
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
-export default function App({ initialPreferences }: AppProps) {
+export default function App({ initialDocument, initialPreferences }: AppProps) {
   const preferences = initialPreferences ?? DEFAULT_APP_PREFERENCES;
   const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
     preferences.autoLoadExternalMedia,
@@ -160,6 +162,7 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   const session = useDocumentSession({
+    initialDocument: initialDocument ?? null,
     onError: (message) => showToast(message, "error"),
     onInfo: (message) => showToast(message, "info"),
   });

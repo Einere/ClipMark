@@ -22,11 +22,13 @@ import {
 const UNTITLED_FILENAME = "Untitled.md";
 
 type UseDocumentSessionOptions = {
+  initialDocument?: OpenedDocument | null;
   onInfo: (message: string) => void;
   onError: (message: string) => void;
 };
 
 export function useDocumentSession({
+  initialDocument,
   onInfo,
   onError,
 }: UseDocumentSessionOptions) {
@@ -42,6 +44,13 @@ export function useDocumentSession({
   function bumpDocumentKey() {
     setEditorDocumentKey((value) => value + 1);
   }
+
+  useEffect(() => {
+    if (initialDocument) {
+      applyOpenedDocument(initialDocument);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 마운트 시 한 번만 실행, applyOpenedDocument는 useEffectEvent라 안전
 
   const applyOpenedDocument = useEffectEvent((document: OpenedDocument | {
     filename: string;
