@@ -30,7 +30,8 @@ import {
   getDocumentStatus,
   getVisibleDocumentStatus,
 } from "./lib/window-state";
-import type { OpenedDocument } from "./lib/file-system";
+import { listen } from "@tauri-apps/api/event";
+import { isTauriRuntime, type OpenedDocument } from "./lib/file-system";
 import {
   DEFAULT_APP_PREFERENCES,
   saveAppPreferences,
@@ -230,6 +231,36 @@ export default function App({ initialDocument, initialPreferences }: AppProps) {
       applyTheme("system");
     });
   }, [themeMode]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+
+    void listen<AppPreferences>("preferences-changed", (event) => {
+      const prefs = event.payload;
+      setIsExternalMediaAutoLoadEnabled(prefs.autoLoadExternalMedia);
+      setIsPreviewVisible(prefs.isPreviewVisible);
+      setIsTocVisible(prefs.isTocVisible);
+      setPreviewPanelWidth(prefs.previewPanelWidth);
+      setTocPanelWidth(prefs.tocPanelWidth);
+      setThemeMode(prefs.themeMode);
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+        return;
+      }
+      cleanup = unlisten;
+    });
+
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
+  }, []);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
