@@ -16,3 +16,19 @@ export async function showNativeWindow() {
 
   await invoke("show_window");
 }
+
+export async function openNewWindow(filePath?: string): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+
+  await invoke("open_new_window", { filePath });
+}
+
+export async function closeCurrentWindow(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+
+  await invoke("close_window");
+}
