@@ -29,8 +29,6 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
-const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
-
 fn default_true() -> bool {
     true
 }
@@ -138,6 +136,7 @@ fn load_app_preferences(preferences_state: State<'_, PreferencesState>) -> Resul
 fn save_app_preferences(
     preferences: AppPreferences,
     preferences_state: State<'_, PreferencesState>,
+    app_handle: AppHandle,
 ) -> Result<(), String> {
     save_preferences_to_disk(&preferences_state.file_path, &preferences)?;
 
@@ -145,7 +144,9 @@ fn save_app_preferences(
         .preferences
         .lock()
         .map_err(|error| error.to_string())?;
-    *current_preferences = preferences;
+    *current_preferences = preferences.clone();
+
+    let _ = app_handle.emit("preferences-changed", &preferences);
 
     Ok(())
 }
@@ -484,15 +485,10 @@ fn main() {
                     let Ok(path) = url.to_file_path() else {
                         continue;
                     };
-
-                    let Some(path) = path.to_str() else {
+                    let Some(path_str) = path.to_str() else {
                         continue;
                     };
-
-                    let _ = app_handle.emit(
-                        OPEN_DOCUMENT_EVENT,
-                        serde_json::json!({ "path": path }),
-                    );
+                    let _ = create_new_window(&app_handle, Some(path_str));
                 }
             }
             tauri::RunEvent::Reopen {
@@ -504,10 +500,7 @@ fn main() {
                     return;
                 }
 
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                let _ = create_new_window(&app_handle, None);
             }
             _ => {}
         }
