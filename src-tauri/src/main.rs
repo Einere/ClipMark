@@ -407,8 +407,8 @@ fn pick_markdown_file() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn open_new_window(app_handle: AppHandle, file_path: Option<String>) {
-    create_new_window(&app_handle, file_path.as_deref());
+fn open_new_window(app_handle: AppHandle, file_path: Option<String>) -> Result<(), String> {
+    create_new_window(&app_handle, file_path.as_deref())
 }
 
 #[tauri::command]
@@ -419,10 +419,10 @@ fn close_window(window: tauri::Window) -> Result<(), String> {
 static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(2);
 
 fn new_window_label() -> String {
-    format!("document-{}", WINDOW_COUNTER.fetch_add(1, Ordering::SeqCst))
+    format!("document-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
-fn create_new_window(app_handle: &AppHandle, file_path: Option<&str>) {
+fn create_new_window(app_handle: &AppHandle, file_path: Option<&str>) -> Result<(), String> {
     let label = new_window_label();
     let url_path = match file_path {
         Some(path) => {
@@ -433,11 +433,13 @@ fn create_new_window(app_handle: &AppHandle, file_path: Option<&str>) {
         None => "/".to_string(),
     };
 
-    let _ = WebviewWindowBuilder::new(app_handle, &label, WebviewUrl::App(url_path.into()))
+    WebviewWindowBuilder::new(app_handle, &label, WebviewUrl::App(url_path.into()))
         .title("ClipMark")
         .inner_size(1440.0, 920.0)
         .min_inner_size(1100.0, 720.0)
-        .build();
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 fn main() {
@@ -602,9 +604,9 @@ mod tests {
 
     #[test]
     fn window_label_counter_increments() {
-        let before = WINDOW_COUNTER.load(Ordering::SeqCst);
+        let before = WINDOW_COUNTER.load(Ordering::Relaxed);
         new_window_label();
-        let after = WINDOW_COUNTER.load(Ordering::SeqCst);
+        let after = WINDOW_COUNTER.load(Ordering::Relaxed);
         assert_eq!(after, before + 1);
     }
 }
