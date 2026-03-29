@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
 
@@ -25,7 +26,7 @@ use objc2_foundation::NSString;
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSArray;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
@@ -405,6 +406,40 @@ fn pick_markdown_file() -> Result<Option<String>, String> {
     }
 }
 
+#[tauri::command]
+fn open_new_window(app_handle: AppHandle, file_path: Option<String>) {
+    create_new_window(&app_handle, file_path.as_deref());
+}
+
+#[tauri::command]
+fn close_window(window: tauri::Window) -> Result<(), String> {
+    window.destroy().map_err(|error| error.to_string())
+}
+
+static WINDOW_COUNTER: AtomicU32 = AtomicU32::new(2);
+
+fn new_window_label() -> String {
+    format!("document-{}", WINDOW_COUNTER.fetch_add(1, Ordering::SeqCst))
+}
+
+fn create_new_window(app_handle: &AppHandle, file_path: Option<&str>) {
+    let label = new_window_label();
+    let url_path = match file_path {
+        Some(path) => {
+            let encoded: String =
+                url::form_urlencoded::byte_serialize(path.as_bytes()).collect();
+            format!("/?path={encoded}")
+        }
+        None => "/".to_string(),
+    };
+
+    let _ = WebviewWindowBuilder::new(app_handle, &label, WebviewUrl::App(url_path.into()))
+        .title("ClipMark")
+        .inner_size(1440.0, 920.0)
+        .min_inner_size(1100.0, 720.0)
+        .build();
+}
+
 fn main() {
     let app = tauri::Builder::default()
         .setup(|app| {
@@ -423,9 +458,11 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             append_debug_log,
             clear_debug_log,
+            close_window,
             hide_window,
             load_app_preferences,
             open_external_url,
+            open_new_window,
             pick_markdown_file,
             read_markdown_file,
             save_app_preferences,
@@ -479,8 +516,9 @@ fn main() {
 mod tests {
     use super::{
         load_preferences_from_disk, save_preferences_to_disk, validate_external_url, AppPreferences,
-        ThemeMode,
+        ThemeMode, WINDOW_COUNTER, new_window_label,
     };
+    use std::sync::atomic::Ordering;
     use std::fs;
 
     #[test]
@@ -551,5 +589,22 @@ mod tests {
         );
 
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn window_labels_are_unique() {
+        let label1 = new_window_label();
+        let label2 = new_window_label();
+        assert_ne!(label1, label2);
+        assert!(label1.starts_with("document-"));
+        assert!(label2.starts_with("document-"));
+    }
+
+    #[test]
+    fn window_label_counter_increments() {
+        let before = WINDOW_COUNTER.load(Ordering::SeqCst);
+        new_window_label();
+        let after = WINDOW_COUNTER.load(Ordering::SeqCst);
+        assert_eq!(after, before + 1);
     }
 }
