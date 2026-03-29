@@ -31,7 +31,8 @@ import {
   getVisibleDocumentStatus,
 } from "./lib/window-state";
 import { listen } from "@tauri-apps/api/event";
-import { isTauriRuntime, type OpenedDocument } from "./lib/file-system";
+import { isTauriRuntime, pickMarkdownFilePath, type OpenedDocument } from "./lib/file-system";
+import { openNewWindow, closeCurrentWindow } from "./lib/native-window";
 import {
   DEFAULT_APP_PREFERENCES,
   saveAppPreferences,
@@ -269,8 +270,12 @@ export default function App({ initialDocument, initialPreferences }: AppProps) {
   });
 
   async function closeCurrentWindowSession() {
-    await hideWindowRef.current();
-    resetDocumentAfterHide();
+    if (isTauriRuntime()) {
+      await closeCurrentWindow();
+    } else {
+      await hideWindowRef.current();
+      resetDocumentAfterHide();
+    }
   }
 
   async function performAction(action: PendingAction) {
@@ -280,25 +285,49 @@ export default function App({ initialDocument, initialPreferences }: AppProps) {
     }
 
     if (action.type === "new") {
-      session.createNewDocument();
+      if (!session.isWelcomeVisible) {
+        await openNewWindow();
+      } else {
+        session.createNewDocument();
+      }
       return;
     }
 
     if (action.type === "open") {
-      await session.openWithPicker();
+      if (!session.isWelcomeVisible) {
+        const filePath = await pickMarkdownFilePath();
+        if (filePath) {
+          await openNewWindow(filePath);
+        }
+      } else {
+        await session.openWithPicker();
+      }
       return;
     }
 
-    const document = await session.loadRecentDocument(action.path);
-    if (!document) {
+    if (action.type === "openRecent") {
+      if (!session.isWelcomeVisible) {
+        await openNewWindow(action.path);
+        return;
+      }
+
+      const document = await session.loadRecentDocument(action.path);
+      if (!document) {
+        return;
+      }
+      session.applyOpenedDocument(document);
       return;
     }
-
-    session.applyOpenedDocument(document);
   }
 
   function requestAction(action: PendingAction) {
-    if (isDirty) {
+    // 문서가 열린 상태에서 new/open/openRecent는 새 창에서 열리므로
+    // 현재 창의 더티 상태와 무관하게 즉시 수행한다
+    const opensInNewWindow =
+      !session.isWelcomeVisible &&
+      (action.type === "new" || action.type === "open" || action.type === "openRecent");
+
+    if (!opensInNewWindow && isDirty) {
       setPendingAction(action);
       return;
     }
