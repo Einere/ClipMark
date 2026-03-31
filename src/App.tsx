@@ -17,12 +17,13 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
 import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
+import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
 import { usePendingDocumentAction } from "./hooks/usePendingDocumentAction";
 import { useToastState } from "./hooks/useToastState";
+import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
-import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
 import type { PendingAction } from "./lib/pending-action";
 import { getUnsavedDialogState } from "./lib/unsaved-dialog-state";
 import {
@@ -126,34 +127,6 @@ export default function App({ initialPreferences }: AppProps) {
     resetDocumentAfterHide();
   }
 
-  const handleWindowShortcuts = useEffectEvent((event: KeyboardEvent) => {
-    const hasModifier = event.metaKey || event.ctrlKey;
-    if (!hasModifier) {
-      return;
-    }
-
-    const key = event.key.toLowerCase();
-    if (key === "n") {
-      event.preventDefault();
-      requestAction({ type: "new" });
-      return;
-    }
-
-    if (key === "o") {
-      event.preventDefault();
-      requestAction({ type: "open" });
-      return;
-    }
-
-    if (key === "s") {
-      event.preventDefault();
-      void session.saveDocument({
-        activeFilename,
-        saveAs: event.shiftKey,
-      });
-    }
-  });
-
   const handleMenuNew = useEffectEvent(() => {
     requestVisibleAction({ type: "new" });
   });
@@ -164,10 +137,6 @@ export default function App({ initialPreferences }: AppProps) {
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
     requestVisibleAction({ path, type: "openRecent" });
-  });
-
-  const handleNativeOpenDocument = useEffectEvent((path: string) => {
-    handleMenuOpenRecent(path);
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
@@ -273,34 +242,19 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   queuePendingActionRef.current = queuePendingAction;
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      handleWindowShortcuts(event);
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleWindowShortcuts]);
-
-  useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    let disposed = false;
-
-    void setupNativeOpenDocumentListener(handleNativeOpenDocument).then((dispose) => {
-      if (disposed) {
-        dispose?.();
-        return;
-      }
-
-      cleanup = dispose;
-    });
-
-    return () => {
-      disposed = true;
-      cleanup?.();
-    };
-  }, [handleNativeOpenDocument]);
+  useWindowShortcuts({
+    onNew: () => requestAction({ type: "new" }),
+    onOpen: () => requestAction({ type: "open" }),
+    onSave: (saveAs = false) => {
+      void session.saveDocument({
+        activeFilename,
+        saveAs,
+      });
+    },
+  });
+  useNativeOpenDocumentListener({
+    onOpenDocument: handleMenuOpenRecent,
+  });
 
   const { menuHandlers, menuState } = useAppMenuBindings({
     canCopyFilePath,
