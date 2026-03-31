@@ -10,14 +10,8 @@ import {
   openMarkdownDocumentWithoutShowingWindow,
   saveMarkdownDocument,
 } from "../lib/file-system";
-import {
-  addRecentFile,
-  clearRecentFiles,
-  loadRecentFiles,
-  openRecentFile,
-  removeRecentFile,
-  type RecentFile,
-} from "../lib/recent-files";
+import { openRecentFile } from "../lib/recent-files";
+import { useRecentFilesState } from "./useRecentFilesState";
 
 const UNTITLED_FILENAME = "Untitled.md";
 
@@ -30,7 +24,6 @@ export function useDocumentSession({
   onInfo,
   onError,
 }: UseDocumentSessionOptions) {
-  const [recentFiles, setRecentFiles] = useState<RecentFile[]>(() => loadRecentFiles());
   const [filePath, setFilePath] = useState<string | null>(null);
   const [filename, setFilename] = useState<string | null>(null);
   const [savedRevision, setSavedRevision] = useState(0);
@@ -38,6 +31,12 @@ export function useDocumentSession({
   const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [documentStore] = useState<DocumentStore>(() => createDocumentStore(""));
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    clearRecentFilesList,
+    forgetRecentFile,
+    recentFiles,
+    rememberRecentFile,
+  } = useRecentFilesState();
 
   function bumpDocumentKey() {
     setEditorDocumentKey((value) => value + 1);
@@ -55,9 +54,7 @@ export function useDocumentSession({
     setSavedRevision(documentStore.getRevision());
     bumpDocumentKey();
 
-    if (document.path) {
-      setRecentFiles((files) => addRecentFile(files, document.path));
-    }
+    rememberRecentFile(document.path);
   });
 
   const createNewDocument = useEffectEvent(() => {
@@ -105,7 +102,7 @@ export function useDocumentSession({
 
       return document;
     } catch {
-      setRecentFiles((files) => removeRecentFile(files, path));
+      forgetRecentFile(path);
       onError("This recent file could not be found and was removed from the list.");
       return null;
     }
@@ -141,7 +138,7 @@ export function useDocumentSession({
     setFilePath(saved.path);
     setFilename(saved.filename);
     setSavedRevision(documentStore.getRevision());
-    setRecentFiles((files) => addRecentFile(files, saved.path));
+    rememberRecentFile(saved.path);
   });
 
   const handleOpenFile = useEffectEvent(async (event: ChangeEvent<HTMLInputElement>) => {
@@ -157,10 +154,6 @@ export function useDocumentSession({
       path: null,
     });
     event.target.value = "";
-  });
-
-  const clearRecentFilesList = useEffectEvent(() => {
-    setRecentFiles(clearRecentFiles());
   });
 
   return {
