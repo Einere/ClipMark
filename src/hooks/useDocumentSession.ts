@@ -1,16 +1,10 @@
-import type { ChangeEvent } from "react";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import {
   createDocumentStore,
   type DocumentStore,
 } from "../lib/document-store";
 import type { OpenedDocument } from "../lib/file-system";
-import {
-  openMarkdownDocument,
-  openMarkdownDocumentWithoutShowingWindow,
-  saveMarkdownDocument,
-} from "../lib/file-system";
-import { openRecentFile } from "../lib/recent-files";
+import { useDocumentFileActions } from "./useDocumentFileActions";
 import { useDocumentWorkspaceState } from "./useDocumentWorkspaceState";
 import { useRecentFilesState } from "./useRecentFilesState";
 
@@ -24,7 +18,6 @@ export function useDocumentSession({
   onError,
 }: UseDocumentSessionOptions) {
   const [documentStore] = useState<DocumentStore>(() => createDocumentStore(""));
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     clearRecentFilesList,
     forgetRecentFile,
@@ -50,83 +43,31 @@ export function useDocumentSession({
     workspaceState.closeCurrentDocument();
   });
 
-  const openWithPicker = useEffectEvent(async (fallbackToFileInput = true) => {
-    const document = await openMarkdownDocument();
-    if (!document) {
-      if (fallbackToFileInput) {
-        fileInputRef.current?.click();
-      }
-      return null;
-    }
-
-    applyOpenedDocument(document);
-    return document;
-  });
-
-  const openWithPickerWithoutShowingWindow = useEffectEvent(async () => {
-    return openMarkdownDocumentWithoutShowingWindow();
-  });
-
-  const loadRecentDocument = useEffectEvent(async (path: string) => {
-    try {
-      const document = await openRecentFile(path);
-      if (!document) {
-        onInfo("Recent files are only available in the desktop app.");
-        return null;
-      }
-
-      return document;
-    } catch {
-      forgetRecentFile(path);
-      onError("This recent file could not be found and was removed from the list.");
-      return null;
-    }
-  });
-
-  const saveDocument = useEffectEvent(async ({
-    activeFilename,
-    saveAs = false,
-  }: {
-    activeFilename: string;
-    saveAs?: boolean;
-  }) => {
-    if (workspaceState.isWelcomeVisible) {
-      createNewDocument();
-    }
-
-    const saved = await saveMarkdownDocument({
-      filename: activeFilename,
-      markdown: documentStore.getMarkdown(),
-      path: workspaceState.filePath,
-      saveAs,
-    });
-
-    if (!saved) {
-      return false;
-    }
-
-    applySavedDocument(saved);
-    return true;
-  });
-
   const applySavedDocument = useEffectEvent((saved) => {
     workspaceState.applySavedDocument(saved);
     rememberRecentFile(saved.path);
   });
-
-  const handleOpenFile = useEffectEvent(async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const text = await file.text();
-    applyOpenedDocument({
-      filename: file.name,
-      markdown: text,
-      path: null,
-    });
-    event.target.value = "";
+  const {
+    fileInputRef,
+    handleOpenFile,
+    loadRecentDocument,
+    openWithPicker,
+    openWithPickerWithoutShowingWindow,
+    saveDocument,
+  } = useDocumentFileActions({
+    activeFilePath: workspaceState.filePath,
+    applyOpenedDocument,
+    applySavedDocument,
+    createNewDocument,
+    getMarkdown: () => documentStore.getMarkdown(),
+    isWelcomeVisible: workspaceState.isWelcomeVisible,
+    onMissingRecentFile: (path) => {
+      forgetRecentFile(path);
+      onError("This recent file could not be found and was removed from the list.");
+    },
+    onRecentFileUnavailable: () => {
+      onInfo("Recent files are only available in the desktop app.");
+    },
   });
 
   return {
