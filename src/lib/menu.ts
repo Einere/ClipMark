@@ -1,5 +1,4 @@
-import type { MenuItem } from "@tauri-apps/api/menu/menuItem";
-import type { Submenu } from "@tauri-apps/api/menu/submenu";
+import { syncAppMenuState } from "./menu-sync";
 import type { ThemeMode } from "./preview-preferences";
 import type { RecentFile } from "./recent-files";
 import { isTauriRuntime } from "./file-system";
@@ -204,138 +203,27 @@ export async function setupAppMenu(
       await menu.close();
     },
     async sync(state) {
-      const updates: Promise<void>[] = [];
-
-      if (!lastState || lastState.canUseEditMenu !== state.canUseEditMenu) {
-        updates.push(editSubmenu.setEnabled(state.canUseEditMenu));
-      }
-
-      if (!lastState || lastState.canUseViewMenu !== state.canUseViewMenu) {
-        updates.push(viewSubmenu.setEnabled(state.canUseViewMenu));
-      }
-
-      if (!lastState || lastState.canSave !== state.canSave) {
-        updates.push(saveItem.setEnabled(state.canSave));
-        updates.push(saveAsItem.setEnabled(state.canSave));
-      }
-
-      if (!lastState || lastState.canCopyFilePath !== state.canCopyFilePath) {
-        updates.push(copyPathItem.setEnabled(state.canCopyFilePath));
-      }
-
-      if (!lastState || lastState.canTogglePanels !== state.canTogglePanels) {
-        updates.push(previewItem.setEnabled(state.canTogglePanels));
-        updates.push(tocItem.setEnabled(state.canTogglePanels));
-      }
-
-      if (
-        !lastState
-        || lastState.isExternalMediaAutoLoadEnabled !== state.isExternalMediaAutoLoadEnabled
-      ) {
-        updates.push(externalMediaItem.setChecked(state.isExternalMediaAutoLoadEnabled));
-      }
-
-      if (!lastState || lastState.isPreviewVisible !== state.isPreviewVisible) {
-        updates.push(previewItem.setChecked(state.isPreviewVisible));
-      }
-
-      if (!lastState || lastState.isTocVisible !== state.isTocVisible) {
-        updates.push(tocItem.setChecked(state.isTocVisible));
-      }
-
-      if (!lastState || lastState.themeMode !== state.themeMode) {
-        updates.push(themeSystemItem.setChecked(state.themeMode === "system"));
-        updates.push(themeLightItem.setChecked(state.themeMode === "light"));
-        updates.push(themeDarkItem.setChecked(state.themeMode === "dark"));
-      }
-
-      await Promise.all(updates);
-
-      if (
-        !lastState
-        || !areRecentFilesEqual(lastState.recentFiles, state.recentFiles)
-      ) {
-        await syncRecentFilesMenu({
+      lastState = await syncAppMenuState({
+        context: {
+          copyPathItem,
           createMenuItem: MenuItem.new,
           createSeparator: () => PredefinedMenuItem.new({ item: "Separator" }),
+          editSubmenu,
+          externalMediaItem,
           handlers,
-          recentFiles: state.recentFiles,
+          previewItem,
           recentSubmenu,
-        });
-      }
-
-      lastState = {
-        ...state,
-        recentFiles: state.recentFiles.map((file) => ({ ...file })),
-      };
+          saveAsItem,
+          saveItem,
+          themeDarkItem,
+          themeLightItem,
+          themeSystemItem,
+          tocItem,
+          viewSubmenu,
+        },
+        lastState,
+        state,
+      });
     },
   };
-}
-
-function areRecentFilesEqual(left: RecentFile[], right: RecentFile[]) {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (
-      left[index]?.path !== right[index]?.path
-      || left[index]?.filename !== right[index]?.filename
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-async function syncRecentFilesMenu({
-  createMenuItem,
-  createSeparator,
-  handlers,
-  recentFiles,
-  recentSubmenu,
-}: {
-  createMenuItem: (options: Parameters<typeof import("@tauri-apps/api/menu").MenuItem.new>[0]) => Promise<MenuItem>;
-  createSeparator: () => Promise<Awaited<ReturnType<typeof import("@tauri-apps/api/menu").PredefinedMenuItem.new>>>;
-  handlers: MenuHandlers;
-  recentFiles: RecentFile[];
-  recentSubmenu: Submenu;
-}) {
-  const existingItems = await recentSubmenu.items();
-  for (const item of existingItems) {
-    await recentSubmenu.remove(item);
-  }
-
-  await recentSubmenu.setEnabled(recentFiles.length > 0);
-
-  if (recentFiles.length === 0) {
-    await recentSubmenu.append(
-      await createMenuItem({
-        enabled: false,
-        id: "file-open-recent-empty",
-        text: "No Recent Files",
-      }),
-    );
-    return;
-  }
-
-  const recentItems: MenuItem[] = [];
-  for (const file of recentFiles) {
-    recentItems.push(await createMenuItem({
-      action: () => handlers.onOpenRecent(file.path),
-      id: `recent-${file.path}`,
-      text: file.filename,
-    }));
-  }
-
-  await recentSubmenu.append(recentItems);
-  await recentSubmenu.append(await createSeparator());
-  await recentSubmenu.append(
-    await createMenuItem({
-      action: () => handlers.onClearRecentFiles(),
-      id: "file-open-recent-clear",
-      text: "Clear Recent Files",
-    }),
-  );
 }
