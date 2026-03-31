@@ -16,6 +16,7 @@ import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
+import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
 import { usePendingDocumentAction } from "./hooks/usePendingDocumentAction";
 import { useToastState } from "./hooks/useToastState";
 import { useDocumentDirty } from "./lib/document-store";
@@ -23,6 +24,7 @@ import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
 import type { PendingAction } from "./lib/pending-action";
+import { getUnsavedDialogState } from "./lib/unsaved-dialog-state";
 import {
   buildWindowTitle,
   getDocumentStatus,
@@ -300,73 +302,34 @@ export default function App({ initialPreferences }: AppProps) {
     };
   }, [handleNativeOpenDocument]);
 
-  const menuHandlers = useMemo(() => ({
+  const { menuHandlers, menuState } = useAppMenuBindings({
+    canCopyFilePath,
+    canSave: canSaveDocument,
+    canTogglePanels,
+    canUseEditMenu: isWindowVisible,
+    canUseViewMenu: isWindowVisible,
+    isExternalMediaAutoLoadEnabled,
+    isPreviewVisible,
+    isTocVisible,
     onClearRecentFiles: session.clearRecentFilesList,
-    onCopyFilePath: () => {
-      void handleMenuCopyFilePath();
-    },
+    onCopyFilePath: handleMenuCopyFilePath,
     onNew: handleMenuNew,
     onOpen: handleMenuOpen,
     onOpenRecent: handleMenuOpenRecent,
-    onSave: () => {
-      void handleMenuSave(false);
-    },
-    onSaveAs: () => {
-      void handleMenuSave(true);
-    },
+    onSave: handleMenuSave,
     onSetThemeMode: handleMenuSetThemeMode,
     onToggleExternalMedia: handleMenuToggleExternalMedia,
     onTogglePreview: handleMenuTogglePreview,
     onToggleToc: handleMenuToggleToc,
-  }), [
-    handleMenuCopyFilePath,
-    handleMenuNew,
-    handleMenuOpen,
-    handleMenuOpenRecent,
-    handleMenuSave,
-    handleMenuSetThemeMode,
-    handleMenuToggleExternalMedia,
-    handleMenuTogglePreview,
-    handleMenuToggleToc,
-    session.clearRecentFilesList,
-  ]);
-
-  const menuState = useMemo(() => ({
-    canUseEditMenu: isWindowVisible,
-    canUseViewMenu: isWindowVisible,
-    canCopyFilePath,
-    canSave: canSaveDocument,
-    canTogglePanels,
-    isExternalMediaAutoLoadEnabled,
-    isPreviewVisible,
-    isTocVisible,
-    themeMode,
     recentFiles: session.recentFiles,
-  }), [
-    isWindowVisible,
-    canCopyFilePath,
-    canSaveDocument,
-    canTogglePanels,
-    isExternalMediaAutoLoadEnabled,
-    isPreviewVisible,
-    isTocVisible,
     themeMode,
-    session.recentFiles,
-  ]);
+  });
 
   useAppMenuController(menuHandlers, menuState);
-
-  const dialogState = pendingAction?.type === "closeWindow"
-    ? {
-        confirmLabel: "Close Without Saving",
-        description: `${activeFilename} has unsaved changes. Save first or close this window without keeping the latest edits.`,
-        title: "Save changes before closing?",
-      }
-    : {
-        confirmLabel: "Continue Editing",
-        description: `${activeFilename} has unsaved changes. Save first, or keep editing without changing the current document.`,
-        title: "Save changes before continuing?",
-      };
+  const dialogState = useMemo(
+    () => getUnsavedDialogState(activeFilename, pendingAction),
+    [activeFilename, pendingAction],
+  );
 
   return (
     <div className="app-shell">
