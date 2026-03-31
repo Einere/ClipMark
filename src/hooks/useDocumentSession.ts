@@ -4,16 +4,15 @@ import {
   createDocumentStore,
   type DocumentStore,
 } from "../lib/document-store";
-import type { OpenedDocument, SavedDocument } from "../lib/file-system";
+import type { OpenedDocument } from "../lib/file-system";
 import {
   openMarkdownDocument,
   openMarkdownDocumentWithoutShowingWindow,
   saveMarkdownDocument,
 } from "../lib/file-system";
 import { openRecentFile } from "../lib/recent-files";
+import { useDocumentWorkspaceState } from "./useDocumentWorkspaceState";
 import { useRecentFilesState } from "./useRecentFilesState";
-
-const UNTITLED_FILENAME = "Untitled.md";
 
 type UseDocumentSessionOptions = {
   onInfo: (message: string) => void;
@@ -24,11 +23,6 @@ export function useDocumentSession({
   onInfo,
   onError,
 }: UseDocumentSessionOptions) {
-  const [filePath, setFilePath] = useState<string | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
-  const [savedRevision, setSavedRevision] = useState(0);
-  const [editorDocumentKey, setEditorDocumentKey] = useState(0);
-  const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
   const [documentStore] = useState<DocumentStore>(() => createDocumentStore(""));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -37,42 +31,23 @@ export function useDocumentSession({
     recentFiles,
     rememberRecentFile,
   } = useRecentFilesState();
-
-  function bumpDocumentKey() {
-    setEditorDocumentKey((value) => value + 1);
-  }
+  const workspaceState = useDocumentWorkspaceState(documentStore);
 
   const applyOpenedDocument = useEffectEvent((document: OpenedDocument | {
     filename: string;
     markdown: string;
     path: string | null;
   }) => {
-    setIsWelcomeVisible(false);
-    setFilePath(document.path);
-    setFilename(document.filename);
-    documentStore.replaceMarkdown(document.markdown);
-    setSavedRevision(documentStore.getRevision());
-    bumpDocumentKey();
-
+    workspaceState.applyOpenedDocument(document);
     rememberRecentFile(document.path);
   });
 
   const createNewDocument = useEffectEvent(() => {
-    setIsWelcomeVisible(false);
-    setFilePath(null);
-    setFilename(UNTITLED_FILENAME);
-    documentStore.replaceMarkdown("");
-    setSavedRevision(documentStore.getRevision());
-    bumpDocumentKey();
+    workspaceState.createNewDocument();
   });
 
   const closeCurrentDocument = useEffectEvent(() => {
-    setIsWelcomeVisible(true);
-    setFilePath(null);
-    setFilename(null);
-    documentStore.replaceMarkdown("");
-    setSavedRevision(documentStore.getRevision());
-    bumpDocumentKey();
+    workspaceState.closeCurrentDocument();
   });
 
   const openWithPicker = useEffectEvent(async (fallbackToFileInput = true) => {
@@ -115,14 +90,14 @@ export function useDocumentSession({
     activeFilename: string;
     saveAs?: boolean;
   }) => {
-    if (isWelcomeVisible) {
+    if (workspaceState.isWelcomeVisible) {
       createNewDocument();
     }
 
     const saved = await saveMarkdownDocument({
       filename: activeFilename,
       markdown: documentStore.getMarkdown(),
-      path: filePath,
+      path: workspaceState.filePath,
       saveAs,
     });
 
@@ -134,10 +109,8 @@ export function useDocumentSession({
     return true;
   });
 
-  const applySavedDocument = useEffectEvent((saved: SavedDocument) => {
-    setFilePath(saved.path);
-    setFilename(saved.filename);
-    setSavedRevision(documentStore.getRevision());
+  const applySavedDocument = useEffectEvent((saved) => {
+    workspaceState.applySavedDocument(saved);
     rememberRecentFile(saved.path);
   });
 
@@ -162,17 +135,17 @@ export function useDocumentSession({
     closeCurrentDocument,
     createNewDocument,
     documentStore,
-    editorDocumentKey,
+    editorDocumentKey: workspaceState.editorDocumentKey,
     fileInputRef,
-    filePath,
-    filename,
+    filePath: workspaceState.filePath,
+    filename: workspaceState.filename,
     handleOpenFile,
-    isWelcomeVisible,
+    isWelcomeVisible: workspaceState.isWelcomeVisible,
     loadRecentDocument,
     openWithPicker,
     openWithPickerWithoutShowingWindow,
     recentFiles,
-    savedRevision,
+    savedRevision: workspaceState.savedRevision,
     saveDocument,
   };
 }
