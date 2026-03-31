@@ -17,6 +17,7 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
 import { usePendingDocumentAction } from "./hooks/usePendingDocumentAction";
+import { useToastState } from "./hooks/useToastState";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
@@ -32,37 +33,14 @@ import {
   type ThemeMode,
   type AppPreferences,
 } from "./lib/preview-preferences";
-import type { ToastPhase, ToastVariant } from "./components/ui/Toast";
 
 const APP_NAME = "ClipMark";
-const TOAST_DURATION_MS = 3200;
-const TOAST_WARNING_DURATION_MS = 4200;
-const TOAST_ERROR_DURATION_MS = 5600;
 const EditorWorkspace = lazy(() => import("./components/workspace/EditorWorkspace")
   .then((module) => ({ default: module.EditorWorkspace })));
 
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
-
-function getToastDuration(variant: ToastVariant) {
-  switch (variant) {
-    case "error":
-      return TOAST_ERROR_DURATION_MS;
-    case "warning":
-      return TOAST_WARNING_DURATION_MS;
-    default:
-      return TOAST_DURATION_MS;
-  }
-}
-
-function prefersReducedToastMotion() {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 export function AppShellFallback() {
   return (
@@ -83,62 +61,8 @@ export function AppShellFallback() {
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
 export default function App({ initialPreferences }: AppProps) {
   const [isWindowVisible, setIsWindowVisible] = useState(true);
-  const [toast, setToast] = useState<{
-    id: number;
-    message: string;
-    phase: ToastPhase;
-    title?: string;
-    variant: ToastVariant;
-  } | null>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
-  const toastTimeoutRef = useRef<number | null>(null);
-  const toastIdRef = useRef(0);
-
-  const clearToastTimers = useEffectEvent(() => {
-    if (toastTimeoutRef.current !== null) {
-      window.clearTimeout(toastTimeoutRef.current);
-      toastTimeoutRef.current = null;
-    }
-  });
-
-  const beginToastExit = useEffectEvent(() => {
-    if (prefersReducedToastMotion()) {
-      setToast(null);
-      return;
-    }
-
-    setToast((currentToast) => {
-      if (!currentToast || currentToast.phase === "exit") {
-        return currentToast;
-      }
-
-      return {
-        ...currentToast,
-        phase: "exit",
-      };
-    });
-  });
-
-  const showToast = useEffectEvent((
-    message: string,
-    variant: ToastVariant = "info",
-    title?: string,
-  ) => {
-    clearToastTimers();
-    toastIdRef.current += 1;
-
-    setToast({
-      id: toastIdRef.current,
-      message,
-      phase: "enter",
-      title,
-      variant,
-    });
-    toastTimeoutRef.current = window.setTimeout(() => {
-      toastTimeoutRef.current = null;
-      beginToastExit();
-    }, getToastDuration(variant));
-  });
+  const { handleExitComplete, showToast, toast } = useToastState();
 
   const handlePreferencesSaveError = useEffectEvent(() => {
     showToast("Could not save app preferences.", "error");
@@ -187,14 +111,6 @@ export default function App({ initialPreferences }: AppProps) {
 
   useEffect(() => {
     void clearDebugLog();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current !== null) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
-    };
   }, []);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
@@ -507,13 +423,7 @@ export default function App({ initialPreferences }: AppProps) {
         <Toast
           key={toast.id}
           message={toast.message}
-          onExitComplete={() => {
-            setToast((currentToast) => (
-              currentToast?.id === toast.id && currentToast.phase === "exit"
-                ? null
-                : currentToast
-            ));
-          }}
+          onExitComplete={() => handleExitComplete(toast.id)}
           phase={toast.phase}
           title={toast.title}
           variant={toast.variant}
