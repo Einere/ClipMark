@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { Toast } from "./components/ui/Toast";
@@ -17,15 +16,12 @@ import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
+import { usePendingDocumentAction } from "./hooks/usePendingDocumentAction";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
 import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import { setupNativeOpenDocumentListener } from "./lib/native-open-document";
-import {
-  getPostDiscardResolution,
-  getPostSaveResolution,
-  type PendingAction,
-} from "./lib/pending-action";
+import type { PendingAction } from "./lib/pending-action";
 import {
   buildWindowTitle,
   getDocumentStatus,
@@ -87,7 +83,6 @@ export function AppShellFallback() {
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
 export default function App({ initialPreferences }: AppProps) {
   const [isWindowVisible, setIsWindowVisible] = useState(true);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
     id: number;
     message: string;
@@ -213,71 +208,6 @@ export default function App({ initialPreferences }: AppProps) {
     resetDocumentAfterHide();
   }
 
-  async function performAction(action: PendingAction) {
-    if (action.type === "closeWindow") {
-      await closeCurrentWindowSession();
-      return;
-    }
-
-    if (action.type === "new") {
-      session.createNewDocument();
-      return;
-    }
-
-    if (action.type === "open") {
-      await session.openWithPicker();
-      return;
-    }
-
-    const document = await session.loadRecentDocument(action.path);
-    if (!document) {
-      return;
-    }
-
-    session.applyOpenedDocument(document);
-  }
-
-  function requestAction(action: PendingAction) {
-    if (isDirty) {
-      setPendingAction(action);
-      return;
-    }
-
-    void performAction(action);
-  }
-
-  async function resolvePendingActionWithSave() {
-    const action = pendingAction;
-    if (!action) {
-      return;
-    }
-
-    const saved = await session.saveDocument({ activeFilename });
-    if (!saved) {
-      return;
-    }
-
-    setPendingAction(null);
-    if (getPostSaveResolution(action) === "hide-window") {
-      await hideWindowRef.current();
-      resetDocumentAfterHide();
-      return;
-    }
-
-    await performAction(action);
-  }
-
-  async function resolvePendingActionWithDiscard() {
-    const action = pendingAction;
-    setPendingAction(null);
-
-    if (!action || getPostDiscardResolution(action) === "cancel") {
-      return;
-    }
-
-    await performAction(action);
-  }
-
   const handleWindowShortcuts = useEffectEvent((event: KeyboardEvent) => {
     const hasModifier = event.metaKey || event.ctrlKey;
     if (!hasModifier) {
@@ -304,58 +234,6 @@ export default function App({ initialPreferences }: AppProps) {
         saveAs: event.shiftKey,
       });
     }
-  });
-
-  const showHiddenWindowWithDocument = useEffectEvent((
-    loadDocument: () => Promise<{
-      filename: string;
-      markdown: string;
-      path: string | null;
-    } | null>,
-  ) => {
-    void loadDocument().then((document) => {
-      if (!document) {
-        return;
-      }
-
-      flushSync(() => {
-        session.applyOpenedDocument(document);
-        setIsWindowVisible(true);
-      });
-      void ensureWindowVisible();
-    });
-  });
-
-  const requestVisibleAction = useEffectEvent((action: PendingAction) => {
-    if (isWindowVisible) {
-      requestAction(action);
-      return;
-    }
-
-    if (action.type === "new") {
-      flushSync(() => {
-        session.createNewDocument();
-        setIsWindowVisible(true);
-      });
-      void ensureWindowVisible();
-      return;
-    }
-
-    if (action.type === "open") {
-      showHiddenWindowWithDocument(() =>
-        session.openWithPickerWithoutShowingWindow(),
-      );
-      return;
-    }
-
-    if (action.type === "openRecent") {
-      showHiddenWindowWithDocument(() => session.loadRecentDocument(action.path));
-      return;
-    }
-
-    void ensureWindowVisible().then(() => {
-      setIsWindowVisible(true);
-    });
   });
 
   const handleMenuNew = useEffectEvent(() => {
@@ -412,6 +290,7 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
+  const queuePendingActionRef = useRef<(action: PendingAction) => void>(() => undefined);
 
   const handleCloseRequested = useEffectEvent(async () => {
     if (!isDirty) {
@@ -435,7 +314,7 @@ export default function App({ initialPreferences }: AppProps) {
     }
 
     if (result === "unsupported") {
-      setPendingAction({ type: "closeWindow" });
+      queuePendingActionRef.current({ type: "closeWindow" });
     }
   });
 
@@ -452,6 +331,30 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   hideWindowRef.current = hideWindow;
+
+  const {
+    pendingAction,
+    queuePendingAction,
+    requestAction,
+    requestVisibleAction,
+    resolvePendingActionWithDiscard,
+    resolvePendingActionWithSave,
+  } = usePendingDocumentAction({
+    activeFilename,
+    applyOpenedDocument: session.applyOpenedDocument,
+    createNewDocument: session.createNewDocument,
+    ensureWindowVisible,
+    hideWindowAndResetDocument: closeCurrentWindowSession,
+    isDirty,
+    isWindowVisible,
+    loadRecentDocument: session.loadRecentDocument,
+    onWindowVisibleChange: setIsWindowVisible,
+    openWithPicker: session.openWithPicker,
+    openWithPickerWithoutShowingWindow: session.openWithPickerWithoutShowingWindow,
+    saveDocument: session.saveDocument,
+  });
+
+  queuePendingActionRef.current = queuePendingAction;
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
