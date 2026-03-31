@@ -14,6 +14,7 @@ import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { Toast } from "./components/ui/Toast";
 import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { useAppMenuController } from "./hooks/useAppMenuController";
+import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useNativeWindowState } from "./hooks/useNativeWindowState";
 import { useDocumentDirty } from "./lib/document-store";
@@ -32,11 +33,9 @@ import {
 } from "./lib/window-state";
 import {
   DEFAULT_APP_PREFERENCES,
-  saveAppPreferences,
   type ThemeMode,
   type AppPreferences,
 } from "./lib/preview-preferences";
-import { applyTheme, subscribeToSystemTheme } from "./lib/theme";
 import type { ToastPhase, ToastVariant } from "./components/ui/Toast";
 
 const APP_NAME = "ClipMark";
@@ -87,15 +86,6 @@ export function AppShellFallback() {
 
 /* TODO: App 이 너무 많은 책임을 수행하고 있다. 적당히 나누자. */
 export default function App({ initialPreferences }: AppProps) {
-  const preferences = initialPreferences ?? DEFAULT_APP_PREFERENCES;
-  const [isExternalMediaAutoLoadEnabled, setIsExternalMediaAutoLoadEnabled] = useState(
-    preferences.autoLoadExternalMedia,
-  );
-  const [isPreviewVisible, setIsPreviewVisible] = useState(preferences.isPreviewVisible);
-  const [isTocVisible, setIsTocVisible] = useState(preferences.isTocVisible);
-  const [previewPanelWidth, setPreviewPanelWidth] = useState(preferences.previewPanelWidth);
-  const [tocPanelWidth, setTocPanelWidth] = useState(preferences.tocPanelWidth);
-  const [themeMode, setThemeMode] = useState(preferences.themeMode);
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [toast, setToast] = useState<{
@@ -158,6 +148,23 @@ export default function App({ initialPreferences }: AppProps) {
   const handlePreferencesSaveError = useEffectEvent(() => {
     showToast("Could not save app preferences.", "error");
   });
+  const {
+    autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
+    isPreviewVisible,
+    isTocVisible,
+    previewPanelWidth,
+    setIsExternalMediaAutoLoadEnabled,
+    setIsPreviewVisible,
+    setIsTocVisible,
+    setPreviewPanelWidth,
+    setThemeMode,
+    setTocPanelWidth,
+    themeMode,
+    tocPanelWidth,
+  } = useAppPreferences({
+    initialPreferences: initialPreferences ?? DEFAULT_APP_PREFERENCES,
+    onSaveError: handlePreferencesSaveError,
+  });
 
   const session = useDocumentSession({
     onError: (message) => showToast(message, "error"),
@@ -194,39 +201,6 @@ export default function App({ initialPreferences }: AppProps) {
       }
     };
   }, []);
-
-  useEffect(() => {
-    void saveAppPreferences({
-      autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
-      isPreviewVisible,
-      isTocVisible,
-      previewPanelWidth,
-      tocPanelWidth,
-      themeMode,
-    }).catch(() => {
-      handlePreferencesSaveError();
-    });
-  }, [
-    handlePreferencesSaveError,
-    isExternalMediaAutoLoadEnabled,
-    isPreviewVisible,
-    isTocVisible,
-    previewPanelWidth,
-    tocPanelWidth,
-    themeMode,
-  ]);
-
-  useEffect(() => {
-    applyTheme(themeMode);
-
-    if (themeMode !== "system") {
-      return;
-    }
-
-    return subscribeToSystemTheme(() => {
-      applyTheme("system");
-    });
-  }, [themeMode]);
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
