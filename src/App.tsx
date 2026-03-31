@@ -20,10 +20,10 @@ import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
 import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
 import { usePendingDocumentAction } from "./hooks/usePendingDocumentAction";
 import { useToastState } from "./hooks/useToastState";
+import { useWindowCloseRequest } from "./hooks/useWindowCloseRequest";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
-import { showNativeCloseSheet } from "./lib/native-close-sheet";
 import type { PendingAction } from "./lib/pending-action";
 import { getUnsavedDialogState } from "./lib/unsaved-dialog-state";
 import {
@@ -178,31 +178,12 @@ export default function App({ initialPreferences }: AppProps) {
 
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
   const queuePendingActionRef = useRef<(action: PendingAction) => void>(() => undefined);
-
-  const handleCloseRequested = useEffectEvent(async () => {
-    if (!isDirty) {
-      await hideWindowRef.current();
-      resetDocumentAfterHide();
-      return;
-    }
-
-    const result = await showNativeCloseSheet(activeFilename);
-    if (result === "save") {
-      const saved = await session.saveDocument({ activeFilename });
-      if (saved) {
-        await closeCurrentWindowSession();
-      }
-      return;
-    }
-
-    if (result === "discard") {
-      await closeCurrentWindowSession();
-      return;
-    }
-
-    if (result === "unsupported") {
-      queuePendingActionRef.current({ type: "closeWindow" });
-    }
+  const handleCloseRequested = useWindowCloseRequest({
+    activeFilename,
+    closeWindowSession: closeCurrentWindowSession,
+    isDirty,
+    queuePendingAction: (action) => queuePendingActionRef.current(action),
+    saveDocument: session.saveDocument,
   });
 
   const {
