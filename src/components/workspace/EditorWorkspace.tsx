@@ -171,20 +171,19 @@ function getFileLabel(filePath: string | null) {
 }
 
 function DocumentPreviewPane({
-  documentStore,
+  markdown,
   filePath,
   isExternalMediaAutoLoadEnabled,
   isLayoutTransitioning,
   layoutVersion,
 }: {
-  documentStore: DocumentStore;
+  markdown: string;
   filePath: string | null;
   isExternalMediaAutoLoadEnabled: boolean;
   isLayoutTransitioning: boolean;
   layoutVersion: number;
 }) {
   const { activeLine, isFocused } = useEditorViewState();
-  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
   const debouncedPreviewMarkdown = useDebouncedValue(markdown, PREVIEW_DEBOUNCE_MS);
   const previewMarkdown = useIdleValue(debouncedPreviewMarkdown, {
     timeoutMs: PREVIEW_IDLE_TIMEOUT_MS,
@@ -216,18 +215,13 @@ function DocumentPreviewPane({
 }
 
 function DocumentTocPane({
-  documentStore,
+  headings,
   onSelectHeading,
 }: {
-  documentStore: DocumentStore;
+  headings: ReturnType<typeof extractHeadings>;
   onSelectHeading: (line: number) => void;
 }) {
   const activeEditorLine = useActiveEditorLine();
-  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
-  const headings = useMemo(
-    () => extractHeadings(markdown),
-    [markdown],
-  );
   const activeHeadingLine = useMemo(
     () => getActiveHeadingLine(headings, activeEditorLine),
     [activeEditorLine, headings],
@@ -244,28 +238,21 @@ function DocumentTocPane({
 
 function DocumentFooterMeta({
   documentStatus,
-  documentStore,
+  headingCount,
+  metrics,
 }: {
   documentStatus: DocumentStatus | null;
-  documentStore: DocumentStore;
+  headingCount: number;
+  metrics: ReturnType<typeof summarizeDocument>;
 }) {
-  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
-  const headings = useMemo(
-    () => extractHeadings(markdown),
-    [markdown],
-  );
-  const documentMetrics = useMemo(
-    () => summarizeDocument(markdown),
-    [markdown],
-  );
   const visibleStatusLabel = formatDocumentStatus(documentStatus);
 
   return (
     <div className="editor-workspace__footer-meta" aria-label="Document summary">
       <span>{visibleStatusLabel}</span>
-      <span>{documentMetrics.wordCount} words</span>
-      <span>{documentMetrics.lineCount} lines</span>
-      <span>{headings.length} headings</span>
+      <span>{metrics.wordCount} words</span>
+      <span>{metrics.lineCount} lines</span>
+      <span>{headingCount} headings</span>
     </div>
   );
 }
@@ -306,6 +293,15 @@ export function EditorWorkspace({
   });
   const previewPresence = usePanelPresence(isPreviewVisible);
   const tocPresence = usePanelPresence(isTocVisible);
+  const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
+  const headings = useMemo(
+    () => extractHeadings(markdown),
+    [markdown],
+  );
+  const documentMetrics = useMemo(
+    () => summarizeDocument(markdown),
+    [markdown],
+  );
   const hasRenderedPreview = previewPresence.isMounted;
   const hasRenderedToc = tocPresence.isMounted;
   const isPreviewExpanded = isPreviewVisible && previewPresence.state !== "entering";
@@ -581,7 +577,7 @@ export function EditorWorkspace({
                 }}
               >
                 <DocumentTocPane
-                  documentStore={documentStore}
+                  headings={headings}
                   onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
                 />
               </div>
@@ -684,7 +680,7 @@ export function EditorWorkspace({
                 </div>
                 <div className="editor-workspace__panel-body">
                   <DocumentPreviewPane
-                    documentStore={documentStore}
+                    markdown={markdown}
                     filePath={filePath}
                     isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
                     isLayoutTransitioning={isPanelLayoutTransitioning}
@@ -714,7 +710,8 @@ export function EditorWorkspace({
           </div>
           <DocumentFooterMeta
             documentStatus={documentStatus}
-            documentStore={documentStore}
+            headingCount={headings.length}
+            metrics={documentMetrics}
           />
         </footer>
       </div>
