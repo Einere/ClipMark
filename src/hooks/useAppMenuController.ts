@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { MenuHandlers, MenuState } from "../lib/menu";
 import { setupAppMenu } from "../lib/menu";
 import { useStableMenuHandlers } from "./useStableMenuHandlers";
@@ -7,12 +7,22 @@ export function useAppMenuController(
   handlers: MenuHandlers,
   state: MenuState,
 ) {
-  const [menuController, setMenuController] = useState<Awaited<ReturnType<typeof setupAppMenu>>>();
+  const menuControllerRef = useRef<Awaited<ReturnType<typeof setupAppMenu>> | undefined>(undefined);
+  const latestStateRef = useRef(state);
   const stableMenuHandlers = useStableMenuHandlers(handlers);
 
   useEffect(() => {
+    latestStateRef.current = state;
+
+    if (!menuControllerRef.current) {
+      return;
+    }
+
+    void menuControllerRef.current.sync(state);
+  }, [state]);
+
+  useEffect(() => {
     let disposed = false;
-    let controller: Awaited<ReturnType<typeof setupAppMenu>>;
 
     void setupAppMenu(stableMenuHandlers).then((nextController) => {
       if (disposed) {
@@ -20,24 +30,17 @@ export function useAppMenuController(
         return;
       }
 
-      controller = nextController;
-      setMenuController(nextController);
+      menuControllerRef.current = nextController;
+      void nextController?.sync(latestStateRef.current);
     });
 
     return () => {
       disposed = true;
-      setMenuController(undefined);
+      const controller = menuControllerRef.current;
+      menuControllerRef.current = undefined;
       if (controller) {
         void controller.dispose();
       }
     };
   }, [stableMenuHandlers]);
-
-  useEffect(() => {
-    if (!menuController) {
-      return;
-    }
-
-    void menuController.sync(state);
-  }, [menuController, state]);
 }

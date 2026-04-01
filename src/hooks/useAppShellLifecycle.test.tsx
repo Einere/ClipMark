@@ -184,4 +184,29 @@ describe("useAppShellLifecycle", () => {
     expect(nativeWindowControls.hideWindow.mock.invocationCallOrder[0])
       .toBeLessThan(closeCurrentDocument.mock.invocationCallOrder[0]);
   });
+
+  it("derives welcome-mode filename and window title before wiring lifecycle hooks", async () => {
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          filePath: null,
+          filename: null,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    expect(useNativeWindowStateMock).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: null,
+      isDirty: false,
+      windowTitle: "ClipMark",
+    }));
+    expect(usePendingDocumentActionMock).toHaveBeenCalledWith(expect.objectContaining({
+      activeFilename: "ClipMark",
+    }));
+    expect(controls.isWindowVisible).toBe(true);
+  });
 });
