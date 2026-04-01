@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffectEvent, useMemo, useRef } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -20,9 +20,11 @@ import {
   getPanelResizeHandleProps,
 } from "./panel-resize-handle";
 import { getPanelDisplayState } from "./panel-display-state";
+import { DocumentWorkspaceFooter } from "./DocumentWorkspaceFooter";
 import { WorkspaceLayout } from "./WorkspaceLayout";
 import { usePanelPresence } from "./usePanelPresence";
 import { usePanelResizing } from "./usePanelResizing";
+import { useWorkspaceContainerWidth } from "./useWorkspaceContainerWidth";
 
 const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
@@ -46,27 +48,6 @@ type EditorWorkspaceProps = {
   onPathCopyError: () => void;
   onEditorFocusChange: (focused: boolean) => void;
 };
-
-function formatDocumentStatus(documentStatus: DocumentStatus | null) {
-  if (documentStatus === "edited") {
-    return "Unsaved";
-  }
-
-  if (documentStatus === "saved") {
-    return "Saved";
-  }
-
-  return "Draft";
-}
-
-function getFileLabel(filePath: string | null) {
-  if (!filePath) {
-    return "Unsaved local document";
-  }
-
-  const segments = filePath.split(/[\\/]/);
-  return segments.at(-1) ?? filePath;
-}
 
 function DocumentPreviewPane({
   markdown,
@@ -134,27 +115,6 @@ function DocumentTocPane({
   );
 }
 
-function DocumentFooterMeta({
-  documentStatus,
-  headingCount,
-  metrics,
-}: {
-  documentStatus: DocumentStatus | null;
-  headingCount: number;
-  metrics: ReturnType<typeof summarizeDocument>;
-}) {
-  const visibleStatusLabel = formatDocumentStatus(documentStatus);
-
-  return (
-    <div className="editor-workspace__footer-meta" aria-label="Document summary">
-      <span>{visibleStatusLabel}</span>
-      <span>{metrics.wordCount} words</span>
-      <span>{metrics.lineCount} lines</span>
-      <span>{headingCount} headings</span>
-    </div>
-  );
-}
-
 export function EditorWorkspace({
   documentKey,
   documentStore,
@@ -172,7 +132,7 @@ export function EditorWorkspace({
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
   const mainRef = useRef<HTMLElement | null>(null);
-  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const containerWidth = useWorkspaceContainerWidth(mainRef);
   const previewPresence = usePanelPresence(isPreviewVisible);
   const tocPresence = usePanelPresence(isTocVisible);
   const markdown = useDeferredValue(useDocumentMarkdown(documentStore));
@@ -233,35 +193,6 @@ export function EditorWorkspace({
     kind: "preview",
     siblingWidth: effectivePanelWidths.tocWidth,
   });
-
-  useEffect(() => {
-    const container = mainRef.current;
-    if (!container) {
-      return;
-    }
-
-    const updateWidth = () => {
-      setContainerWidth(container.clientWidth);
-    };
-
-    updateWidth();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateWidth);
-      return () => {
-        window.removeEventListener("resize", updateWidth);
-      };
-    }
-
-    const observer = new ResizeObserver(() => {
-      updateWidth();
-    });
-    observer.observe(container);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   const handlePathCopy = useEffectEvent(async () => {
     if (!filePath) {
@@ -348,28 +279,13 @@ export function EditorWorkspace({
           </WorkspaceLayout.Preview>
         </WorkspaceLayout>
 
-        <footer className="editor-workspace__footer">
-          <div className="editor-workspace__footer-primary">
-            <span className="editor-workspace__footer-label">File</span>
-            {filePath ? (
-              <button
-                className="editor-workspace__path-button"
-                onClick={() => void handlePathCopy()}
-                title="Click to copy file path"
-                type="button"
-              >
-                {filePath}
-              </button>
-            ) : (
-              <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
-            )}
-          </div>
-          <DocumentFooterMeta
-            documentStatus={documentStatus}
-            headingCount={headings.length}
-            metrics={documentMetrics}
-          />
-        </footer>
+        <DocumentWorkspaceFooter
+          documentStatus={documentStatus}
+          filePath={filePath}
+          headingCount={headings.length}
+          metrics={documentMetrics}
+          onPathCopy={() => void handlePathCopy()}
+        />
       </div>
     </EditorViewStateProvider>
   );
