@@ -17,9 +17,8 @@ import {
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useIdleValue } from "../../hooks/useIdleValue";
 import {
-  clampPanelWidth,
-  getMaxAllowedPanelWidth,
-} from "./panel-layout";
+  getPanelResizeHandleProps,
+} from "./panel-resize-handle";
 import { usePanelPresence } from "./usePanelPresence";
 import { usePanelResizing } from "./usePanelResizing";
 
@@ -207,6 +206,28 @@ export function EditorWorkspace({
     initialTocPanelWidth,
     onPanelWidthsChange,
   });
+  const tocResizeHandleProps = getPanelResizeHandleProps({
+    containerWidth,
+    currentWidth: effectivePanelWidths.tocWidth,
+    hasPreview: hasRenderedPreview,
+    hasToc: hasRenderedToc,
+    isActive: activeResizer === "toc",
+    isExpanded: isTocExpanded,
+    isVisible: isTocVisible,
+    kind: "toc",
+    siblingWidth: effectivePanelWidths.previewWidth,
+  });
+  const previewResizeHandleProps = getPanelResizeHandleProps({
+    containerWidth,
+    currentWidth: effectivePanelWidths.previewWidth,
+    hasPreview: hasRenderedPreview,
+    hasToc: hasRenderedToc,
+    isActive: activeResizer === "preview",
+    isExpanded: isPreviewExpanded,
+    isVisible: isPreviewVisible,
+    kind: "preview",
+    siblingWidth: effectivePanelWidths.tocWidth,
+  });
 
   useEffect(() => {
     const container = mainRef.current;
@@ -276,35 +297,12 @@ export function EditorWorkspace({
                   onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
                 />
               </div>
-              {hasRenderedToc ? (
-                <div
-                  aria-controls="editor-workspace-editor-panel"
-                  aria-label="Resize table of contents panel"
-                  aria-orientation="vertical"
-                  aria-valuemax={getMaxAllowedPanelWidth({
-                    containerWidth,
-                    hasPreview: hasRenderedPreview,
-                    hasToc: hasRenderedToc,
-                    kind: "toc",
-                    siblingWidth: effectivePanelWidths.previewWidth,
-                  })}
-                  aria-valuemin={clampPanelWidth("toc", 0, {
-                    containerWidth,
-                    hasPreview: hasRenderedPreview,
-                    hasToc: hasRenderedToc,
-                    siblingWidth: effectivePanelWidths.previewWidth,
-                  })}
-                  aria-valuenow={effectivePanelWidths.tocWidth ?? undefined}
-                  className="editor-workspace__resize-handle"
-                  data-active={activeResizer === "toc"}
-                  data-expanded={isTocExpanded}
-                  data-panel-resizer="toc"
-                  onKeyDown={(event) => resizeWithKeyboard("toc", event)}
-                  onPointerDown={(event) => startResize("toc", event)}
-                  role="separator"
-                  tabIndex={isTocVisible ? 0 : -1}
-                />
-              ) : null}
+              <div
+                {...tocResizeHandleProps}
+                className="editor-workspace__resize-handle"
+                onKeyDown={(event) => resizeWithKeyboard("toc", event)}
+                onPointerDown={(event) => startResize("toc", event)}
+              />
             </>
           ) : null}
           <section
@@ -330,35 +328,12 @@ export function EditorWorkspace({
           </section>
           {hasRenderedPreview ? (
             <>
-              {hasRenderedPreview ? (
-                <div
-                  aria-controls="editor-workspace-editor-panel"
-                  aria-label="Resize preview panel"
-                  aria-orientation="vertical"
-                  aria-valuemax={getMaxAllowedPanelWidth({
-                    containerWidth,
-                    hasPreview: hasRenderedPreview,
-                    hasToc: hasRenderedToc,
-                    kind: "preview",
-                    siblingWidth: effectivePanelWidths.tocWidth,
-                  })}
-                  aria-valuemin={clampPanelWidth("preview", 0, {
-                    containerWidth,
-                    hasPreview: hasRenderedPreview,
-                    hasToc: hasRenderedToc,
-                    siblingWidth: effectivePanelWidths.tocWidth,
-                  })}
-                  aria-valuenow={effectivePanelWidths.previewWidth ?? undefined}
-                  className="editor-workspace__resize-handle"
-                  data-active={activeResizer === "preview"}
-                  data-expanded={isPreviewExpanded}
-                  data-panel-resizer="preview"
-                  onKeyDown={(event) => resizeWithKeyboard("preview", event)}
-                  onPointerDown={(event) => startResize("preview", event)}
-                  role="separator"
-                  tabIndex={isPreviewVisible ? 0 : -1}
-                />
-              ) : null}
+              <div
+                {...previewResizeHandleProps}
+                className="editor-workspace__resize-handle"
+                onKeyDown={(event) => resizeWithKeyboard("preview", event)}
+                onPointerDown={(event) => startResize("preview", event)}
+              />
               <section
                 className="editor-workspace__panel editor-workspace__panel--preview"
                 data-panel="preview"
