@@ -1,5 +1,6 @@
 import { startTransition, useEffectEvent, useRef, useState } from "react";
 import type { PendingAction } from "../lib/pending-action";
+import { deriveAppViewState } from "./useAppViewState";
 import { useNativeWindowState } from "./useNativeWindowState";
 import { usePendingDocumentAction } from "./usePendingDocumentAction";
 import { useWindowCloseRequest } from "./useWindowCloseRequest";
@@ -11,12 +12,13 @@ type OpenedDocumentLike = {
 };
 
 type UseAppShellLifecycleOptions = {
-  activeFilename: string;
   applyOpenedDocument: (document: OpenedDocumentLike) => void;
   closeCurrentDocument: () => void;
   createNewDocument: () => void;
   filePath: string | null;
+  filename: string | null;
   isDirty: boolean;
+  isWelcomeVisible: boolean;
   loadRecentDocument: (path: string) => Promise<OpenedDocumentLike | null>;
   openWithPicker: () => Promise<OpenedDocumentLike | null>;
   openWithPickerWithoutShowingWindow: () => Promise<OpenedDocumentLike | null>;
@@ -24,25 +26,30 @@ type UseAppShellLifecycleOptions = {
     activeFilename: string;
     saveAs?: boolean;
   }) => Promise<boolean>;
-  windowTitle: string;
 };
 
 export function useAppShellLifecycle({
-  activeFilename,
   applyOpenedDocument,
   closeCurrentDocument,
   createNewDocument,
   filePath,
+  filename,
   isDirty,
+  isWelcomeVisible,
   loadRecentDocument,
   openWithPicker,
   openWithPickerWithoutShowingWindow,
   saveDocument,
-  windowTitle,
 }: UseAppShellLifecycleOptions) {
   const [isWindowVisible, setIsWindowVisible] = useState(true);
   const hideWindowRef = useRef<() => Promise<void>>(async () => {});
   const queuePendingActionRef = useRef<(action: PendingAction) => void>(() => undefined);
+  const shellViewState = deriveAppViewState({
+    filePath,
+    filename,
+    isDirty,
+    isWelcomeVisible,
+  });
 
   const resetDocumentAfterHide = useEffectEvent(() => {
     startTransition(() => {
@@ -56,7 +63,7 @@ export function useAppShellLifecycle({
   });
 
   const handleCloseRequested = useWindowCloseRequest({
-    activeFilename,
+    activeFilename: shellViewState.activeFilename,
     closeWindowSession: closeCurrentWindowSession,
     isDirty,
     queuePendingAction: (action) => queuePendingActionRef.current(action),
@@ -72,13 +79,13 @@ export function useAppShellLifecycle({
     isDirty,
     onRequestClose: handleCloseRequested,
     onVisibilityChange: setIsWindowVisible,
-    windowTitle,
+    windowTitle: shellViewState.windowTitle,
   });
 
   hideWindowRef.current = hideWindow;
 
   const pendingDocumentAction = usePendingDocumentAction({
-    activeFilename,
+    activeFilename: shellViewState.activeFilename,
     applyOpenedDocument,
     createNewDocument,
     ensureWindowVisible,

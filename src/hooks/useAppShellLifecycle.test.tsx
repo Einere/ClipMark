@@ -43,17 +43,17 @@ function Harness({
   overrides?: Partial<Parameters<typeof useAppShellLifecycle>[0]>;
 }) {
   const controls = useAppShellLifecycle({
-    activeFilename: "draft.md",
     applyOpenedDocument: vi.fn(),
     closeCurrentDocument: vi.fn(),
     createNewDocument: vi.fn(),
     filePath: "/tmp/draft.md",
+    filename: "draft.md",
     isDirty: false,
+    isWelcomeVisible: false,
     loadRecentDocument: vi.fn().mockResolvedValue(null),
     openWithPicker: vi.fn().mockResolvedValue(null),
     openWithPickerWithoutShowingWindow: vi.fn().mockResolvedValue(null),
     saveDocument: vi.fn().mockResolvedValue(true),
-    windowTitle: "ClipMark",
     ...overrides,
   });
 
@@ -128,7 +128,7 @@ describe("useAppShellLifecycle", () => {
     expect(useNativeWindowStateMock).toHaveBeenCalledWith(expect.objectContaining({
       filePath: "/tmp/draft.md",
       isDirty: false,
-      windowTitle: "ClipMark",
+      windowTitle: "draft.md - saved",
     }));
     expect(usePendingDocumentActionMock).toHaveBeenCalledWith(expect.objectContaining({
       activeFilename: "draft.md",

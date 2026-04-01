@@ -18,15 +18,9 @@ import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
 import {
-  buildWindowTitle,
-  getDocumentStatus,
-} from "./lib/window-state";
-import {
   DEFAULT_APP_PREFERENCES,
   type AppPreferences,
 } from "./lib/preview-preferences";
-
-const APP_NAME = "ClipMark";
 
 type AppProps = {
   initialPreferences?: AppPreferences;
@@ -67,30 +61,23 @@ export default function App({ initialPreferences }: AppProps) {
     session.savedRevision,
     !session.isWelcomeVisible,
   );
-  const activeFilename = session.isWelcomeVisible
-    ? APP_NAME
-    : (session.filename ?? "Untitled.md");
-  const windowTitle = buildWindowTitle(
-    activeFilename,
-    getDocumentStatus(session.filePath, isDirty, session.isWelcomeVisible),
-  );
 
   useEffect(() => {
     void clearDebugLog();
   }, []);
 
   const lifecycle = useAppShellLifecycle({
-    activeFilename,
     applyOpenedDocument: session.applyOpenedDocument,
     closeCurrentDocument: session.closeCurrentDocument,
     createNewDocument: session.createNewDocument,
     filePath: session.filePath,
+    filename: session.filename,
     isDirty,
+    isWelcomeVisible: session.isWelcomeVisible,
     loadRecentDocument: session.loadRecentDocument,
     openWithPicker: session.openWithPicker,
     openWithPickerWithoutShowingWindow: session.openWithPickerWithoutShowingWindow,
     saveDocument: session.saveDocument,
-    windowTitle,
   });
   const viewState = useAppViewState({
     filePath: session.filePath,

@@ -9,14 +9,40 @@ import {
 
 const APP_NAME = "ClipMark";
 
-type UseAppViewStateOptions = {
+type AppViewStateInput = {
   filePath: string | null;
   filename: string | null;
   isDirty: boolean;
   isWelcomeVisible: boolean;
+};
+
+type UseAppViewStateOptions = {
   isWindowVisible: boolean;
   pendingAction: PendingAction | null;
-};
+} & AppViewStateInput;
+
+export function deriveAppViewState({
+  filePath,
+  filename,
+  isDirty,
+  isWelcomeVisible,
+}: AppViewStateInput) {
+  const activeFilename = isWelcomeVisible
+    ? APP_NAME
+    : (filename ?? "Untitled.md");
+  const documentStatus = getDocumentStatus(
+    filePath,
+    isDirty,
+    isWelcomeVisible,
+  );
+
+  return {
+    activeFilename,
+    documentStatus,
+    visibleDocumentStatus: getVisibleDocumentStatus(documentStatus),
+    windowTitle: buildWindowTitle(activeFilename, documentStatus),
+  };
+}
 
 export function useAppViewState({
   filePath,
@@ -27,24 +53,25 @@ export function useAppViewState({
   pendingAction,
 }: UseAppViewStateOptions) {
   return useMemo(() => {
-    const activeFilename = isWelcomeVisible
-      ? APP_NAME
-      : (filename ?? "Untitled.md");
-    const documentStatus = getDocumentStatus(
+    const baseViewState = deriveAppViewState({
       filePath,
+      filename,
       isDirty,
       isWelcomeVisible,
-    );
+    });
 
     return {
-      activeFilename,
+      activeFilename: baseViewState.activeFilename,
       canCopyFilePath: isWindowVisible && filePath !== null,
       canSaveDocument: isWindowVisible && !isWelcomeVisible,
       canTogglePanels: isWindowVisible && !isWelcomeVisible,
-      dialogState: getUnsavedDialogState(activeFilename, pendingAction),
-      documentStatus,
-      visibleDocumentStatus: getVisibleDocumentStatus(documentStatus),
-      windowTitle: buildWindowTitle(activeFilename, documentStatus),
+      dialogState: getUnsavedDialogState(
+        baseViewState.activeFilename,
+        pendingAction,
+      ),
+      documentStatus: baseViewState.documentStatus,
+      visibleDocumentStatus: baseViewState.visibleDocumentStatus,
+      windowTitle: baseViewState.windowTitle,
     };
   }, [
     filePath,

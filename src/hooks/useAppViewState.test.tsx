@@ -2,7 +2,10 @@ import { act } from "react";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { useAppViewState } from "./useAppViewState";
+import {
+  deriveAppViewState,
+  useAppViewState,
+} from "./useAppViewState";
 
 type Controls = ReturnType<typeof useAppViewState>;
 
@@ -46,6 +49,13 @@ describe("useAppViewState", () => {
   });
 
   it("derives the default welcome-state UI snapshot", async () => {
+    const derivedViewState = deriveAppViewState({
+      filePath: null,
+      filename: null,
+      isDirty: false,
+      isWelcomeVisible: true,
+    });
+
     await act(async () => {
       root.render(createElement(Harness, {
         onReady: (nextControls) => {
@@ -54,9 +64,16 @@ describe("useAppViewState", () => {
       }));
     });
 
-    expect(controls.activeFilename).toBe("ClipMark");
-    expect(controls.visibleDocumentStatus).toBeNull();
-    expect(controls.windowTitle).toBe("ClipMark");
+    expect(derivedViewState).toEqual({
+      activeFilename: "ClipMark",
+      documentStatus: "initial",
+      visibleDocumentStatus: null,
+      windowTitle: "ClipMark",
+    });
+    expect(controls.activeFilename).toBe(derivedViewState.activeFilename);
+    expect(controls.documentStatus).toBe(derivedViewState.documentStatus);
+    expect(controls.visibleDocumentStatus).toBe(derivedViewState.visibleDocumentStatus);
+    expect(controls.windowTitle).toBe(derivedViewState.windowTitle);
     expect(controls.canSaveDocument).toBe(false);
     expect(controls.canTogglePanels).toBe(false);
     expect(controls.canCopyFilePath).toBe(false);
@@ -68,6 +85,13 @@ describe("useAppViewState", () => {
   });
 
   it("derives document and close-dialog state from the active session", async () => {
+    const derivedViewState = deriveAppViewState({
+      filePath: "/tmp/draft.md",
+      filename: "draft.md",
+      isDirty: true,
+      isWelcomeVisible: false,
+    });
+
     await act(async () => {
       root.render(createElement(Harness, {
         onReady: (nextControls) => {
@@ -83,10 +107,16 @@ describe("useAppViewState", () => {
       }));
     });
 
-    expect(controls.activeFilename).toBe("draft.md");
-    expect(controls.documentStatus).toBe("edited");
-    expect(controls.visibleDocumentStatus).toBe("edited");
-    expect(controls.windowTitle).toBe("draft.md - edited");
+    expect(derivedViewState).toEqual({
+      activeFilename: "draft.md",
+      documentStatus: "edited",
+      visibleDocumentStatus: "edited",
+      windowTitle: "draft.md - edited",
+    });
+    expect(controls.activeFilename).toBe(derivedViewState.activeFilename);
+    expect(controls.documentStatus).toBe(derivedViewState.documentStatus);
+    expect(controls.visibleDocumentStatus).toBe(derivedViewState.visibleDocumentStatus);
+    expect(controls.windowTitle).toBe(derivedViewState.windowTitle);
     expect(controls.canSaveDocument).toBe(true);
     expect(controls.canTogglePanels).toBe(true);
     expect(controls.canCopyFilePath).toBe(true);
@@ -95,5 +125,44 @@ describe("useAppViewState", () => {
       description: "draft.md has unsaved changes. Save first or close this window without keeping the latest edits.",
       title: "Save changes before closing?",
     });
+  });
+
+  it("keeps filename, status, and title derivation stable when the window is hidden", async () => {
+    const derivedViewState = deriveAppViewState({
+      filePath: "/tmp/draft.md",
+      filename: "draft.md",
+      isDirty: false,
+      isWelcomeVisible: false,
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          filePath: "/tmp/draft.md",
+          filename: "draft.md",
+          isDirty: false,
+          isWelcomeVisible: false,
+          isWindowVisible: false,
+          pendingAction: { type: "closeWindow" },
+        },
+      }));
+    });
+
+    expect(derivedViewState).toEqual({
+      activeFilename: "draft.md",
+      documentStatus: "saved",
+      visibleDocumentStatus: "saved",
+      windowTitle: "draft.md - saved",
+    });
+    expect(controls.activeFilename).toBe(derivedViewState.activeFilename);
+    expect(controls.documentStatus).toBe(derivedViewState.documentStatus);
+    expect(controls.visibleDocumentStatus).toBe(derivedViewState.visibleDocumentStatus);
+    expect(controls.windowTitle).toBe(derivedViewState.windowTitle);
+    expect(controls.canSaveDocument).toBe(false);
+    expect(controls.canTogglePanels).toBe(false);
+    expect(controls.canCopyFilePath).toBe(false);
   });
 });
