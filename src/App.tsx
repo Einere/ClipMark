@@ -5,6 +5,7 @@ import {
   useRef,
 } from "react";
 import { AppContent } from "./components/app/AppContent";
+import { useToast } from "./components/toast/ToastProvider";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { useAppShellActions } from "./hooks/useAppShellActions";
 import { useAppShellLifecycle } from "./hooks/useAppShellLifecycle";
@@ -13,7 +14,6 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
 import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
-import { useToastState } from "./hooks/useToastState";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
@@ -36,7 +36,7 @@ type AppProps = {
 
 export default function App({ initialPreferences }: AppProps) {
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
-  const { handleExitComplete, showToast, toast } = useToastState();
+  const { showToast } = useToast();
 
   const handlePreferencesSaveError = useEffectEvent(() => {
     showToast("Could not save app preferences.", "error");
@@ -186,10 +186,6 @@ export default function App({ initialPreferences }: AppProps) {
         onChange: session.handleOpenFile,
         ref: session.fileInputRef,
       }}
-      toast={toast ? {
-        ...toast,
-        onExitComplete: () => handleExitComplete(toast.id),
-      } : null}
       welcome={{
         isVisible: session.isWelcomeVisible,
         onNew: actions.handleWelcomeNew,

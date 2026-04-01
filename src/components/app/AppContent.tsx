@@ -2,7 +2,6 @@ import { lazy, Suspense } from "react";
 import type { ChangeEventHandler, RefObject } from "react";
 import { UnsavedChangesDialog } from "../dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
-import { Toast } from "../ui/Toast";
 import { WelcomeScreen } from "../welcome/WelcomeScreen";
 import { AppShellFallback } from "./AppShellFallback";
 import type { DocumentStore } from "../../lib/document-store";
@@ -45,14 +44,6 @@ type AppContentProps = {
     onChange: ChangeEventHandler<HTMLInputElement>;
     ref: RefObject<HTMLInputElement | null>;
   };
-  toast: {
-    id: number;
-    message: string;
-    onExitComplete: () => void;
-    phase: "enter" | "exit";
-    title?: string;
-    variant: "error" | "info" | "success" | "warning";
-  } | null;
   welcome: {
     isVisible: boolean;
     onNew: () => void;
@@ -66,7 +57,6 @@ export function AppContent({
   dialog,
   editor,
   fileInput,
-  toast,
   welcome,
 }: AppContentProps) {
   return (
@@ -116,17 +106,6 @@ export function AppContent({
         ref={fileInput.ref}
         type="file"
       />
-
-      {toast ? (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          onExitComplete={toast.onExitComplete}
-          phase={toast.phase}
-          title={toast.title}
-          variant={toast.variant}
-        />
-      ) : null}
     </div>
   );
 }

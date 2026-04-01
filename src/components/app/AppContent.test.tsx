@@ -25,12 +25,6 @@ vi.mock("../dialog/UnsavedChangesDialog", () => ({
   ),
 }));
 
-vi.mock("../ui/Toast", () => ({
-  Toast: ({ phase }: { phase: string }) => (
-    <div data-phase={phase} role="status" />
-  ),
-}));
-
 function createProps() {
   return {
     dialog: {
@@ -62,7 +56,6 @@ function createProps() {
       onChange: vi.fn(),
       ref: createRef<HTMLInputElement>(),
     },
-    toast: null as Parameters<typeof AppContent>[0]["toast"],
     welcome: {
       isVisible: true as boolean,
       onNew: vi.fn(),
@@ -116,22 +109,14 @@ describe("AppContent", () => {
     expect(container.querySelector("[data-testid='editor-workspace']")).not.toBeNull();
   });
 
-  it("renders the dialog and toast when provided", async () => {
+  it("renders the dialog when it is open", async () => {
     const props = createProps();
     props.dialog.open = true;
-    props.toast = {
-      id: 1,
-      message: "Saved",
-      onExitComplete: vi.fn(),
-      phase: "enter",
-      variant: "success",
-    };
 
     await act(async () => {
       root.render(createElement(AppContent, props));
     });
 
     expect(container.querySelector("[data-testid='unsaved-dialog']")).not.toBeNull();
-    expect(container.querySelector("[role='status']")?.getAttribute("data-phase")).toBe("enter");
   });
 });

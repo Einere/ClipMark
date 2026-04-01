@@ -2,31 +2,15 @@ import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { ToastProvider } from "./components/toast/ToastProvider";
 import { DEFAULT_APP_PREFERENCES } from "./lib/preview-preferences";
 
 vi.mock("./components/app/AppContent", () => ({
-  AppContent: ({
-    toast,
-    editor,
-  }: {
-    toast: { id: number; message: string; onExitComplete: () => void; phase: string } | null;
-    editor: { onPathCopy: () => void };
-  }) => (
+  AppContent: ({ editor }: { editor: { onPathCopy: () => void } }) => (
     <>
       <button onClick={editor.onPathCopy} type="button">
         Trigger toast
       </button>
-      {toast ? (
-        <div
-          data-phase={toast.phase}
-          onAnimationEnd={(event) => {
-            if (event.animationName === "ui-toast-exit") {
-              toast.onExitComplete();
-            }
-          }}
-          role="status"
-        />
-      ) : null}
     </>
   ),
 }));
@@ -127,7 +111,11 @@ describe("App toast lifecycle", () => {
     cleanupHandlers.push(() => renderer.cleanup());
 
     await act(async () => {
-      renderer.render(<App initialPreferences={DEFAULT_APP_PREFERENCES} />);
+      renderer.render(
+        <ToastProvider>
+          <App initialPreferences={DEFAULT_APP_PREFERENCES} />
+        </ToastProvider>,
+      );
     });
 
     await act(async () => {
@@ -141,17 +129,17 @@ describe("App toast lifecycle", () => {
       (triggerButton as HTMLButtonElement).click();
     });
 
-    let toast = renderer.container.querySelector("[role='status']");
+    let toast = document.body.querySelector("[role='status']");
     expect(toast?.getAttribute("data-phase")).toBe("enter");
 
     act(() => {
       vi.advanceTimersByTime(3200);
     });
 
-    toast = renderer.container.querySelector("[role='status']");
+    toast = document.body.querySelector("[role='status']");
     expect(toast?.getAttribute("data-phase")).toBe("exit");
 
-    toast = renderer.container.querySelector("[role='status']");
+    toast = document.body.querySelector("[role='status']");
     expect(toast?.getAttribute("data-phase")).toBe("exit");
 
     act(() => {
@@ -162,7 +150,7 @@ describe("App toast lifecycle", () => {
       toast?.dispatchEvent(animationEndEvent);
     });
 
-    toast = renderer.container.querySelector("[role='status']");
+    toast = document.body.querySelector("[role='status']");
     expect(toast).toBeNull();
   });
 });
