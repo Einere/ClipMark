@@ -4,12 +4,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { DEFAULT_APP_PREFERENCES } from "./lib/preview-preferences";
 
-vi.mock("./components/dialog/UnsavedChangesDialog", () => ({
-  UnsavedChangesDialog: () => null,
-}));
-
-vi.mock("./components/welcome/WelcomeScreen", () => ({
-  WelcomeScreen: () => null,
+vi.mock("./components/app/AppContent", () => ({
+  AppContent: ({
+    toast,
+    editor,
+  }: {
+    toast: { id: number; message: string; onExitComplete: () => void; phase: string } | null;
+    editor: { onPathCopy: () => void };
+  }) => (
+    <>
+      <button onClick={editor.onPathCopy} type="button">
+        Trigger toast
+      </button>
+      {toast ? (
+        <div
+          data-phase={toast.phase}
+          onAnimationEnd={(event) => {
+            if (event.animationName === "ui-toast-exit") {
+              toast.onExitComplete();
+            }
+          }}
+          role="status"
+        />
+      ) : null}
+    </>
+  ),
 }));
 
 vi.mock("./hooks/useAppMenuController", () => ({
@@ -36,14 +55,6 @@ vi.mock("./hooks/useDocumentSession", () => ({
     savedRevision: 0,
     saveDocument: async () => false,
   }),
-}));
-
-vi.mock("./components/workspace/EditorWorkspace", () => ({
-  EditorWorkspace: ({ onPathCopy }: { onPathCopy: () => void }) => (
-    <button onClick={onPathCopy} type="button">
-      Trigger toast
-    </button>
-  ),
 }));
 
 vi.mock("./hooks/useNativeWindowState", () => ({
