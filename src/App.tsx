@@ -1,9 +1,13 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useEffectEvent,
   useRef,
 } from "react";
-import { AppContent } from "./components/app/AppContent";
+import { AppShellFallback } from "./components/app/AppShellFallback";
+import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
+import { WelcomeScreen } from "./components/welcome/WelcomeScreen";
 import { useToast } from "./components/toast/ToastProvider";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { useAppShellActions } from "./hooks/useAppShellActions";
@@ -22,6 +26,12 @@ import {
   type AppPreferences,
 } from "./lib/preview-preferences";
 
+const EditorWorkspace = lazy(() =>
+  import("./components/workspace/EditorWorkspace").then((module) => ({
+    default: module.EditorWorkspace,
+  })),
+);
+
 type AppProps = {
   initialPreferences?: AppPreferences;
 };
@@ -32,6 +42,16 @@ export default function App({ initialPreferences }: AppProps) {
 
   const handlePreferencesSaveError = useEffectEvent(() => {
     showToast("Could not save app preferences.", "error");
+  });
+  const handlePanelWidthsChange = useEffectEvent(({
+    previewPanelWidth,
+    tocPanelWidth,
+  }: {
+    previewPanelWidth: number | null;
+    tocPanelWidth: number | null;
+  }) => {
+    setPreviewPanelWidth(previewPanelWidth);
+    setTocPanelWidth(tocPanelWidth);
   });
   const {
     autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
@@ -136,42 +156,50 @@ export default function App({ initialPreferences }: AppProps) {
   useAppMenuController(menuHandlers, menuState);
 
   return (
-    <AppContent
-      dialog={{
-        confirmLabel: viewState.dialogState.confirmLabel,
-        description: viewState.dialogState.description,
-        filename: viewState.activeFilename,
-        onDiscard: () => void lifecycle.resolvePendingActionWithDiscard(),
-        onSave: () => void lifecycle.resolvePendingActionWithSave(),
-        open: lifecycle.pendingAction !== null,
-        title: viewState.dialogState.title,
-      }}
-      editor={{
-        documentKey: session.editorDocumentKey,
-        documentStatus: viewState.visibleDocumentStatus,
-        documentStore: session.documentStore,
-        editorRef,
-        filePath: session.filePath,
-        initialPreviewPanelWidth: previewPanelWidth,
-        initialTocPanelWidth: tocPanelWidth,
-        isExternalMediaAutoLoadEnabled,
-        isPreviewVisible,
-        isTocVisible,
-        onEditorFocusChange: lifecycle.handleEditorFocusChange,
-        setPreviewPanelWidth,
-        setTocPanelWidth,
-      }}
-      fileInput={{
-        onChange: session.handleOpenFile,
-        ref: session.fileInputRef,
-      }}
-      welcome={{
-        isVisible: session.isWelcomeVisible,
-        onNew: actions.handleWelcomeNew,
-        onOpen: actions.handleWelcomeOpen,
-        onOpenRecent: actions.handleWelcomeOpenRecent,
-        recentFiles: session.recentFiles,
-      }}
-    />
+    <div className="app-shell">
+      {session.isWelcomeVisible ? (
+        <WelcomeScreen
+          onNew={actions.handleWelcomeNew}
+          onOpen={actions.handleWelcomeOpen}
+          onOpenRecent={actions.handleWelcomeOpenRecent}
+          recentFiles={session.recentFiles}
+        />
+      ) : (
+        <Suspense fallback={<AppShellFallback />}>
+          <EditorWorkspace
+            documentKey={session.editorDocumentKey}
+            documentStatus={viewState.visibleDocumentStatus}
+            documentStore={session.documentStore}
+            editorRef={editorRef}
+            filePath={session.filePath}
+            initialPreviewPanelWidth={previewPanelWidth}
+            initialTocPanelWidth={tocPanelWidth}
+            isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+            isPreviewVisible={isPreviewVisible}
+            isTocVisible={isTocVisible}
+            onEditorFocusChange={lifecycle.handleEditorFocusChange}
+            onPanelWidthsChange={handlePanelWidthsChange}
+          />
+        </Suspense>
+      )}
+
+      <UnsavedChangesDialog
+        confirmLabel={viewState.dialogState.confirmLabel}
+        description={viewState.dialogState.description}
+        filename={viewState.activeFilename}
+        onDiscard={() => void lifecycle.resolvePendingActionWithDiscard()}
+        onSave={() => void lifecycle.resolvePendingActionWithSave()}
+        open={lifecycle.pendingAction !== null}
+        title={viewState.dialogState.title}
+      />
+
+      <input
+        accept=".md,text/markdown,text/plain"
+        hidden
+        onChange={session.handleOpenFile}
+        ref={session.fileInputRef}
+        type="file"
+      />
+    </div>
   );
 }
