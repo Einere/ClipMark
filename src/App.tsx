@@ -171,12 +171,8 @@ export default function App({ initialPreferences }: AppProps) {
         isPreviewVisible,
         isTocVisible,
         onEditorFocusChange: lifecycle.handleEditorFocusChange,
-        onPanelWidthsChange: ({ previewPanelWidth, tocPanelWidth }) => {
-          setPreviewPanelWidth(previewPanelWidth);
-          setTocPanelWidth(tocPanelWidth);
-        },
-        onPathCopy: () => showToast("Copied the file path to the clipboard.", "success"),
-        onPathCopyError: () => showToast("Could not copy the file path.", "error"),
+        setPreviewPanelWidth,
+        setTocPanelWidth,
       }}
       fileInput={{
         onChange: session.handleOpenFile,

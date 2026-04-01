@@ -1,15 +1,12 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import type { ChangeEventHandler, RefObject } from "react";
 import { UnsavedChangesDialog } from "../dialog/UnsavedChangesDialog";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { WelcomeScreen } from "../welcome/WelcomeScreen";
-import { AppShellFallback } from "./AppShellFallback";
+import { EditorWorkspaceContainer } from "./EditorWorkspaceContainer";
 import type { DocumentStore } from "../../lib/document-store";
 import type { RecentFile } from "../../lib/recent-files";
 import type { DocumentStatus } from "../../lib/window-state";
-
-const EditorWorkspace = lazy(() => import("../workspace/EditorWorkspace")
-  .then((module) => ({ default: module.EditorWorkspace })));
 
 type AppContentProps = {
   dialog: {
@@ -33,12 +30,8 @@ type AppContentProps = {
     isPreviewVisible: boolean;
     isTocVisible: boolean;
     onEditorFocusChange: (focused: boolean) => void;
-    onPanelWidthsChange: (widths: {
-      previewPanelWidth: number | null;
-      tocPanelWidth: number | null;
-    }) => void;
-    onPathCopy: () => void;
-    onPathCopyError: () => void;
+    setPreviewPanelWidth: (width: number | null) => void;
+    setTocPanelWidth: (width: number | null) => void;
   };
   fileInput: {
     onChange: ChangeEventHandler<HTMLInputElement>;
@@ -69,24 +62,21 @@ export function AppContent({
           recentFiles={welcome.recentFiles}
         />
       ) : (
-        <Suspense fallback={<AppShellFallback />}>
-          <EditorWorkspace
-            documentKey={editor.documentKey}
-            documentStatus={editor.documentStatus}
-            documentStore={editor.documentStore}
-            editorRef={editor.editorRef}
-            filePath={editor.filePath}
-            initialPreviewPanelWidth={editor.initialPreviewPanelWidth}
-            initialTocPanelWidth={editor.initialTocPanelWidth}
-            isExternalMediaAutoLoadEnabled={editor.isExternalMediaAutoLoadEnabled}
-            isPreviewVisible={editor.isPreviewVisible}
-            isTocVisible={editor.isTocVisible}
-            onEditorFocusChange={editor.onEditorFocusChange}
-            onPanelWidthsChange={editor.onPanelWidthsChange}
-            onPathCopy={editor.onPathCopy}
-            onPathCopyError={editor.onPathCopyError}
-          />
-        </Suspense>
+        <EditorWorkspaceContainer
+          documentKey={editor.documentKey}
+          documentStatus={editor.documentStatus}
+          documentStore={editor.documentStore}
+          editorRef={editor.editorRef}
+          filePath={editor.filePath}
+          initialPreviewPanelWidth={editor.initialPreviewPanelWidth}
+          initialTocPanelWidth={editor.initialTocPanelWidth}
+          isExternalMediaAutoLoadEnabled={editor.isExternalMediaAutoLoadEnabled}
+          isPreviewVisible={editor.isPreviewVisible}
+          isTocVisible={editor.isTocVisible}
+          onEditorFocusChange={editor.onEditorFocusChange}
+          setPreviewPanelWidth={editor.setPreviewPanelWidth}
+          setTocPanelWidth={editor.setTocPanelWidth}
+        />
       )}
 
       <UnsavedChangesDialog

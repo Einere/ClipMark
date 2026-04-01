@@ -3,16 +3,41 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { ToastProvider } from "./components/toast/ToastProvider";
+import type { AppPreferences } from "./lib/preview-preferences";
 import { DEFAULT_APP_PREFERENCES } from "./lib/preview-preferences";
 
+const capturedProps = vi.hoisted(() => ({
+  lastEditor: null as null | {
+    setPreviewPanelWidth: (width: number | null) => void;
+    setTocPanelWidth: (width: number | null) => void;
+  },
+}));
+
 vi.mock("./components/app/AppContent", () => ({
-  AppContent: ({ editor }: { editor: { onPathCopy: () => void } }) => (
+  AppContent: ({
+    editor,
+  }: {
+    editor: {
+      setPreviewPanelWidth: (width: number | null) => void;
+      setTocPanelWidth: (width: number | null) => void;
+    };
+  }) => {
+    capturedProps.lastEditor = editor;
+
+    return (
     <>
-      <button onClick={editor.onPathCopy} type="button">
-        Trigger toast
+      <button
+        onClick={() => {
+          editor.setPreviewPanelWidth(420);
+          editor.setTocPanelWidth(260);
+        }}
+        type="button"
+      >
+        Resize panels
       </button>
     </>
-  ),
+    );
+  },
 }));
 
 vi.mock("./hooks/useAppMenuController", () => ({
@@ -70,6 +95,36 @@ vi.mock("./lib/theme", () => ({
   subscribeToSystemTheme: () => () => undefined,
 }));
 
+const setPreviewPanelWidth = vi.fn();
+const setTocPanelWidth = vi.fn();
+
+vi.mock("./hooks/useAppPreferences", async () => {
+  const actual = await vi.importActual<typeof import("./hooks/useAppPreferences")>("./hooks/useAppPreferences");
+
+  return {
+    ...actual,
+    useAppPreferences: ({
+      initialPreferences,
+    }: {
+      initialPreferences: AppPreferences;
+      onSaveError: () => void;
+    }) => ({
+      autoLoadExternalMedia: initialPreferences.autoLoadExternalMedia,
+      isPreviewVisible: initialPreferences.isPreviewVisible,
+      isTocVisible: initialPreferences.isTocVisible,
+      previewPanelWidth: initialPreferences.previewPanelWidth,
+      setIsExternalMediaAutoLoadEnabled: vi.fn(),
+      setIsPreviewVisible: vi.fn(),
+      setIsTocVisible: vi.fn(),
+      setPreviewPanelWidth,
+      setThemeMode: vi.fn(),
+      setTocPanelWidth,
+      themeMode: initialPreferences.themeMode,
+      tocPanelWidth: initialPreferences.tocPanelWidth,
+    }),
+  };
+});
+
 function createTestRenderer() {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -95,6 +150,9 @@ const cleanupHandlers: Array<() => void> = [];
 
 beforeEach(() => {
   vi.useFakeTimers();
+  capturedProps.lastEditor = null;
+  setPreviewPanelWidth.mockReset();
+  setTocPanelWidth.mockReset();
 });
 
 afterEach(() => {
@@ -105,8 +163,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("App toast lifecycle", () => {
-  it("automatically transitions the toast to exit and then removes it", async () => {
+describe("App editor screen wiring", () => {
+  it("passes the preference setters through to the editor screen container", async () => {
     const renderer = createTestRenderer();
     cleanupHandlers.push(() => renderer.cleanup());
 
@@ -123,34 +181,14 @@ describe("App toast lifecycle", () => {
     });
 
     const triggerButton = renderer.container.querySelector("button");
-    expect(triggerButton?.textContent).toContain("Trigger toast");
+    expect(triggerButton?.textContent).toContain("Resize panels");
+    expect(capturedProps.lastEditor).not.toBeNull();
 
     act(() => {
       (triggerButton as HTMLButtonElement).click();
     });
 
-    let toast = document.body.querySelector("[role='status']");
-    expect(toast?.getAttribute("data-phase")).toBe("enter");
-
-    act(() => {
-      vi.advanceTimersByTime(3200);
-    });
-
-    toast = document.body.querySelector("[role='status']");
-    expect(toast?.getAttribute("data-phase")).toBe("exit");
-
-    toast = document.body.querySelector("[role='status']");
-    expect(toast?.getAttribute("data-phase")).toBe("exit");
-
-    act(() => {
-      const animationEndEvent = new Event("animationend", { bubbles: true });
-      Object.defineProperty(animationEndEvent, "animationName", {
-        value: "ui-toast-exit",
-      });
-      toast?.dispatchEvent(animationEndEvent);
-    });
-
-    toast = document.body.querySelector("[role='status']");
-    expect(toast).toBeNull();
+    expect(setPreviewPanelWidth).toHaveBeenCalledWith(420);
+    expect(setTocPanelWidth).toHaveBeenCalledWith(260);
   });
 });

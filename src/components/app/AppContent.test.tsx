@@ -13,8 +13,8 @@ vi.mock("../welcome/WelcomeScreen", () => ({
   ),
 }));
 
-vi.mock("../workspace/EditorWorkspace", () => ({
-  EditorWorkspace: () => (
+vi.mock("./EditorWorkspaceContainer", () => ({
+  EditorWorkspaceContainer: () => (
     <div data-testid="editor-workspace">Editor workspace</div>
   ),
 }));
@@ -48,9 +48,8 @@ function createProps() {
       isPreviewVisible: true,
       isTocVisible: false,
       onEditorFocusChange: vi.fn(),
-      onPanelWidthsChange: vi.fn(),
-      onPathCopy: vi.fn(),
-      onPathCopyError: vi.fn(),
+      setPreviewPanelWidth: vi.fn(),
+      setTocPanelWidth: vi.fn(),
     },
     fileInput: {
       onChange: vi.fn(),
