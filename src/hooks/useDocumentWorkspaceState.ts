@@ -1,60 +1,54 @@
 import { useState } from "react";
 import type { DocumentStore } from "../lib/document-store";
-import type { OpenedDocument, SavedDocument } from "../lib/file-system";
-
-const UNTITLED_FILENAME = "Untitled.md";
-
-type WorkspaceDocument = OpenedDocument | {
-  filename: string;
-  markdown: string;
-  path: string | null;
-};
+import type { SavedDocument } from "../lib/file-system";
+import {
+  getClosedDocumentWorkspaceState,
+  getNewDocumentWorkspaceState,
+  getOpenedDocumentWorkspaceState,
+  getSavedDocumentWorkspaceState,
+  INITIAL_DOCUMENT_WORKSPACE_STATE,
+  type WorkspaceDocument,
+} from "../lib/document-workspace-state";
 
 export function useDocumentWorkspaceState(documentStore: DocumentStore) {
-  const [filePath, setFilePath] = useState<string | null>(null);
-  const [filename, setFilename] = useState<string | null>(null);
-  const [savedRevision, setSavedRevision] = useState(0);
-  const [editorDocumentKey, setEditorDocumentKey] = useState(0);
-  const [isWelcomeVisible, setIsWelcomeVisible] = useState(true);
+  const [workspaceState, setWorkspaceState] = useState(INITIAL_DOCUMENT_WORKSPACE_STATE);
 
-  function bumpDocumentKey() {
-    setEditorDocumentKey((value) => value + 1);
+  function replaceMarkdownAndReadRevision(nextMarkdown: string) {
+    documentStore.replaceMarkdown(nextMarkdown);
+    return documentStore.getRevision();
   }
 
   return {
     applyOpenedDocument(document: WorkspaceDocument) {
-      setIsWelcomeVisible(false);
-      setFilePath(document.path);
-      setFilename(document.filename);
-      documentStore.replaceMarkdown(document.markdown);
-      setSavedRevision(documentStore.getRevision());
-      bumpDocumentKey();
+      const savedRevision = replaceMarkdownAndReadRevision(document.markdown);
+      setWorkspaceState((previousState) => getOpenedDocumentWorkspaceState(
+        previousState,
+        document,
+        savedRevision,
+      ));
     },
     applySavedDocument(saved: SavedDocument) {
-      setFilePath(saved.path);
-      setFilename(saved.filename);
-      setSavedRevision(documentStore.getRevision());
+      const savedRevision = documentStore.getRevision();
+      setWorkspaceState((previousState) => getSavedDocumentWorkspaceState(
+        previousState,
+        saved,
+        savedRevision,
+      ));
     },
     closeCurrentDocument() {
-      setIsWelcomeVisible(true);
-      setFilePath(null);
-      setFilename(null);
-      documentStore.replaceMarkdown("");
-      setSavedRevision(documentStore.getRevision());
-      bumpDocumentKey();
+      const savedRevision = replaceMarkdownAndReadRevision("");
+      setWorkspaceState((previousState) => getClosedDocumentWorkspaceState(
+        previousState,
+        savedRevision,
+      ));
     },
     createNewDocument() {
-      setIsWelcomeVisible(false);
-      setFilePath(null);
-      setFilename(UNTITLED_FILENAME);
-      documentStore.replaceMarkdown("");
-      setSavedRevision(documentStore.getRevision());
-      bumpDocumentKey();
+      const savedRevision = replaceMarkdownAndReadRevision("");
+      setWorkspaceState((previousState) => getNewDocumentWorkspaceState(
+        previousState,
+        savedRevision,
+      ));
     },
-    editorDocumentKey,
-    filePath,
-    filename,
-    isWelcomeVisible,
-    savedRevision,
+    ...workspaceState,
   };
 }
