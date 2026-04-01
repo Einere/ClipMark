@@ -4,6 +4,21 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentWorkspaceFooter } from "./DocumentWorkspaceFooter";
 
+function createMetrics(overrides?: Partial<{
+  characterCount: number;
+  estimatedReadingMinutes: number;
+  lineCount: number;
+  wordCount: number;
+}>) {
+  return {
+    characterCount: 180,
+    estimatedReadingMinutes: 1,
+    lineCount: 12,
+    wordCount: 42,
+    ...overrides,
+  };
+}
+
 function createTestRenderer() {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -44,7 +59,7 @@ describe("DocumentWorkspaceFooter", () => {
         documentStatus="saved"
         filePath="/Users/einere/notes/research.md"
         headingCount={2}
-        metrics={{ lineCount: 12, wordCount: 42 }}
+        metrics={createMetrics()}
         onPathCopy={onPathCopy}
       />,
     );
@@ -54,6 +69,7 @@ describe("DocumentWorkspaceFooter", () => {
       | null;
 
     expect(button?.textContent).toContain("/Users/einere/notes/research.md");
+    expect(renderer.container.querySelector(".editor-workspace__status")?.getAttribute("data-status")).toBe("saved");
     expect(renderer.container.textContent).toContain("Saved");
     expect(renderer.container.textContent).toContain("42 words");
 
@@ -70,13 +86,19 @@ describe("DocumentWorkspaceFooter", () => {
         documentStatus={null}
         filePath={null}
         headingCount={0}
-        metrics={{ lineCount: 0, wordCount: 0 }}
+        metrics={createMetrics({
+          characterCount: 0,
+          estimatedReadingMinutes: 0,
+          lineCount: 0,
+          wordCount: 0,
+        })}
         onPathCopy={() => undefined}
       />,
     );
 
     expect(renderer.container.textContent).toContain("Unsaved local document");
     expect(renderer.container.textContent).toContain("Draft");
+    expect(renderer.container.querySelector(".editor-workspace__status")?.getAttribute("data-status")).toBe("initial");
     expect(renderer.container.querySelector(".editor-workspace__path-button")).toBeNull();
   });
 });

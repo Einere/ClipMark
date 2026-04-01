@@ -1,16 +1,38 @@
-import { summarizeDocument } from "../../lib/document-metrics";
+import type { DocumentMetrics } from "../../lib/document-metrics";
 import type { DocumentStatus } from "../../lib/window-state";
 
-function formatDocumentStatus(documentStatus: DocumentStatus | null) {
+type DocumentWorkspaceFooterProps = {
+  documentStatus: DocumentStatus | null;
+  filePath: string | null;
+  headingCount: number;
+  metrics: DocumentMetrics;
+  onPathCopy: () => void;
+};
+
+type VisibleDocumentStatus = {
+  dataStatus: "edited" | "initial" | "saved";
+  label: "Draft" | "Saved" | "Unsaved";
+};
+
+function getVisibleDocumentStatus(documentStatus: DocumentStatus | null): VisibleDocumentStatus {
   if (documentStatus === "edited") {
-    return "Unsaved";
+    return {
+      dataStatus: "edited",
+      label: "Unsaved",
+    };
   }
 
   if (documentStatus === "saved") {
-    return "Saved";
+    return {
+      dataStatus: "saved",
+      label: "Saved",
+    };
   }
 
-  return "Draft";
+  return {
+    dataStatus: "initial",
+    label: "Draft",
+  };
 }
 
 function getFileLabel(filePath: string | null) {
@@ -22,44 +44,89 @@ function getFileLabel(filePath: string | null) {
   return segments.at(-1) ?? filePath;
 }
 
+function DocumentFooterFile({
+  filePath,
+  onPathCopy,
+}: Pick<DocumentWorkspaceFooterProps, "filePath" | "onPathCopy">) {
+  return (
+    <div className="editor-workspace__footer-primary">
+      <span className="editor-workspace__footer-label">File</span>
+      {filePath ? (
+        <button
+          className="editor-workspace__path-button"
+          onClick={onPathCopy}
+          title="Click to copy file path"
+          type="button"
+        >
+          {filePath}
+        </button>
+      ) : (
+        <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
+      )}
+    </div>
+  );
+}
+
+function DocumentFooterStatus({
+  documentStatus,
+}: Pick<DocumentWorkspaceFooterProps, "documentStatus">) {
+  const visibleStatus = getVisibleDocumentStatus(documentStatus);
+
+  return (
+    <span className="editor-workspace__status" data-status={visibleStatus.dataStatus}>
+      {visibleStatus.label}
+    </span>
+  );
+}
+
+function DocumentFooterMeta({
+  documentStatus,
+  headingCount,
+  metrics,
+}: Pick<DocumentWorkspaceFooterProps, "documentStatus" | "headingCount" | "metrics">) {
+  const items = [
+    {
+      key: "status",
+      content: <DocumentFooterStatus documentStatus={documentStatus} />,
+    },
+    {
+      key: "words",
+      content: `${metrics.wordCount} words`,
+    },
+    {
+      key: "lines",
+      content: `${metrics.lineCount} lines`,
+    },
+    {
+      key: "headings",
+      content: `${headingCount} headings`,
+    },
+  ];
+
+  return (
+    <div className="editor-workspace__footer-meta" aria-label="Document summary">
+      {items.map((item) => (
+        <span key={item.key}>{item.content}</span>
+      ))}
+    </div>
+  );
+}
+
 export function DocumentWorkspaceFooter({
   documentStatus,
   filePath,
   headingCount,
   metrics,
   onPathCopy,
-}: {
-  documentStatus: DocumentStatus | null;
-  filePath: string | null;
-  headingCount: number;
-  metrics: ReturnType<typeof summarizeDocument>;
-  onPathCopy: () => void;
-}) {
-  const visibleStatusLabel = formatDocumentStatus(documentStatus);
-
+}: DocumentWorkspaceFooterProps) {
   return (
     <footer className="editor-workspace__footer">
-      <div className="editor-workspace__footer-primary">
-        <span className="editor-workspace__footer-label">File</span>
-        {filePath ? (
-          <button
-            className="editor-workspace__path-button"
-            onClick={onPathCopy}
-            title="Click to copy file path"
-            type="button"
-          >
-            {filePath}
-          </button>
-        ) : (
-          <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
-        )}
-      </div>
-      <div className="editor-workspace__footer-meta" aria-label="Document summary">
-        <span>{visibleStatusLabel}</span>
-        <span>{metrics.wordCount} words</span>
-        <span>{metrics.lineCount} lines</span>
-        <span>{headingCount} headings</span>
-      </div>
+      <DocumentFooterFile filePath={filePath} onPathCopy={onPathCopy} />
+      <DocumentFooterMeta
+        documentStatus={documentStatus}
+        headingCount={headingCount}
+        metrics={metrics}
+      />
     </footer>
   );
 }
