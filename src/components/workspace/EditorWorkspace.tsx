@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useDeferredValue, useEffectEvent, useMemo, useRef } from "react";
+import { useDeferredValue, useMemo, useRef } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -44,8 +44,6 @@ type EditorWorkspaceProps = {
     previewPanelWidth: number | null;
     tocPanelWidth: number | null;
   }) => void;
-  onPathCopy: (path: string) => void;
-  onPathCopyError: () => void;
   onEditorFocusChange: (focused: boolean) => void;
 };
 
@@ -127,8 +125,6 @@ export function EditorWorkspace({
   isPreviewVisible,
   isTocVisible,
   onPanelWidthsChange,
-  onPathCopy,
-  onPathCopyError,
   onEditorFocusChange,
 }: EditorWorkspaceProps) {
   const mainRef = useRef<HTMLElement | null>(null);
@@ -192,19 +188,6 @@ export function EditorWorkspace({
     isVisible: isPreviewVisible,
     kind: "preview",
     siblingWidth: effectivePanelWidths.tocWidth,
-  });
-
-  const handlePathCopy = useEffectEvent(async () => {
-    if (!filePath) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(filePath);
-      onPathCopy(filePath);
-    } catch {
-      onPathCopyError();
-    }
   });
 
   return (
@@ -285,7 +268,6 @@ export function EditorWorkspace({
           filePath={filePath}
           headingCount={headings.length}
           metrics={documentMetrics}
-          onPathCopy={() => void handlePathCopy()}
         />
       </div>
     </EditorViewStateProvider>

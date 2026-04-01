@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import type { RefObject } from "react";
-import { useToast } from "../toast/ToastProvider";
 import { AppShellFallback } from "./AppShellFallback";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import type { DocumentStore } from "../../lib/document-store";
@@ -40,8 +39,6 @@ export function EditorWorkspaceContainer({
   setPreviewPanelWidth,
   setTocPanelWidth,
 }: EditorWorkspaceContainerProps) {
-  const { showToast } = useToast();
-
   return (
     <Suspense fallback={<AppShellFallback />}>
       <EditorWorkspace
@@ -60,8 +57,6 @@ export function EditorWorkspaceContainer({
           setPreviewPanelWidth(previewPanelWidth);
           setTocPanelWidth(tocPanelWidth);
         }}
-        onPathCopy={() => showToast("Copied the file path to the clipboard.", "success")}
-        onPathCopyError={() => showToast("Could not copy the file path.", "error")}
       />
     </Suspense>
   );

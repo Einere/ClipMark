@@ -2,12 +2,7 @@ import { useEffectEvent } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { PendingAction } from "../lib/pending-action";
 import type { ThemeMode } from "../lib/preview-preferences";
-
-type ShowToast = (
-  message: string,
-  variant?: "error" | "info" | "success" | "warning",
-  title?: string,
-) => void;
+import { useCopyFilePath, type ShowToast } from "./useCopyFilePath";
 
 type UseAppShellActionsOptions = {
   activeFilename: string;
@@ -58,18 +53,9 @@ export function useAppShellActions({
 
     void saveDocument({ activeFilename, saveAs });
   });
-
-  const handleMenuCopyFilePath = useEffectEvent(async () => {
-    if (!filePath) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(filePath);
-      showToast("Copied the file path to the clipboard.");
-    } catch {
-      showToast("Could not copy the file path.", "error");
-    }
+  const { copyFilePath: handleMenuCopyFilePath } = useCopyFilePath({
+    filePath,
+    showToast,
   });
 
   const handleMenuTogglePreview = useEffectEvent(() => {

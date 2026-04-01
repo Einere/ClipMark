@@ -1,4 +1,6 @@
 import type { DocumentMetrics } from "../../lib/document-metrics";
+import { useToast } from "../toast/ToastProvider";
+import { useCopyFilePath } from "../../hooks/useCopyFilePath";
 import type { DocumentStatus } from "../../lib/window-state";
 
 type DocumentWorkspaceFooterProps = {
@@ -6,7 +8,6 @@ type DocumentWorkspaceFooterProps = {
   filePath: string | null;
   headingCount: number;
   metrics: DocumentMetrics;
-  onPathCopy: () => void;
 };
 
 type VisibleDocumentStatus = {
@@ -47,7 +48,10 @@ function getFileLabel(filePath: string | null) {
 function DocumentFooterFile({
   filePath,
   onPathCopy,
-}: Pick<DocumentWorkspaceFooterProps, "filePath" | "onPathCopy">) {
+}: {
+  filePath: string | null;
+  onPathCopy: () => void;
+}) {
   return (
     <div className="editor-workspace__footer-primary">
       <span className="editor-workspace__footer-label">File</span>
@@ -117,11 +121,17 @@ export function DocumentWorkspaceFooter({
   filePath,
   headingCount,
   metrics,
-  onPathCopy,
 }: DocumentWorkspaceFooterProps) {
+  const { showToast } = useToast();
+  const { copyFilePath } = useCopyFilePath({
+    filePath,
+    successToastVariant: "success",
+    showToast,
+  });
+
   return (
     <footer className="editor-workspace__footer">
-      <DocumentFooterFile filePath={filePath} onPathCopy={onPathCopy} />
+      <DocumentFooterFile filePath={filePath} onPathCopy={copyFilePath} />
       <DocumentFooterMeta
         documentStatus={documentStatus}
         headingCount={headingCount}
