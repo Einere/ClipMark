@@ -20,6 +20,7 @@ import {
   getPanelResizeHandleProps,
 } from "./panel-resize-handle";
 import { getPanelDisplayState } from "./panel-display-state";
+import { WorkspaceLayout } from "./WorkspaceLayout";
 import { usePanelPresence } from "./usePanelPresence";
 import { usePanelResizing } from "./usePanelResizing";
 
@@ -278,93 +279,74 @@ export function EditorWorkspace({
   return (
     <EditorViewStateProvider documentKey={documentKey}>
       <div className="editor-workspace">
-        <main
-          className="editor-workspace__main"
-          data-has-preview={hasRenderedPreview}
-          data-has-toc={hasRenderedToc}
-          data-resizing={isResizingPanels}
-          ref={mainRef}
+        <WorkspaceLayout
+          hasRenderedPreview={hasRenderedPreview}
+          hasRenderedToc={hasRenderedToc}
+          isResizingPanels={isResizingPanels}
+          mainRef={mainRef}
         >
-          {hasRenderedToc ? (
-            <>
-              <div
-                className="editor-workspace__panel-shell"
-                data-expanded={isTocExpanded}
-                data-panel-state={tocPresence.state}
-                data-panel-kind="toc"
-                style={{
-                  width: `${isTocVisible ? (effectivePanelWidths.tocWidth ?? 0) : 0}px`,
-                }}
-              >
-                <DocumentTocPane
-                  headings={headings}
-                  onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
-                />
+          <WorkspaceLayout.Toc
+            isExpanded={isTocExpanded}
+            isVisible={hasRenderedToc}
+            onResizeKeyDown={(event) => resizeWithKeyboard("toc", event)}
+            onResizePointerDown={(event) => startResize("toc", event)}
+            panelState={tocPresence.state}
+            resizeHandleProps={tocResizeHandleProps}
+            width={isTocVisible ? effectivePanelWidths.tocWidth : 0}
+          >
+            <DocumentTocPane
+              headings={headings}
+              onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
+            />
+          </WorkspaceLayout.Toc>
+          <WorkspaceLayout.Editor>
+            <section
+              className="editor-workspace__panel"
+              data-panel="editor"
+              id="editor-workspace-editor-panel"
+            >
+              <div className="editor-workspace__panel-header">
+                <div className="editor-workspace__panel-heading">
+                  <span className="editor-workspace__panel-kicker">Writing</span>
+                </div>
               </div>
-              <div
-                {...tocResizeHandleProps}
-                className="editor-workspace__resize-handle"
-                onKeyDown={(event) => resizeWithKeyboard("toc", event)}
-                onPointerDown={(event) => startResize("toc", event)}
-              />
-            </>
-          ) : null}
-          <section
-            className="editor-workspace__panel"
-            data-panel="editor"
-            id="editor-workspace-editor-panel"
+              <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
+                <div className="editor-workspace__editor-surface">
+                  <MarkdownEditor
+                    documentKey={documentKey}
+                    onFocusChange={onEditorFocusChange}
+                    ref={editorRef}
+                    store={documentStore}
+                  />
+                </div>
+              </div>
+            </section>
+          </WorkspaceLayout.Editor>
+          <WorkspaceLayout.Preview
+            isExpanded={isPreviewExpanded}
+            isVisible={hasRenderedPreview}
+            onResizeKeyDown={(event) => resizeWithKeyboard("preview", event)}
+            onResizePointerDown={(event) => startResize("preview", event)}
+            panelState={previewPresence.state}
+            resizeHandleProps={previewResizeHandleProps}
+            width={isPreviewVisible ? effectivePanelWidths.previewWidth : 0}
           >
             <div className="editor-workspace__panel-header">
               <div className="editor-workspace__panel-heading">
-                <span className="editor-workspace__panel-kicker">Writing</span>
+                <span className="editor-workspace__panel-kicker">Reading</span>
               </div>
             </div>
-            <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
-              <div className="editor-workspace__editor-surface">
-                <MarkdownEditor
-                  documentKey={documentKey}
-                  onFocusChange={onEditorFocusChange}
-                  ref={editorRef}
-                  store={documentStore}
-                />
-              </div>
-            </div>
-          </section>
-          {hasRenderedPreview ? (
-            <>
-              <div
-                {...previewResizeHandleProps}
-                className="editor-workspace__resize-handle"
-                onKeyDown={(event) => resizeWithKeyboard("preview", event)}
-                onPointerDown={(event) => startResize("preview", event)}
+            <div className="editor-workspace__panel-body">
+              <DocumentPreviewPane
+                markdown={markdown}
+                filePath={filePath}
+                isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                isLayoutTransitioning={isPanelLayoutTransitioning}
+                layoutVersion={layoutVersion}
               />
-              <section
-                className="editor-workspace__panel editor-workspace__panel--preview"
-                data-panel="preview"
-                data-expanded={isPreviewExpanded}
-                data-panel-state={previewPresence.state}
-                style={{
-                  width: `${isPreviewVisible ? (effectivePanelWidths.previewWidth ?? 0) : 0}px`,
-                }}
-              >
-                <div className="editor-workspace__panel-header">
-                  <div className="editor-workspace__panel-heading">
-                    <span className="editor-workspace__panel-kicker">Reading</span>
-                  </div>
-                </div>
-                <div className="editor-workspace__panel-body">
-                  <DocumentPreviewPane
-                    markdown={markdown}
-                    filePath={filePath}
-                    isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-                    isLayoutTransitioning={isPanelLayoutTransitioning}
-                    layoutVersion={layoutVersion}
-                  />
-                </div>
-              </section>
-            </>
-          ) : null}
-        </main>
+            </div>
+          </WorkspaceLayout.Preview>
+        </WorkspaceLayout>
 
         <footer className="editor-workspace__footer">
           <div className="editor-workspace__footer-primary">
