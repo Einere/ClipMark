@@ -19,6 +19,7 @@ import { useIdleValue } from "../../hooks/useIdleValue";
 import {
   getPanelResizeHandleProps,
 } from "./panel-resize-handle";
+import { getPanelDisplayState } from "./panel-display-state";
 import { usePanelPresence } from "./usePanelPresence";
 import { usePanelResizing } from "./usePanelResizing";
 
@@ -182,15 +183,18 @@ export function EditorWorkspace({
     () => summarizeDocument(markdown),
     [markdown],
   );
-  const hasRenderedPreview = previewPresence.isMounted;
-  const hasRenderedToc = tocPresence.isMounted;
-  const isPreviewExpanded = isPreviewVisible && previewPresence.state !== "entering";
-  const isTocExpanded = isTocVisible && tocPresence.state !== "entering";
-  const isPanelLayoutTransitioning =
-    previewPresence.state === "entering" ||
-    previewPresence.state === "closing" ||
-    tocPresence.state === "entering" ||
-    tocPresence.state === "closing";
+  const {
+    hasRenderedPreview,
+    hasRenderedToc,
+    isPanelLayoutTransitioning,
+    isPreviewExpanded,
+    isTocExpanded,
+  } = getPanelDisplayState({
+    isPreviewVisible,
+    isTocVisible,
+    previewPresence,
+    tocPresence,
+  });
   const {
     activeResizer,
     effectivePanelWidths,
