@@ -1,11 +1,9 @@
 import type {
   KeyboardEventHandler,
   PointerEventHandler,
-  ReactElement,
   ReactNode,
   RefObject,
 } from "react";
-import { Children, isValidElement } from "react";
 
 export type ResizeHandleProps = {
   "aria-controls": string;
@@ -21,22 +19,9 @@ export type ResizeHandleProps = {
   tabIndex: number;
 };
 
-type WorkspaceLayoutRootProps = {
-  children: ReactNode;
-  hasRenderedPreview: boolean;
-  hasRenderedToc: boolean;
-  isResizingPanels: boolean;
-  mainRef: RefObject<HTMLElement | null>;
-};
-
-type WorkspaceLayoutEditorProps = {
-  children: ReactNode;
-};
-
-type WorkspaceLayoutSidePanelProps = {
-  children: ReactNode;
+export type WorkspaceLayoutSidePanel = {
+  content: ReactNode;
   isExpanded: boolean;
-  isVisible: boolean;
   onResizeKeyDown: KeyboardEventHandler<HTMLDivElement>;
   onResizePointerDown: PointerEventHandler<HTMLDivElement>;
   panelState: string;
@@ -44,121 +29,85 @@ type WorkspaceLayoutSidePanelProps = {
   width: number | null;
 };
 
-type WorkspaceLayoutComponent = ((props: WorkspaceLayoutRootProps) => ReactElement) & {
-  Editor: (props: WorkspaceLayoutEditorProps) => ReactElement;
-  Preview: (props: WorkspaceLayoutSidePanelProps) => ReactElement | null;
-  Toc: (props: WorkspaceLayoutSidePanelProps) => ReactElement | null;
+type WorkspaceLayoutProps = {
+  editorContent: ReactNode;
+  hasRenderedPreview: boolean;
+  hasRenderedToc: boolean;
+  isResizingPanels: boolean;
+  mainRef: RefObject<HTMLElement | null>;
+  preview: WorkspaceLayoutSidePanel | null;
+  toc: WorkspaceLayoutSidePanel | null;
 };
 
-function WorkspaceLayoutEditor({ children }: WorkspaceLayoutEditorProps) {
-  return <>{children}</>;
-}
-
-function WorkspaceLayoutToc({
-  children,
-  isExpanded,
-  isVisible,
+function WorkspaceResizeHandle({
   onResizeKeyDown,
   onResizePointerDown,
-  panelState,
   resizeHandleProps,
-  width,
-}: WorkspaceLayoutSidePanelProps) {
-  if (!isVisible) {
-    return null;
-  }
-
+}: Pick<
+  WorkspaceLayoutSidePanel,
+  "onResizeKeyDown" | "onResizePointerDown" | "resizeHandleProps"
+>) {
   return (
-    <>
-      <div
-        className="editor-workspace__panel-shell"
-        data-expanded={isExpanded}
-        data-panel-kind="toc"
-        data-panel-state={panelState}
-        style={{
-          width: `${width ?? 0}px`,
-        }}
-      >
-        {children}
-      </div>
-      <div
-        {...resizeHandleProps}
-        className="editor-workspace__resize-handle"
-        onKeyDown={onResizeKeyDown}
-        onPointerDown={onResizePointerDown}
-      />
-    </>
+    <div
+      {...resizeHandleProps}
+      className="editor-workspace__resize-handle"
+      onKeyDown={onResizeKeyDown}
+      onPointerDown={onResizePointerDown}
+    />
   );
 }
 
-function WorkspaceLayoutPreview({
-  children,
+function WorkspaceTocPanel({
+  content,
   isExpanded,
-  isVisible,
-  onResizeKeyDown,
-  onResizePointerDown,
   panelState,
-  resizeHandleProps,
   width,
-}: WorkspaceLayoutSidePanelProps) {
-  if (!isVisible) {
-    return null;
-  }
-
+}: Pick<WorkspaceLayoutSidePanel, "content" | "isExpanded" | "panelState" | "width">) {
   return (
-    <>
-      <div
-        {...resizeHandleProps}
-        className="editor-workspace__resize-handle"
-        onKeyDown={onResizeKeyDown}
-        onPointerDown={onResizePointerDown}
-      />
-      <section
-        className="editor-workspace__panel editor-workspace__panel--preview"
-        data-expanded={isExpanded}
-        data-panel="preview"
-        data-panel-state={panelState}
-        style={{
-          width: `${width ?? 0}px`,
-        }}
-      >
-        {children}
-      </section>
-    </>
+    <div
+      className="editor-workspace__panel-shell"
+      data-expanded={isExpanded}
+      data-panel-kind="toc"
+      data-panel-state={panelState}
+      style={{
+        width: `${width ?? 0}px`,
+      }}
+    >
+      {content}
+    </div>
   );
 }
 
-function WorkspaceLayoutRoot({
-  children,
+function WorkspacePreviewPanel({
+  content,
+  isExpanded,
+  panelState,
+  width,
+}: Pick<WorkspaceLayoutSidePanel, "content" | "isExpanded" | "panelState" | "width">) {
+  return (
+    <section
+      className="editor-workspace__panel editor-workspace__panel--preview"
+      data-expanded={isExpanded}
+      data-panel="preview"
+      data-panel-state={panelState}
+      style={{
+        width: `${width ?? 0}px`,
+      }}
+    >
+      {content}
+    </section>
+  );
+}
+
+export function WorkspaceLayout({
+  editorContent,
   hasRenderedPreview,
   hasRenderedToc,
   isResizingPanels,
   mainRef,
-}: WorkspaceLayoutRootProps) {
-  let tocChild: ReactNode = null;
-  let editorChild: ReactNode = null;
-  let previewChild: ReactNode = null;
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) {
-      return;
-    }
-
-    if (child.type === WorkspaceLayoutToc) {
-      tocChild = child;
-      return;
-    }
-
-    if (child.type === WorkspaceLayoutEditor) {
-      editorChild = child;
-      return;
-    }
-
-    if (child.type === WorkspaceLayoutPreview) {
-      previewChild = child;
-    }
-  });
-
+  preview,
+  toc,
+}: WorkspaceLayoutProps) {
   return (
     <main
       className="editor-workspace__main"
@@ -167,15 +116,39 @@ function WorkspaceLayoutRoot({
       data-resizing={isResizingPanels}
       ref={mainRef}
     >
-      {tocChild}
-      {editorChild}
-      {previewChild}
+      {toc ? (
+        <>
+          <WorkspaceTocPanel
+            content={toc.content}
+            isExpanded={toc.isExpanded}
+            panelState={toc.panelState}
+            width={toc.width}
+          />
+          <WorkspaceResizeHandle
+            onResizeKeyDown={toc.onResizeKeyDown}
+            onResizePointerDown={toc.onResizePointerDown}
+            resizeHandleProps={toc.resizeHandleProps}
+          />
+        </>
+      ) : null}
+
+      {editorContent}
+
+      {preview ? (
+        <>
+          <WorkspaceResizeHandle
+            onResizeKeyDown={preview.onResizeKeyDown}
+            onResizePointerDown={preview.onResizePointerDown}
+            resizeHandleProps={preview.resizeHandleProps}
+          />
+          <WorkspacePreviewPanel
+            content={preview.content}
+            isExpanded={preview.isExpanded}
+            panelState={preview.panelState}
+            width={preview.width}
+          />
+        </>
+      ) : null}
     </main>
   );
 }
-
-export const WorkspaceLayout = Object.assign(WorkspaceLayoutRoot, {
-  Editor: WorkspaceLayoutEditor,
-  Preview: WorkspaceLayoutPreview,
-  Toc: WorkspaceLayoutToc,
-}) as WorkspaceLayoutComponent;

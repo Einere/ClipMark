@@ -211,26 +211,7 @@ export function EditorWorkspace({
     <EditorViewStateProvider documentKey={documentKey}>
       <div className="editor-workspace">
         <WorkspaceLayout
-          hasRenderedPreview={hasRenderedPreview}
-          hasRenderedToc={hasRenderedToc}
-          isResizingPanels={isResizingPanels}
-          mainRef={mainRef}
-        >
-          <WorkspaceLayout.Toc
-            isExpanded={isTocExpanded}
-            isVisible={hasRenderedToc}
-            onResizeKeyDown={(event) => resizeWithKeyboard("toc", event)}
-            onResizePointerDown={(event) => startResize("toc", event)}
-            panelState={tocPresence.state}
-            resizeHandleProps={tocResizeHandleProps}
-            width={isTocVisible ? effectivePanelWidths.tocWidth : 0}
-          >
-            <DocumentTocPane
-              headings={headings}
-              onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
-            />
-          </WorkspaceLayout.Toc>
-          <WorkspaceLayout.Editor>
+          editorContent={(
             <section
               className="editor-workspace__panel"
               data-panel="editor"
@@ -252,32 +233,52 @@ export function EditorWorkspace({
                 </div>
               </div>
             </section>
-          </WorkspaceLayout.Editor>
-          <WorkspaceLayout.Preview
-            isExpanded={isPreviewExpanded}
-            isVisible={hasRenderedPreview}
-            onResizeKeyDown={(event) => resizeWithKeyboard("preview", event)}
-            onResizePointerDown={(event) => startResize("preview", event)}
-            panelState={previewPresence.state}
-            resizeHandleProps={previewResizeHandleProps}
-            width={isPreviewVisible ? effectivePanelWidths.previewWidth : 0}
-          >
-            <div className="editor-workspace__panel-header">
-              <div className="editor-workspace__panel-heading">
-                <span className="editor-workspace__panel-kicker">Reading</span>
-              </div>
-            </div>
-            <div className="editor-workspace__panel-body">
-              <DocumentPreviewPane
-                markdown={markdown}
-                filePath={filePath}
-                isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-                isLayoutTransitioning={isPanelLayoutTransitioning}
-                layoutVersion={layoutVersion}
+          )}
+          hasRenderedPreview={hasRenderedPreview}
+          hasRenderedToc={hasRenderedToc}
+          isResizingPanels={isResizingPanels}
+          mainRef={mainRef}
+          preview={hasRenderedPreview ? {
+            content: (
+              <>
+                <div className="editor-workspace__panel-header">
+                  <div className="editor-workspace__panel-heading">
+                    <span className="editor-workspace__panel-kicker">Reading</span>
+                  </div>
+                </div>
+                <div className="editor-workspace__panel-body">
+                  <DocumentPreviewPane
+                    markdown={markdown}
+                    filePath={filePath}
+                    isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
+                    isLayoutTransitioning={isPanelLayoutTransitioning}
+                    layoutVersion={layoutVersion}
+                  />
+                </div>
+              </>
+            ),
+            isExpanded: isPreviewExpanded,
+            onResizeKeyDown: (event) => resizeWithKeyboard("preview", event),
+            onResizePointerDown: (event) => startResize("preview", event),
+            panelState: previewPresence.state,
+            resizeHandleProps: previewResizeHandleProps,
+            width: isPreviewVisible ? effectivePanelWidths.previewWidth : 0,
+          } : null}
+          toc={hasRenderedToc ? {
+            content: (
+              <DocumentTocPane
+                headings={headings}
+                onSelectHeading={(line) => editorRef.current?.focusHeadingLine(line)}
               />
-            </div>
-          </WorkspaceLayout.Preview>
-        </WorkspaceLayout>
+            ),
+            isExpanded: isTocExpanded,
+            onResizeKeyDown: (event) => resizeWithKeyboard("toc", event),
+            onResizePointerDown: (event) => startResize("toc", event),
+            panelState: tocPresence.state,
+            resizeHandleProps: tocResizeHandleProps,
+            width: isTocVisible ? effectivePanelWidths.tocWidth : 0,
+          } : null}
+        />
 
         <DocumentWorkspaceFooter
           documentStatus={documentStatus}

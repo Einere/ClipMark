@@ -42,6 +42,18 @@ function createResizeHandleProps(kind: "preview" | "toc") {
   };
 }
 
+function createSidePanelModel(kind: "preview" | "toc", content: ReactNode) {
+  return {
+    content,
+    isExpanded: true,
+    onResizeKeyDown: vi.fn(),
+    onResizePointerDown: vi.fn(),
+    panelState: "open",
+    resizeHandleProps: createResizeHandleProps(kind),
+    width: 200,
+  };
+}
+
 describe("WorkspaceLayout", () => {
   let renderer: ReturnType<typeof createTestRenderer>;
 
@@ -56,83 +68,39 @@ describe("WorkspaceLayout", () => {
   it("renders editor, toc, and preview panels from panel models", () => {
     renderer.render(
       <WorkspaceLayout
+        editorContent={<section data-panel="editor" id="editor-workspace-editor-panel">editor</section>}
         hasRenderedPreview
         hasRenderedToc
         isResizingPanels={false}
         mainRef={createRef<HTMLElement>()}
-      >
-        <WorkspaceLayout.Toc
-          isExpanded
-          isVisible
-          onResizeKeyDown={vi.fn()}
-          onResizePointerDown={vi.fn()}
-          panelState="open"
-          resizeHandleProps={createResizeHandleProps("toc")}
-          width={200}
-        >
-          <div data-testid="toc-content">toc</div>
-        </WorkspaceLayout.Toc>
-        <WorkspaceLayout.Editor>
-          <section data-panel="editor" id="editor-workspace-editor-panel">editor</section>
-        </WorkspaceLayout.Editor>
-        <WorkspaceLayout.Preview
-          isExpanded
-          isVisible
-          onResizeKeyDown={vi.fn()}
-          onResizePointerDown={vi.fn()}
-          panelState="open"
-          resizeHandleProps={createResizeHandleProps("preview")}
-          width={200}
-        >
-          <div data-testid="preview-content">preview</div>
-        </WorkspaceLayout.Preview>
-      </WorkspaceLayout>,
+        preview={createSidePanelModel("preview", <div data-testid="preview-content">preview</div>)}
+        toc={createSidePanelModel("toc", <div data-testid="toc-content">toc</div>)}
+      />,
     );
 
     expect(renderer.container.querySelector("[data-panel='editor']")?.textContent).toBe("editor");
     expect(renderer.container.querySelector("[data-panel-kind='toc']")?.textContent).toContain("toc");
     expect(renderer.container.querySelector("[data-panel='preview']")?.textContent).toContain("preview");
     expect(renderer.container.querySelectorAll("[role='separator']")).toHaveLength(2);
+    expect(renderer.container.querySelector(".editor-workspace__main")?.getAttribute("data-resizing")).toBe("false");
   });
 
   it("omits side panels that are not currently rendered", () => {
     renderer.render(
       <WorkspaceLayout
+        editorContent={<section data-panel="editor" id="editor-workspace-editor-panel">editor</section>}
         hasRenderedPreview={false}
         hasRenderedToc={false}
         isResizingPanels={false}
         mainRef={createRef<HTMLElement>()}
-      >
-        <WorkspaceLayout.Toc
-          isExpanded={false}
-          isVisible={false}
-          onResizeKeyDown={vi.fn()}
-          onResizePointerDown={vi.fn()}
-          panelState="closed"
-          resizeHandleProps={createResizeHandleProps("toc")}
-          width={0}
-        >
-          <div>toc</div>
-        </WorkspaceLayout.Toc>
-        <WorkspaceLayout.Editor>
-          <section data-panel="editor" id="editor-workspace-editor-panel">editor</section>
-        </WorkspaceLayout.Editor>
-        <WorkspaceLayout.Preview
-          isExpanded={false}
-          isVisible={false}
-          onResizeKeyDown={vi.fn()}
-          onResizePointerDown={vi.fn()}
-          panelState="closed"
-          resizeHandleProps={createResizeHandleProps("preview")}
-          width={0}
-        >
-          <div>preview</div>
-        </WorkspaceLayout.Preview>
-      </WorkspaceLayout>,
+        preview={null}
+        toc={null}
+      />,
     );
 
     expect(renderer.container.querySelector("[data-panel-kind='toc']")).toBeNull();
     expect(renderer.container.querySelector("[data-panel='preview']")).toBeNull();
     expect(renderer.container.querySelectorAll("[role='separator']")).toHaveLength(0);
+    expect(renderer.container.querySelector("[data-panel='editor']")?.textContent).toBe("editor");
   });
 });
