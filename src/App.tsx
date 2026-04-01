@@ -1,7 +1,6 @@
 import {
   useEffect,
   useEffectEvent,
-  useMemo,
   useRef,
 } from "react";
 import { AppContent } from "./components/app/AppContent";
@@ -9,6 +8,7 @@ import { useToast } from "./components/toast/ToastProvider";
 import type { MarkdownEditorHandle } from "./components/editor/MarkdownEditor";
 import { useAppShellActions } from "./hooks/useAppShellActions";
 import { useAppShellLifecycle } from "./hooks/useAppShellLifecycle";
+import { useAppViewState } from "./hooks/useAppViewState";
 import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
@@ -17,11 +17,9 @@ import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentList
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
-import { getUnsavedDialogState } from "./lib/unsaved-dialog-state";
 import {
   buildWindowTitle,
   getDocumentStatus,
-  getVisibleDocumentStatus,
 } from "./lib/window-state";
 import {
   DEFAULT_APP_PREFERENCES,
@@ -72,13 +70,10 @@ export default function App({ initialPreferences }: AppProps) {
   const activeFilename = session.isWelcomeVisible
     ? APP_NAME
     : (session.filename ?? "Untitled.md");
-  const documentStatus = getDocumentStatus(
-    session.filePath,
-    isDirty,
-    session.isWelcomeVisible,
+  const windowTitle = buildWindowTitle(
+    activeFilename,
+    getDocumentStatus(session.filePath, isDirty, session.isWelcomeVisible),
   );
-  const visibleDocumentStatus = getVisibleDocumentStatus(documentStatus);
-  const windowTitle = buildWindowTitle(activeFilename, documentStatus);
 
   useEffect(() => {
     void clearDebugLog();
@@ -97,12 +92,17 @@ export default function App({ initialPreferences }: AppProps) {
     saveDocument: session.saveDocument,
     windowTitle,
   });
-  const canSaveDocument = lifecycle.isWindowVisible && !session.isWelcomeVisible;
-  const canTogglePanels = lifecycle.isWindowVisible && !session.isWelcomeVisible;
-  const canCopyFilePath = lifecycle.isWindowVisible && session.filePath !== null;
+  const viewState = useAppViewState({
+    filePath: session.filePath,
+    filename: session.filename,
+    isDirty,
+    isWelcomeVisible: session.isWelcomeVisible,
+    isWindowVisible: lifecycle.isWindowVisible,
+    pendingAction: lifecycle.pendingAction,
+  });
   const actions = useAppShellActions({
-    activeFilename,
-    canSaveDocument,
+    activeFilename: viewState.activeFilename,
+    canSaveDocument: viewState.canSaveDocument,
     filePath: session.filePath,
     requestAction: lifecycle.requestAction,
     requestVisibleAction: lifecycle.requestVisibleAction,
@@ -124,9 +124,9 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   const { menuHandlers, menuState } = useAppMenuBindings({
-    canCopyFilePath,
-    canSave: canSaveDocument,
-    canTogglePanels,
+    canCopyFilePath: viewState.canCopyFilePath,
+    canSave: viewState.canSaveDocument,
+    canTogglePanels: viewState.canTogglePanels,
     canUseEditMenu: lifecycle.isWindowVisible,
     canUseViewMenu: lifecycle.isWindowVisible,
     isExternalMediaAutoLoadEnabled,
@@ -147,25 +147,21 @@ export default function App({ initialPreferences }: AppProps) {
   });
 
   useAppMenuController(menuHandlers, menuState);
-  const dialogState = useMemo(
-    () => getUnsavedDialogState(activeFilename, lifecycle.pendingAction),
-    [activeFilename, lifecycle.pendingAction],
-  );
 
   return (
     <AppContent
       dialog={{
-        confirmLabel: dialogState.confirmLabel,
-        description: dialogState.description,
-        filename: activeFilename,
+        confirmLabel: viewState.dialogState.confirmLabel,
+        description: viewState.dialogState.description,
+        filename: viewState.activeFilename,
         onDiscard: () => void lifecycle.resolvePendingActionWithDiscard(),
         onSave: () => void lifecycle.resolvePendingActionWithSave(),
         open: lifecycle.pendingAction !== null,
-        title: dialogState.title,
+        title: viewState.dialogState.title,
       }}
       editor={{
         documentKey: session.editorDocumentKey,
-        documentStatus: visibleDocumentStatus,
+        documentStatus: viewState.visibleDocumentStatus,
         documentStore: session.documentStore,
         editorRef,
         filePath: session.filePath,
