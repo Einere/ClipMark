@@ -3,8 +3,8 @@ import {
   createDocumentStore,
   type DocumentStore,
 } from "../lib/document-store";
-import type { OpenedDocument } from "../lib/file-system";
 import { useDocumentFileActions } from "./useDocumentFileActions";
+import { useDocumentSessionFileEffects } from "./useDocumentSessionFileEffects";
 import { useDocumentWorkspaceState } from "./useDocumentWorkspaceState";
 import { useRecentFilesState } from "./useRecentFilesState";
 
@@ -25,14 +25,18 @@ export function useDocumentSession({
     rememberRecentFile,
   } = useRecentFilesState();
   const workspaceState = useDocumentWorkspaceState(documentStore);
-
-  const applyOpenedDocument = useEffectEvent((document: OpenedDocument | {
-    filename: string;
-    markdown: string;
-    path: string | null;
-  }) => {
-    workspaceState.applyOpenedDocument(document);
-    rememberRecentFile(document.path);
+  const {
+    applyOpenedDocument,
+    applySavedDocument,
+    handleMissingRecentFile,
+    handleUnavailableRecentFile,
+  } = useDocumentSessionFileEffects({
+    applySavedDocumentToWorkspace: workspaceState.applySavedDocument,
+    applyWorkspaceDocument: workspaceState.applyOpenedDocument,
+    forgetRecentFile,
+    onError,
+    onInfo,
+    rememberRecentFile,
   });
 
   const createNewDocument = useEffectEvent(() => {
@@ -41,11 +45,6 @@ export function useDocumentSession({
 
   const closeCurrentDocument = useEffectEvent(() => {
     workspaceState.closeCurrentDocument();
-  });
-
-  const applySavedDocument = useEffectEvent((saved) => {
-    workspaceState.applySavedDocument(saved);
-    rememberRecentFile(saved.path);
   });
   const {
     fileInputRef,
@@ -61,13 +60,8 @@ export function useDocumentSession({
     createNewDocument,
     getMarkdown: () => documentStore.getMarkdown(),
     isWelcomeVisible: workspaceState.isWelcomeVisible,
-    onMissingRecentFile: (path) => {
-      forgetRecentFile(path);
-      onError("This recent file could not be found and was removed from the list.");
-    },
-    onRecentFileUnavailable: () => {
-      onInfo("Recent files are only available in the desktop app.");
-    },
+    onMissingRecentFile: handleMissingRecentFile,
+    onRecentFileUnavailable: handleUnavailableRecentFile,
   });
 
   return {
