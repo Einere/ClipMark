@@ -60,6 +60,18 @@ function createState(): MenuState {
   };
 }
 
+function createDeferredController() {
+  let resolve: ((value: { dispose: typeof dispose; sync: typeof sync }) => void) | undefined;
+  const promise = new Promise<{ dispose: typeof dispose; sync: typeof sync }>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return {
+    promise,
+    resolve: () => resolve?.({ dispose, sync }),
+  };
+}
+
 describe("useAppMenuController", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
@@ -105,6 +117,43 @@ describe("useAppMenuController", () => {
 
     expect(setupAppMenu).toHaveBeenCalledTimes(1);
     expect(sync).toHaveBeenCalledTimes(2);
+  });
+
+  it("syncs the latest state immediately after async menu setup resolves", async () => {
+    const deferredController = createDeferredController();
+    setupAppMenu.mockReturnValueOnce(deferredController.promise);
+    const handlers = createHandlers("first");
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        state: createState(),
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        state: {
+          ...createState(),
+          isPreviewVisible: false,
+          isTocVisible: false,
+        },
+      }));
+    });
+
+    expect(sync).not.toHaveBeenCalled();
+
+    await act(async () => {
+      deferredController.resolve();
+      await deferredController.promise;
+    });
+
+    expect(sync).toHaveBeenCalledTimes(1);
+    expect(sync).toHaveBeenCalledWith(expect.objectContaining({
+      isPreviewVisible: false,
+      isTocVisible: false,
+    }));
   });
 
   it("uses the latest handler callbacks without recreating the menu", async () => {
