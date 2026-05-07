@@ -1,39 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { MenuHandlers, MenuState } from "../lib/menu";
 import { setupAppMenu } from "../lib/menu";
+import { useStableMenuHandlers } from "./useStableMenuHandlers";
 
 export function useAppMenuController(
   handlers: MenuHandlers,
   state: MenuState,
 ) {
-  const handlersRef = useRef(handlers);
-  const [menuController, setMenuController] = useState<Awaited<ReturnType<typeof setupAppMenu>>>();
+  const menuControllerRef = useRef<Awaited<ReturnType<typeof setupAppMenu>> | undefined>(undefined);
+  const latestStateRef = useRef(state);
+  const stableMenuHandlers = useStableMenuHandlers(handlers);
 
   useEffect(() => {
-    handlersRef.current = handlers;
-  }, [handlers]);
+    latestStateRef.current = state;
 
-  const menuHandlersRef = useRef<MenuHandlers | null>(null);
-  if (menuHandlersRef.current === null) {
-    menuHandlersRef.current = {
-      onClearRecentFiles: () => handlersRef.current.onClearRecentFiles(),
-      onCopyFilePath: () => handlersRef.current.onCopyFilePath(),
-      onNew: () => handlersRef.current.onNew(),
-      onOpen: () => handlersRef.current.onOpen(),
-      onOpenRecent: (path) => handlersRef.current.onOpenRecent(path),
-      onSave: () => handlersRef.current.onSave(),
-      onSaveAs: () => handlersRef.current.onSaveAs(),
-      onSetThemeMode: (themeMode) => handlersRef.current.onSetThemeMode(themeMode),
-      onToggleExternalMedia: () => handlersRef.current.onToggleExternalMedia(),
-      onTogglePreview: () => handlersRef.current.onTogglePreview(),
-      onToggleToc: () => handlersRef.current.onToggleToc(),
-    };
-  }
-  const stableMenuHandlers = menuHandlersRef.current;
+    if (!menuControllerRef.current) {
+      return;
+    }
+
+    void menuControllerRef.current.sync(state);
+  }, [state]);
 
   useEffect(() => {
     let disposed = false;
-    let controller: Awaited<ReturnType<typeof setupAppMenu>>;
 
     void setupAppMenu(stableMenuHandlers).then((nextController) => {
       if (disposed) {
@@ -41,24 +30,17 @@ export function useAppMenuController(
         return;
       }
 
-      controller = nextController;
-      setMenuController(nextController);
+      menuControllerRef.current = nextController;
+      void nextController?.sync(latestStateRef.current);
     });
 
     return () => {
       disposed = true;
-      setMenuController(undefined);
+      const controller = menuControllerRef.current;
+      menuControllerRef.current = undefined;
       if (controller) {
         void controller.dispose();
       }
     };
   }, [stableMenuHandlers]);
-
-  useEffect(() => {
-    if (!menuController) {
-      return;
-    }
-
-    void menuController.sync(state);
-  }, [menuController, state]);
 }

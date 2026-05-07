@@ -42,6 +42,12 @@ vi.mock("../toc/TocPanel", () => ({
   ),
 }));
 
+vi.mock("../toast/ToastProvider", () => ({
+  useToast: () => ({
+    showToast: vi.fn(),
+  }),
+}));
+
 function createTestRenderer() {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -118,8 +124,6 @@ describe("EditorWorkspace", () => {
         isTocVisible
         onEditorFocusChange={() => undefined}
         onPanelWidthsChange={() => undefined}
-        onPathCopy={() => undefined}
-        onPathCopyError={() => undefined}
       />,
     );
 
@@ -155,8 +159,6 @@ describe("EditorWorkspace", () => {
         isTocVisible={false}
         onEditorFocusChange={() => undefined}
         onPanelWidthsChange={() => undefined}
-        onPathCopy={() => undefined}
-        onPathCopyError={() => undefined}
       />,
     );
 
@@ -186,8 +188,6 @@ describe("EditorWorkspace", () => {
         isTocVisible
         onEditorFocusChange={() => undefined}
         onPanelWidthsChange={onPanelWidthsChange}
-        onPathCopy={() => undefined}
-        onPathCopyError={() => undefined}
       />,
     );
 
@@ -231,8 +231,6 @@ describe("EditorWorkspace", () => {
       isExternalMediaAutoLoadEnabled: false,
       onEditorFocusChange: () => undefined,
       onPanelWidthsChange: () => undefined,
-      onPathCopy: () => undefined,
-      onPathCopyError: () => undefined,
     };
 
     renderer.render(
@@ -295,8 +293,6 @@ describe("EditorWorkspace", () => {
       isExternalMediaAutoLoadEnabled: false,
       onEditorFocusChange: () => undefined,
       onPanelWidthsChange: () => undefined,
-      onPathCopy: () => undefined,
-      onPathCopyError: () => undefined,
     };
 
     renderer.render(
