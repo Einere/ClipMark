@@ -3,6 +3,7 @@ import { openExternalUri } from "../../lib/external-link";
 import { renderPreviewHtml } from "../../lib/preview-renderer";
 import {
   findClosestPreviewAnchor,
+  getPreviewAnchorKey,
   type PreviewScrollAnchor,
 } from "../../lib/preview-scroll";
 
@@ -20,12 +21,21 @@ type PreviewAnchorElement = PreviewScrollAnchor & {
   element: HTMLElement;
 };
 
-function scrollPreviewTo(container: HTMLDivElement, top: number) {
+type PreviewScrollBehavior = ScrollBehavior;
+
+const MANUAL_SCROLL_SUSPEND_MS = 900;
+const PROGRAMMATIC_SCROLL_FALLBACK_MS = 250;
+
+function scrollPreviewTo(
+  container: HTMLDivElement,
+  top: number,
+  behavior: PreviewScrollBehavior,
+) {
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (typeof container.scrollTo === "function") {
     container.scrollTo({
-      behavior: prefersReducedMotion ? "auto" : "smooth",
+      behavior: prefersReducedMotion ? "auto" : behavior,
       top,
     });
     return;
@@ -41,11 +51,14 @@ export function MarkdownPreview({
   isAutoScrollEnabled,
   isExternalMediaAutoLoadEnabled,
   isLayoutTransitioning = false,
-  layoutVersion = 0,
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
-  const lastSyncedLineRef = useRef<number | null>(null);
+  const lastSyncedAnchorKeyRef = useRef<string | null>(null);
+  const pendingScrollFrameRef = useRef<number | null>(null);
+  const pendingProgrammaticScrollRef = useRef(0);
+  const programmaticScrollFallbackTimeoutRef = useRef<number | null>(null);
+  const manualScrollSuspendUntilRef = useRef(0);
   const previewHtml = useMemo(() => {
     return renderPreviewHtml({
       filePath,
@@ -53,8 +66,48 @@ export function MarkdownPreview({
       markdown,
     });
   }, [filePath, isExternalMediaAutoLoadEnabled, markdown]);
+  const isManualScrollSuspended = useEffectEvent(() => {
+    return Date.now() < manualScrollSuspendUntilRef.current;
+  });
+  const clearProgrammaticScrollFallback = useEffectEvent(() => {
+    if (programmaticScrollFallbackTimeoutRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(programmaticScrollFallbackTimeoutRef.current);
+    programmaticScrollFallbackTimeoutRef.current = null;
+  });
+  const markProgrammaticScrollPending = useEffectEvent(() => {
+    pendingProgrammaticScrollRef.current += 1;
+    clearProgrammaticScrollFallback();
+    programmaticScrollFallbackTimeoutRef.current = window.setTimeout(() => {
+      pendingProgrammaticScrollRef.current = 0;
+      programmaticScrollFallbackTimeoutRef.current = null;
+    }, PROGRAMMATIC_SCROLL_FALLBACK_MS);
+  });
+  const consumeProgrammaticScroll = useEffectEvent(() => {
+    if (pendingProgrammaticScrollRef.current <= 0) {
+      return false;
+    }
+
+    pendingProgrammaticScrollRef.current -= 1;
+    if (pendingProgrammaticScrollRef.current === 0) {
+      clearProgrammaticScrollFallback();
+    }
+
+    return true;
+  });
+  const suspendAutoScrollForManualIntent = useEffectEvent(() => {
+    pendingProgrammaticScrollRef.current = 0;
+    clearProgrammaticScrollFallback();
+    manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+  });
   const syncPreviewScroll = useEffectEvent(() => {
     if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
+      return;
+    }
+
+    if (isManualScrollSuspended()) {
       return;
     }
 
@@ -64,7 +117,12 @@ export function MarkdownPreview({
     }
 
     const targetAnchor = findClosestPreviewAnchor(anchorsRef.current, activeLine);
-    if (!targetAnchor || lastSyncedLineRef.current === activeLine) {
+    if (!targetAnchor) {
+      return;
+    }
+
+    const targetAnchorKey = getPreviewAnchorKey(targetAnchor);
+    if (lastSyncedAnchorKeyRef.current === targetAnchorKey) {
       return;
     }
 
@@ -77,7 +135,7 @@ export function MarkdownPreview({
       targetRect.top >= visibleTopThreshold &&
       targetRect.top <= visibleBottomThreshold
     ) {
-      lastSyncedLineRef.current = activeLine;
+      lastSyncedAnchorKeyRef.current = targetAnchorKey;
       return;
     }
 
@@ -91,8 +149,24 @@ export function MarkdownPreview({
       ),
     );
 
-    scrollPreviewTo(container, nextScrollTop);
-    lastSyncedLineRef.current = activeLine;
+    markProgrammaticScrollPending();
+    scrollPreviewTo(container, nextScrollTop, "auto");
+    lastSyncedAnchorKeyRef.current = targetAnchorKey;
+  });
+  const cancelPendingPreviewScroll = useEffectEvent(() => {
+    if (pendingScrollFrameRef.current === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(pendingScrollFrameRef.current);
+    pendingScrollFrameRef.current = null;
+  });
+  const schedulePreviewScroll = useEffectEvent(() => {
+    cancelPendingPreviewScroll();
+    pendingScrollFrameRef.current = window.requestAnimationFrame(() => {
+      pendingScrollFrameRef.current = null;
+      syncPreviewScroll();
+    });
   });
 
   useEffect(() => {
@@ -121,35 +195,19 @@ export function MarkdownPreview({
       })
       .filter((anchor): anchor is PreviewAnchorElement => anchor !== null);
 
-    lastSyncedLineRef.current = null;
-    syncPreviewScroll();
-  }, [isLayoutTransitioning, previewHtml, syncPreviewScroll]);
+    schedulePreviewScroll();
+  }, [previewHtml, schedulePreviewScroll]);
 
   useEffect(() => {
-    syncPreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, syncPreviewScroll]);
+    schedulePreviewScroll();
+  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, schedulePreviewScroll]);
 
   useEffect(() => {
-    const container = rootRef.current;
-    if (!container || typeof ResizeObserver === "undefined" || isLayoutTransitioning) {
-      return;
-    }
-
-    const observer = new ResizeObserver(() => {
-      lastSyncedLineRef.current = null;
-      syncPreviewScroll();
-    });
-    observer.observe(container);
-
     return () => {
-      observer.disconnect();
+      cancelPendingPreviewScroll();
+      clearProgrammaticScrollFallback();
     };
-  }, [isLayoutTransitioning, syncPreviewScroll]);
-
-  useEffect(() => {
-    lastSyncedLineRef.current = null;
-    syncPreviewScroll();
-  }, [isLayoutTransitioning, layoutVersion, syncPreviewScroll]);
+  }, [cancelPendingPreviewScroll, clearProgrammaticScrollFallback]);
 
   return (
     <div
@@ -192,6 +250,18 @@ export function MarkdownPreview({
 
         event.preventDefault();
         void openExternalUri(previewUri);
+      }}
+      onWheel={() => {
+        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+      }}
+      onPointerDown={suspendAutoScrollForManualIntent}
+      onTouchStart={suspendAutoScrollForManualIntent}
+      onScroll={() => {
+        if (consumeProgrammaticScroll()) {
+          return;
+        }
+
+        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
       }}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") {

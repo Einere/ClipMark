@@ -3,6 +3,10 @@ export type PreviewScrollAnchor = {
   lineStart: number;
 };
 
+export function getPreviewAnchorKey(anchor: PreviewScrollAnchor) {
+  return `${anchor.lineStart}:${anchor.lineEnd}`;
+}
+
 export function findClosestPreviewAnchor<T extends PreviewScrollAnchor>(
   anchors: T[],
   activeLine: number | null,
