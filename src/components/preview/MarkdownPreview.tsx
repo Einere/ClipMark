@@ -23,6 +23,8 @@ type PreviewAnchorElement = PreviewScrollAnchor & {
 
 type PreviewScrollBehavior = ScrollBehavior;
 
+const MANUAL_SCROLL_SUSPEND_MS = 900;
+
 function scrollPreviewTo(
   container: HTMLDivElement,
   top: number,
@@ -53,6 +55,8 @@ export function MarkdownPreview({
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
   const lastSyncedAnchorKeyRef = useRef<string | null>(null);
   const pendingScrollFrameRef = useRef<number | null>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const manualScrollSuspendUntilRef = useRef(0);
   const previewHtml = useMemo(() => {
     return renderPreviewHtml({
       filePath,
@@ -60,8 +64,15 @@ export function MarkdownPreview({
       markdown,
     });
   }, [filePath, isExternalMediaAutoLoadEnabled, markdown]);
+  const isManualScrollSuspended = useEffectEvent(() => {
+    return Date.now() < manualScrollSuspendUntilRef.current;
+  });
   const syncPreviewScroll = useEffectEvent(() => {
     if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
+      return;
+    }
+
+    if (isManualScrollSuspended()) {
       return;
     }
 
@@ -103,7 +114,11 @@ export function MarkdownPreview({
       ),
     );
 
+    isProgrammaticScrollRef.current = true;
     scrollPreviewTo(container, nextScrollTop, "auto");
+    window.setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 0);
     lastSyncedAnchorKeyRef.current = targetAnchorKey;
   });
   const cancelPendingPreviewScroll = useEffectEvent(() => {
@@ -201,6 +216,16 @@ export function MarkdownPreview({
 
         event.preventDefault();
         void openExternalUri(previewUri);
+      }}
+      onWheel={() => {
+        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+      }}
+      onScroll={() => {
+        if (isProgrammaticScrollRef.current) {
+          return;
+        }
+
+        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
       }}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") {
