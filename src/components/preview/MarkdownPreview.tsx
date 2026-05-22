@@ -3,6 +3,7 @@ import { openExternalUri } from "../../lib/external-link";
 import { renderPreviewHtml } from "../../lib/preview-renderer";
 import {
   findClosestPreviewAnchor,
+  getPreviewAnchorKey,
   type PreviewScrollAnchor,
 } from "../../lib/preview-scroll";
 
@@ -45,7 +46,7 @@ export function MarkdownPreview({
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
-  const lastSyncedLineRef = useRef<number | null>(null);
+  const lastSyncedAnchorKeyRef = useRef<string | null>(null);
   const previewHtml = useMemo(() => {
     return renderPreviewHtml({
       filePath,
@@ -64,7 +65,12 @@ export function MarkdownPreview({
     }
 
     const targetAnchor = findClosestPreviewAnchor(anchorsRef.current, activeLine);
-    if (!targetAnchor || lastSyncedLineRef.current === activeLine) {
+    if (!targetAnchor) {
+      return;
+    }
+
+    const targetAnchorKey = getPreviewAnchorKey(targetAnchor);
+    if (lastSyncedAnchorKeyRef.current === targetAnchorKey) {
       return;
     }
 
@@ -77,7 +83,7 @@ export function MarkdownPreview({
       targetRect.top >= visibleTopThreshold &&
       targetRect.top <= visibleBottomThreshold
     ) {
-      lastSyncedLineRef.current = activeLine;
+      lastSyncedAnchorKeyRef.current = targetAnchorKey;
       return;
     }
 
@@ -92,7 +98,7 @@ export function MarkdownPreview({
     );
 
     scrollPreviewTo(container, nextScrollTop);
-    lastSyncedLineRef.current = activeLine;
+    lastSyncedAnchorKeyRef.current = targetAnchorKey;
   });
 
   useEffect(() => {
@@ -121,13 +127,11 @@ export function MarkdownPreview({
       })
       .filter((anchor): anchor is PreviewAnchorElement => anchor !== null);
 
-    lastSyncedLineRef.current = null;
-    syncPreviewScroll();
-  }, [isLayoutTransitioning, previewHtml, syncPreviewScroll]);
+  }, [previewHtml]);
 
   useEffect(() => {
     syncPreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, syncPreviewScroll]);
+  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning]);
 
   useEffect(() => {
     const container = rootRef.current;
@@ -136,7 +140,7 @@ export function MarkdownPreview({
     }
 
     const observer = new ResizeObserver(() => {
-      lastSyncedLineRef.current = null;
+      lastSyncedAnchorKeyRef.current = null;
       syncPreviewScroll();
     });
     observer.observe(container);
@@ -144,12 +148,12 @@ export function MarkdownPreview({
     return () => {
       observer.disconnect();
     };
-  }, [isLayoutTransitioning, syncPreviewScroll]);
+  }, [isLayoutTransitioning]);
 
   useEffect(() => {
-    lastSyncedLineRef.current = null;
+    lastSyncedAnchorKeyRef.current = null;
     syncPreviewScroll();
-  }, [isLayoutTransitioning, layoutVersion, syncPreviewScroll]);
+  }, [isLayoutTransitioning, layoutVersion]);
 
   return (
     <div
