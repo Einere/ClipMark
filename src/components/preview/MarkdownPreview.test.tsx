@@ -138,13 +138,32 @@ describe("MarkdownPreview", () => {
     });
 
     expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({
+      top: 640,
+    }));
   });
 
   it("does not scroll solely because the layout version changes", () => {
+    vi.useFakeTimers();
+    cleanupHandlers.push(() => vi.useRealTimers());
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => window.setTimeout(() => callback(performance.now()), 16));
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle) => window.clearTimeout(handle));
+    cleanupHandlers.push(() => {
+      requestAnimationFrameSpy.mockRestore();
+      cancelAnimationFrameSpy.mockRestore();
+    });
+
     const renderer = createTestRenderer();
     cleanupHandlers.push(() => renderer.cleanup());
 
-    const scrollTo = vi.fn();
+    const scrollTo = vi.fn(function setScrollTop(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+    });
     const originalScrollTo = HTMLElement.prototype.scrollTo;
     Object.defineProperty(HTMLElement.prototype, "scrollTo", {
       configurable: true,
@@ -164,20 +183,81 @@ describe("MarkdownPreview", () => {
       delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
     });
 
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function getClientHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function getScrollHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 1200 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function getRect(this: HTMLElement) {
+      if (this.classList.contains("markdown-preview")) {
+        return new DOMRect(0, 0, 320, 400);
+      }
+
+      const lineStart = Number(this.dataset.sourceLineStart ?? NaN);
+      if (lineStart === 5) {
+        return new DOMRect(0, 520, 320, 48);
+      }
+
+      return new DOMRect(0, 0, 0, 0);
+    });
+
     renderer.render({
       activeLine: 5,
       layoutVersion: 0,
       markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
     });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
     const initialCallCount = scrollTo.mock.calls.length;
+    expect(initialCallCount).toBeGreaterThan(0);
 
     renderer.render({
       activeLine: 5,
       layoutVersion: 1,
       markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
     });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
 
     expect(scrollTo).toHaveBeenCalledTimes(initialCallCount);
+  });
+
+  it("cancels a pending scheduled preview scroll on unmount", () => {
+    vi.useFakeTimers();
+    cleanupHandlers.push(() => vi.useRealTimers());
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => window.setTimeout(() => callback(performance.now()), 16));
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle) => window.clearTimeout(handle));
+    cleanupHandlers.push(() => {
+      requestAnimationFrameSpy.mockRestore();
+      cancelAnimationFrameSpy.mockRestore();
+    });
+
+    const renderer = createTestRenderer();
+    let didCleanup = false;
+    cleanupHandlers.push(() => {
+      if (!didCleanup) {
+        renderer.cleanup();
+      }
+    });
+
+    renderer.render({
+      activeLine: 5,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+    expect(requestAnimationFrameSpy).toHaveBeenCalled();
+
+    renderer.cleanup();
+    didCleanup = true;
+
+    expect(cancelAnimationFrameSpy).toHaveBeenCalled();
   });
 
   it("opens resolved links through delegated click handling", () => {
