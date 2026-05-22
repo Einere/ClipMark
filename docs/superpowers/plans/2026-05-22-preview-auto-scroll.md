@@ -866,31 +866,31 @@ git commit -m "fix(preview): respect manual preview scrolling"
 **Files:**
 - Modify: none
 
-- [ ] **Step 1: preview 관련 테스트를 실행한다**
+- [x] **Step 1: preview 관련 테스트를 실행한다**
 
 Run: `npm run test -- src/lib/preview-scroll.test.ts src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 2: 전체 테스트를 실행한다**
+- [x] **Step 2: 전체 테스트를 실행한다**
 
 Run: `npm run test`
 
 Expected: PASS.
 
-- [ ] **Step 3: 빌드를 실행한다**
+- [x] **Step 3: 빌드를 실행한다**
 
 Run: `npm run build`
 
 Expected: PASS with Vite production bundle generated.
 
-- [ ] **Step 4: 수동 확인을 위한 dev server를 실행한다**
+- [x] **Step 4: 수동 확인을 위한 dev server를 실행한다**
 
 Run: `npm run dev`
 
 Expected: Vite dev server starts on `127.0.0.1:1420`.
 
-- [ ] **Step 5: 수동 QA 시나리오를 확인한다**
+- [x] **Step 5: 수동 QA 시나리오를 확인한다**
 
 브라우저나 Tauri dev 환경에서 다음을 확인한다.
 
@@ -904,7 +904,7 @@ Expected: Vite dev server starts on `127.0.0.1:1420`.
 7. preview 패널이 즉시 다시 끌려오지 않는지 본다.
 ```
 
-- [ ] **Step 6: 남은 수정이 있는 경우만 최종 정리 커밋을 만든다**
+- [x] **Step 6: 남은 수정이 있는 경우만 최종 정리 커밋을 만든다**
 
 ```bash
 git status --short
