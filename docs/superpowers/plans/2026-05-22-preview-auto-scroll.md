@@ -590,7 +590,7 @@ git commit -m "fix(preview): schedule preview scroll once per frame"
 - Modify: `src/components/preview/MarkdownPreview.tsx`
 - Modify: `src/components/preview/MarkdownPreview.test.tsx`
 
-- [ ] **Step 1: 수동 스크롤 suspend 테스트를 추가한다**
+- [x] **Step 1: 수동 스크롤 suspend 테스트를 추가한다**
 
 `src/components/preview/MarkdownPreview.test.tsx`에 다음 테스트를 추가한다.
 
@@ -688,13 +688,13 @@ it("temporarily suspends auto-scroll after the user scrolls the preview", () => 
 });
 ```
 
-- [ ] **Step 2: 테스트 실패를 확인한다**
+- [x] **Step 2: 테스트 실패를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: FAIL because auto-scroll still runs after manual preview scroll.
 
-- [ ] **Step 3: 수동 스크롤 suspend 상태를 추가한다**
+- [x] **Step 3: 수동 스크롤 suspend 상태를 추가한다**
 
 `src/components/preview/MarkdownPreview.tsx`에 상수와 refs를 추가한다.
 
@@ -749,7 +749,7 @@ onScroll={() => {
 }}
 ```
 
-- [ ] **Step 4: suspend 만료 후 다시 따라가는 테스트를 추가한다**
+- [x] **Step 4: suspend 만료 후 다시 따라가는 테스트를 추가한다**
 
 같은 파일에 다음 테스트를 추가한다.
 
@@ -848,13 +848,13 @@ it("resumes auto-scroll after the manual scroll suspension expires", () => {
 });
 ```
 
-- [ ] **Step 5: 테스트 통과를 확인한다**
+- [x] **Step 5: 테스트 통과를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: 변경을 커밋한다**
+- [x] **Step 6: 변경을 커밋한다**
 
 ```bash
 git add src/components/preview/MarkdownPreview.tsx src/components/preview/MarkdownPreview.test.tsx
