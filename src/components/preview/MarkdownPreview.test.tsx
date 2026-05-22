@@ -294,7 +294,11 @@ describe("MarkdownPreview", () => {
       activeLine: 1,
       markdown: "First line\nSecond line\nThird line",
     });
+    const anchor = renderer.container.querySelector<HTMLElement>("[data-source-line-start='1']");
+    expect(anchor).toBeInstanceOf(HTMLElement);
+    expect(anchor?.dataset.sourceLineEnd).toBe("3");
     const initialCallCount = scrollTo.mock.calls.length;
+    expect(initialCallCount).toBeGreaterThan(0);
 
     renderer.render({
       activeLine: 2,
