@@ -386,7 +386,7 @@ git commit -m "fix(preview): sync scroll by anchor block"
 - Modify: `src/components/preview/MarkdownPreview.tsx`
 - Modify: `src/components/preview/MarkdownPreview.test.tsx`
 
-- [ ] **Step 1: `requestAnimationFrame` 기반 동기화 테스트를 준비한다**
+- [x] **Step 1: `requestAnimationFrame` 기반 동기화 테스트를 준비한다**
 
 `src/components/preview/MarkdownPreview.test.tsx`의 `afterEach`에 fake timer cleanup이 없다면 각 테스트 안에서 `vi.useFakeTimers()`와 `vi.useRealTimers()`를 사용한다. 새 테스트는 다음 형태로 추가한다.
 
@@ -472,7 +472,7 @@ it("coalesces rapid active line changes into the latest scheduled scroll", () =>
 });
 ```
 
-- [ ] **Step 2: 기존 layoutVersion 테스트를 새 정책에 맞게 바꾼다**
+- [x] **Step 2: 기존 layoutVersion 테스트를 새 정책에 맞게 바꾼다**
 
 기존 `"re-syncs preview scrolling when the layout version changes"` 테스트는 삭제하거나 다음 기대값으로 바꾼다.
 
@@ -518,13 +518,13 @@ it("does not scroll solely because the layout version changes", () => {
 });
 ```
 
-- [ ] **Step 3: 테스트 실패를 확인한다**
+- [x] **Step 3: 테스트 실패를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: FAIL because sync is still immediate or layoutVersion still resets and scrolls.
 
-- [ ] **Step 4: pending animation frame ref와 예약 함수를 추가한다**
+- [x] **Step 4: pending animation frame ref와 예약 함수를 추가한다**
 
 `src/components/preview/MarkdownPreview.tsx`에 ref와 cleanup을 추가한다.
 
@@ -571,13 +571,13 @@ useEffect(() => {
 }, [cancelPendingPreviewScroll]);
 ```
 
-- [ ] **Step 5: 테스트 통과를 확인한다**
+- [x] **Step 5: 테스트 통과를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: 변경을 커밋한다**
+- [x] **Step 6: 변경을 커밋한다**
 
 ```bash
 git add src/components/preview/MarkdownPreview.tsx src/components/preview/MarkdownPreview.test.tsx
