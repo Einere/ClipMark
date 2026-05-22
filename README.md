@@ -66,6 +66,23 @@ npm run tauri:dev
 npm run dev
 ```
 
+## 배포
+
+GitHub Actions로 CI와 GitHub Release 배포를 구성합니다.
+
+- Pull request와 `main` 브랜치 push에서는 프론트엔드 테스트, 프론트엔드 빌드, Rust 체크를 실행합니다.
+- `v*` 형식의 태그를 push하면 macOS, Linux, Windows용 Tauri 번들을 빌드하고 GitHub Release draft에 업로드합니다.
+- GitHub Actions의 `Release` 워크플로를 수동 실행해 특정 태그로 릴리스를 만들 수도 있습니다.
+
+새 버전을 배포하려면 `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`의 버전을 맞춘 뒤 태그를 push합니다.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+워크플로가 끝나면 GitHub Releases에서 draft를 확인하고 릴리스 노트와 첨부 파일을 검토한 뒤 게시합니다.
+
 ## 현재 범위
 
 ClipMark는 의도적으로 작습니다. 계정, 클라우드 동기화, 협업, 데이터베이스형 문서 관리, 블록 에디팅 같은 기능은 포함하지 않습니다. 문서는 사용자의 로컬 파일이며, 앱은 그 파일을 빠르게 열고 정리하고 저장하는 데 집중합니다.
