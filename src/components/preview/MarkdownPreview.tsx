@@ -48,11 +48,11 @@ export function MarkdownPreview({
   isAutoScrollEnabled,
   isExternalMediaAutoLoadEnabled,
   isLayoutTransitioning = false,
-  layoutVersion = 0,
 }: MarkdownPreviewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorsRef = useRef<PreviewAnchorElement[]>([]);
   const lastSyncedAnchorKeyRef = useRef<string | null>(null);
+  const pendingScrollFrameRef = useRef<number | null>(null);
   const previewHtml = useMemo(() => {
     return renderPreviewHtml({
       filePath,
@@ -106,6 +106,21 @@ export function MarkdownPreview({
     scrollPreviewTo(container, nextScrollTop, "auto");
     lastSyncedAnchorKeyRef.current = targetAnchorKey;
   });
+  const cancelPendingPreviewScroll = useEffectEvent(() => {
+    if (pendingScrollFrameRef.current === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(pendingScrollFrameRef.current);
+    pendingScrollFrameRef.current = null;
+  });
+  const schedulePreviewScroll = useEffectEvent(() => {
+    cancelPendingPreviewScroll();
+    pendingScrollFrameRef.current = window.requestAnimationFrame(() => {
+      pendingScrollFrameRef.current = null;
+      syncPreviewScroll();
+    });
+  });
 
   useEffect(() => {
     const container = rootRef.current;
@@ -136,30 +151,14 @@ export function MarkdownPreview({
   }, [previewHtml]);
 
   useEffect(() => {
-    syncPreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning]);
+    schedulePreviewScroll();
+  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, schedulePreviewScroll]);
 
   useEffect(() => {
-    const container = rootRef.current;
-    if (!container || typeof ResizeObserver === "undefined" || isLayoutTransitioning) {
-      return;
-    }
-
-    const observer = new ResizeObserver(() => {
-      lastSyncedAnchorKeyRef.current = null;
-      syncPreviewScroll();
-    });
-    observer.observe(container);
-
     return () => {
-      observer.disconnect();
+      cancelPendingPreviewScroll();
     };
-  }, [isLayoutTransitioning]);
-
-  useEffect(() => {
-    lastSyncedAnchorKeyRef.current = null;
-    syncPreviewScroll();
-  }, [isLayoutTransitioning, layoutVersion]);
+  }, [cancelPendingPreviewScroll]);
 
   return (
     <div
