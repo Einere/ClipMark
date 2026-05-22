@@ -255,7 +255,7 @@ git commit -m "fix(preview): avoid scrolling on preview rerender"
 - Modify: `src/components/preview/MarkdownPreview.tsx`
 - Modify: `src/components/preview/MarkdownPreview.test.tsx`
 
-- [ ] **Step 1: 같은 anchor 내부 activeLine 변경 테스트를 추가한다**
+- [x] **Step 1: 같은 anchor 내부 activeLine 변경 테스트를 추가한다**
 
 `src/components/preview/MarkdownPreview.test.tsx`에 다음 테스트를 추가한다.
 
@@ -319,7 +319,7 @@ it("does not scroll while the active line stays inside the same preview anchor",
 });
 ```
 
-- [ ] **Step 2: 다른 anchor 이동 테스트를 보강한다**
+- [x] **Step 2: 다른 anchor 이동 테스트를 보강한다**
 
 기존 `"scrolls the preview when the active line changes to an off-screen block"` 테스트의 기대값을 `behavior: "auto"`로 바꾼다.
 
@@ -329,13 +329,13 @@ expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({
 }));
 ```
 
-- [ ] **Step 3: 테스트 실패를 확인한다**
+- [x] **Step 3: 테스트 실패를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: FAIL if same-anchor line changes still call `scrollTo`, or if behavior is still `smooth`.
 
-- [ ] **Step 4: `scrollPreviewTo`가 behavior를 인자로 받게 바꾼다**
+- [x] **Step 4: `scrollPreviewTo`가 behavior를 인자로 받게 바꾼다**
 
 `src/components/preview/MarkdownPreview.tsx`의 helper를 다음 형태로 바꾼다.
 
@@ -367,13 +367,13 @@ function scrollPreviewTo(
 scrollPreviewTo(container, nextScrollTop, "auto");
 ```
 
-- [ ] **Step 5: 테스트 통과를 확인한다**
+- [x] **Step 5: 테스트 통과를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: 변경을 커밋한다**
+- [x] **Step 6: 변경을 커밋한다**
 
 ```bash
 git add src/components/preview/MarkdownPreview.tsx src/components/preview/MarkdownPreview.test.tsx
