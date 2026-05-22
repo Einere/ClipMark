@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { findClosestPreviewAnchor } from "./preview-scroll";
+import {
+  findClosestPreviewAnchor,
+  getPreviewAnchorKey,
+} from "./preview-scroll";
+
+describe("getPreviewAnchorKey", () => {
+  it("returns a stable key for an anchor range", () => {
+    expect(getPreviewAnchorKey({ lineStart: 12, lineEnd: 16 })).toBe("12:16");
+  });
+});
 
 describe("findClosestPreviewAnchor", () => {
   const anchors = [
