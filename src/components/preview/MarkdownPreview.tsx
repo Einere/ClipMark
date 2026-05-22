@@ -97,6 +97,11 @@ export function MarkdownPreview({
 
     return true;
   });
+  const suspendAutoScrollForManualIntent = useEffectEvent(() => {
+    pendingProgrammaticScrollRef.current = 0;
+    clearProgrammaticScrollFallback();
+    manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+  });
   const syncPreviewScroll = useEffectEvent(() => {
     if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
       return;
@@ -190,7 +195,8 @@ export function MarkdownPreview({
       })
       .filter((anchor): anchor is PreviewAnchorElement => anchor !== null);
 
-  }, [previewHtml]);
+    schedulePreviewScroll();
+  }, [previewHtml, schedulePreviewScroll]);
 
   useEffect(() => {
     schedulePreviewScroll();
@@ -248,6 +254,8 @@ export function MarkdownPreview({
       onWheel={() => {
         manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
       }}
+      onPointerDown={suspendAutoScrollForManualIntent}
+      onTouchStart={suspendAutoScrollForManualIntent}
       onScroll={() => {
         if (consumeProgrammaticScroll()) {
           return;

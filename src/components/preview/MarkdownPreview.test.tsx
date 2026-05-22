@@ -763,6 +763,20 @@ describe("MarkdownPreview", () => {
   });
 
   it("does not scroll again when only the preview html changes for the same active anchor", () => {
+    vi.useFakeTimers();
+    cleanupHandlers.push(() => vi.useRealTimers());
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => window.setTimeout(() => callback(performance.now()), 16));
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle) => window.clearTimeout(handle));
+    cleanupHandlers.push(() => {
+      requestAnimationFrameSpy.mockRestore();
+      cancelAnimationFrameSpy.mockRestore();
+    });
+
     const renderer = createTestRenderer();
     cleanupHandlers.push(() => renderer.cleanup());
 
@@ -811,14 +825,194 @@ describe("MarkdownPreview", () => {
       activeLine: 5,
       markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
     });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
     const initialCallCount = scrollTo.mock.calls.length;
+    expect(initialCallCount).toBeGreaterThan(0);
 
     renderer.render({
       activeLine: 5,
       markdown: "# Heading\n\nFirst paragraph\n\n## Section updated\n\nSecond paragraph",
     });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
 
     expect(scrollTo).toHaveBeenCalledTimes(initialCallCount);
+  });
+
+  it("scrolls after refreshed preview html adds the active off-screen anchor", () => {
+    vi.useFakeTimers();
+    cleanupHandlers.push(() => vi.useRealTimers());
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => window.setTimeout(() => callback(performance.now()), 16));
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle) => window.clearTimeout(handle));
+    cleanupHandlers.push(() => {
+      requestAnimationFrameSpy.mockRestore();
+      cancelAnimationFrameSpy.mockRestore();
+    });
+
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+
+    const scrollTo = vi.fn(function setScrollTop(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+    });
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+      writable: true,
+    });
+    cleanupHandlers.push(() => {
+      if (originalScrollTo) {
+        Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+          configurable: true,
+          value: originalScrollTo,
+          writable: true,
+        });
+        return;
+      }
+
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
+    });
+
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function getClientHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function getScrollHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 1400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function getRect(this: HTMLElement) {
+      if (this.classList.contains("markdown-preview")) {
+        return new DOMRect(0, 0, 320, 400);
+      }
+
+      const lineStart = Number(this.dataset.sourceLineStart ?? NaN);
+      if (lineStart === 3) {
+        return new DOMRect(0, 120, 320, 48);
+      }
+      if (lineStart === 7) {
+        return new DOMRect(0, 760, 320, 48);
+      }
+
+      return new DOMRect(0, 0, 0, 0);
+    });
+
+    renderer.render({
+      activeLine: 7,
+      markdown: "# Heading\n\nExisting paragraph",
+    });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    renderer.render({
+      activeLine: 7,
+      markdown: "# Heading\n\nExisting paragraph\n\n## Added section\n\nNew target paragraph",
+    });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({
+      top: 640,
+    }));
+  });
+
+  it("keeps auto-scroll suspended when pointer intent precedes a scroll during programmatic fallback", () => {
+    vi.useFakeTimers();
+    cleanupHandlers.push(() => vi.useRealTimers());
+
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => window.setTimeout(() => callback(performance.now()), 16));
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle) => window.clearTimeout(handle));
+    cleanupHandlers.push(() => {
+      requestAnimationFrameSpy.mockRestore();
+      cancelAnimationFrameSpy.mockRestore();
+    });
+
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+
+    const scrollTo = vi.fn(function setScrollTop(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+    });
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+      writable: true,
+    });
+    cleanupHandlers.push(() => {
+      if (originalScrollTo) {
+        Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+          configurable: true,
+          value: originalScrollTo,
+          writable: true,
+        });
+        return;
+      }
+
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
+    });
+
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function getClientHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function getScrollHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 1400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function getRect(this: HTMLElement) {
+      if (this.classList.contains("markdown-preview")) {
+        return new DOMRect(0, 0, 320, 400);
+      }
+
+      const lineStart = Number(this.dataset.sourceLineStart ?? NaN);
+      if (lineStart === 5) {
+        return new DOMRect(0, 520, 320, 48);
+      }
+      if (lineStart === 7) {
+        return new DOMRect(0, 760, 320, 48);
+      }
+
+      return new DOMRect(0, 0, 0, 0);
+    });
+
+    renderer.render({
+      activeLine: 5,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+
+    const previewElement = renderer.container.querySelector(".markdown-preview") as HTMLDivElement;
+    act(() => {
+      previewElement.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      previewElement.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+
+    const callCountAfterManualScroll = scrollTo.mock.calls.length;
+    renderer.render({
+      activeLine: 7,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+    act(() => {
+      vi.advanceTimersByTime(16);
+    });
+
+    expect(scrollTo).toHaveBeenCalledTimes(callCountAfterManualScroll);
   });
 
   it("does not scroll the preview when auto-scroll is disabled", () => {
