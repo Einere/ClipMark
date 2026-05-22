@@ -83,7 +83,7 @@ git commit -m "refactor(preview): add stable preview anchor keys"
 - Modify: `src/components/preview/MarkdownPreview.tsx`
 - Modify: `src/components/preview/MarkdownPreview.test.tsx`
 
-- [ ] **Step 1: preview HTML 재렌더만으로 스크롤하지 않는 실패 테스트를 추가한다**
+- [x] **Step 1: preview HTML 재렌더만으로 스크롤하지 않는 실패 테스트를 추가한다**
 
 `src/components/preview/MarkdownPreview.test.tsx`에 다음 테스트를 추가한다.
 
@@ -148,13 +148,13 @@ it("does not scroll again when only the preview html changes for the same active
 });
 ```
 
-- [ ] **Step 2: 테스트 실패를 확인한다**
+- [x] **Step 2: 테스트 실패를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: FAIL because `scrollTo` is called again after `previewHtml` changes.
 
-- [ ] **Step 3: `MarkdownPreview`에서 previewHtml effect의 스크롤 호출을 제거한다**
+- [x] **Step 3: `MarkdownPreview`에서 previewHtml effect의 스크롤 호출을 제거한다**
 
 `src/components/preview/MarkdownPreview.tsx`의 import와 refs를 먼저 바꾼다.
 
@@ -201,7 +201,7 @@ useEffect(() => {
 }, [previewHtml]);
 ```
 
-- [ ] **Step 4: activeLine effect에서만 스크롤을 실행하도록 조정한다**
+- [x] **Step 4: activeLine effect에서만 스크롤을 실행하도록 조정한다**
 
 `syncPreviewScroll` 내부의 중복 방지 조건을 anchor key 기준으로 바꾼다.
 
@@ -236,13 +236,13 @@ scrollPreviewTo(container, nextScrollTop, "auto");
 lastSyncedAnchorKeyRef.current = targetAnchorKey;
 ```
 
-- [ ] **Step 5: 테스트 통과를 확인한다**
+- [x] **Step 5: 테스트 통과를 확인한다**
 
 Run: `npm run test -- src/components/preview/MarkdownPreview.test.tsx`
 
 Expected: PASS for the new preview HTML rerender test, with any old layoutVersion expectation updated in Task 4.
 
-- [ ] **Step 6: 변경을 커밋한다**
+- [x] **Step 6: 변경을 커밋한다**
 
 ```bash
 git add src/components/preview/MarkdownPreview.tsx src/components/preview/MarkdownPreview.test.tsx
