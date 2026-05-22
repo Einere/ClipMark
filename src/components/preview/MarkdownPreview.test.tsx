@@ -241,9 +241,67 @@ describe("MarkdownPreview", () => {
     const previewElement = renderer.container.querySelector(".markdown-preview") as HTMLDivElement | null;
     expect(previewElement).toBeTruthy();
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({
-      behavior: "smooth",
+      behavior: "auto",
     }));
     expect(previewElement?.scrollTop).toBeGreaterThan(0);
+  });
+
+  it("does not scroll while the active line stays inside the same preview anchor", () => {
+    const renderer = createTestRenderer();
+    cleanupHandlers.push(() => renderer.cleanup());
+
+    const scrollTo = vi.fn(function setScrollTop(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? 0;
+    });
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+      writable: true,
+    });
+    cleanupHandlers.push(() => {
+      if (originalScrollTo) {
+        Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+          configurable: true,
+          value: originalScrollTo,
+          writable: true,
+        });
+        return;
+      }
+
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
+    });
+
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function getClientHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 400 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function getScrollHeight(this: HTMLElement) {
+      return this.classList.contains("markdown-preview") ? 1200 : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function getRect(this: HTMLElement) {
+      if (this.classList.contains("markdown-preview")) {
+        return new DOMRect(0, 0, 320, 400);
+      }
+
+      if (this.dataset.sourceLineStart === "1") {
+        return new DOMRect(0, 520, 320, 120);
+      }
+
+      return new DOMRect(0, 0, 0, 0);
+    });
+
+    renderer.render({
+      activeLine: 1,
+      markdown: "First line\nSecond line\nThird line",
+    });
+    const initialCallCount = scrollTo.mock.calls.length;
+
+    renderer.render({
+      activeLine: 2,
+      markdown: "First line\nSecond line\nThird line",
+    });
+
+    expect(scrollTo).toHaveBeenCalledTimes(initialCallCount);
   });
 
   it("does not scroll again when only the preview html changes for the same active anchor", () => {

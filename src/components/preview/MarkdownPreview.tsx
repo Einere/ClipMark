@@ -21,12 +21,18 @@ type PreviewAnchorElement = PreviewScrollAnchor & {
   element: HTMLElement;
 };
 
-function scrollPreviewTo(container: HTMLDivElement, top: number) {
+type PreviewScrollBehavior = ScrollBehavior;
+
+function scrollPreviewTo(
+  container: HTMLDivElement,
+  top: number,
+  behavior: PreviewScrollBehavior,
+) {
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (typeof container.scrollTo === "function") {
     container.scrollTo({
-      behavior: prefersReducedMotion ? "auto" : "smooth",
+      behavior: prefersReducedMotion ? "auto" : behavior,
       top,
     });
     return;
@@ -97,7 +103,7 @@ export function MarkdownPreview({
       ),
     );
 
-    scrollPreviewTo(container, nextScrollTop);
+    scrollPreviewTo(container, nextScrollTop, "auto");
     lastSyncedAnchorKeyRef.current = targetAnchorKey;
   });
 
