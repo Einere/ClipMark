@@ -16,6 +16,7 @@ import { useAppViewState } from "./hooks/useAppViewState";
 import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
+import { useInitialDocumentPath } from "./hooks/useInitialDocumentPath";
 import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
 import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
@@ -74,6 +75,11 @@ export default function App({ initialPreferences }: AppProps) {
   const session = useDocumentSession({
     onError: (message) => showToast(message, "error"),
     onInfo: (message) => showToast(message, "info"),
+  });
+
+  useInitialDocumentPath({
+    applyOpenedDocument: session.applyOpenedDocument,
+    loadRecentDocument: session.loadRecentDocument,
   });
 
   const isDirty = useDocumentDirty(

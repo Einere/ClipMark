@@ -1011,7 +1011,7 @@ git commit -m "feat(files): open documents in separate windows"
 - Create: `src/hooks/useInitialDocumentPath.test.tsx`
 - Modify: `src/App.tsx`
 
-- [ ] **Step 1: Write failing initial path tests**
+- [x] **Step 1: Write failing initial path tests**
 
 Create `src/hooks/useInitialDocumentPath.test.tsx`:
 
@@ -1096,13 +1096,13 @@ describe("useInitialDocumentPath", () => {
 });
 ```
 
-- [ ] **Step 2: Run initial path tests and verify they fail**
+- [x] **Step 2: Run initial path tests and verify they fail**
 
 Run: `npm run test -- src/hooks/useInitialDocumentPath.test.tsx`
 
 Expected: FAIL because the hook does not exist.
 
-- [ ] **Step 3: Implement hook**
+- [x] **Step 3: Implement hook**
 
 Create `src/hooks/useInitialDocumentPath.ts`:
 
@@ -1150,7 +1150,7 @@ export function useInitialDocumentPath({
 }
 ```
 
-- [ ] **Step 4: Wire hook in App**
+- [x] **Step 4: Wire hook in App**
 
 In `src/App.tsx`, import and call:
 
@@ -1167,13 +1167,13 @@ useInitialDocumentPath({
 });
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npm run test -- src/hooks/useInitialDocumentPath.test.tsx src/App.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/hooks/useInitialDocumentPath.ts src/hooks/useInitialDocumentPath.test.tsx src/App.tsx src/App.test.tsx
