@@ -131,10 +131,11 @@ describe("useNativeWindowState", () => {
   });
 
   it("does not mark the window hidden when focus is lost", async () => {
+    const onRequestClose = vi.fn();
     const onVisibilityChange = vi.fn();
 
     await act(async () => {
-      root.render(createElement(Harness, { onVisibilityChange }));
+      root.render(createElement(Harness, { onRequestClose, onVisibilityChange }));
     });
 
     onVisibilityChange.mockClear();
@@ -144,6 +145,37 @@ describe("useNativeWindowState", () => {
     });
 
     expect(onVisibilityChange).not.toHaveBeenCalled();
+  });
+
+  it("exposes the current native window focus state", async () => {
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusHandler?.({ payload: false });
+    });
+
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+    expect(onVisibilityChange).toHaveBeenLastCalledWith(true);
   });
 
   it("closes the current document window through the native adapter", async () => {

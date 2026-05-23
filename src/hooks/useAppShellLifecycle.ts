@@ -48,6 +48,7 @@ export function useAppShellLifecycle({
   const {
     closeWindow,
     handleEditorFocusChange,
+    isFocused,
   } = useNativeWindowState({
     filePath,
     isDirty,
@@ -68,6 +69,7 @@ export function useAppShellLifecycle({
 
   return {
     handleEditorFocusChange,
+    isWindowFocused: isFocused,
     isWindowVisible,
     pendingAction: pendingDocumentAction.pendingAction,
     resolvePendingActionWithDiscard: pendingDocumentAction.resolvePendingActionWithDiscard,

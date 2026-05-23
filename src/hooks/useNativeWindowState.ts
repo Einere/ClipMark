@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logDebug } from "../lib/debug-log";
@@ -27,6 +27,7 @@ export function useNativeWindowState({
   onVisibilityChange,
   windowTitle,
 }: UseNativeWindowStateOptions) {
+  const [isFocused, setIsFocused] = useState(true);
   const dirtyRef = useRef(isDirty);
   const closeRequestInFlightRef = useRef(false);
   const isProgrammaticCloseRef = useRef(false);
@@ -130,6 +131,7 @@ export function useNativeWindowState({
           });
       }),
       currentWindow.onFocusChanged(({ payload: focused }) => {
+        setIsFocused(focused);
         if (focused) {
           onVisibilityChange(true);
         }
@@ -156,5 +158,6 @@ export function useNativeWindowState({
     closeWindow,
     ensureWindowVisible,
     handleEditorFocusChange,
+    isFocused,
   };
 }

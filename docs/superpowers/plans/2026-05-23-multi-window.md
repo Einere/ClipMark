@@ -1465,7 +1465,7 @@ git commit -m "refactor(window): remove single-window pending open flow"
 - Modify: `src/hooks/useAppMenuController.test.ts`
 - Modify: `src/App.tsx`
 
-- [ ] **Step 1: Add failing tests for focused-only menu sync**
+- [x] **Step 1: Add failing tests for focused-only menu sync**
 
 In `src/hooks/useAppMenuController.test.ts`, add a focused option to the harness and verify sync does not run while unfocused:
 
@@ -1487,13 +1487,13 @@ it("does not sync menu state while the current window is unfocused", async () =>
 
 Update the existing harness to pass `isMenuOwner` into `useAppMenuController`.
 
-- [ ] **Step 2: Run menu controller tests and verify they fail**
+- [x] **Step 2: Run menu controller tests and verify they fail**
 
 Run: `npm run test -- src/hooks/useAppMenuController.test.ts`
 
 Expected: FAIL because `useAppMenuController` has no `isMenuOwner` option.
 
-- [ ] **Step 3: Implement focus state and menu owner gate**
+- [x] **Step 3: Implement focus state and menu owner gate**
 
 In `src/hooks/useNativeWindowState.ts`, add:
 
@@ -1556,13 +1556,13 @@ useAppMenuController(menuHandlers, menuState, lifecycle.isWindowFocused);
 
 Expose `isWindowFocused` from `useAppShellLifecycle`.
 
-- [ ] **Step 4: Run menu tests**
+- [x] **Step 4: Run menu tests**
 
 Run: `npm run test -- src/hooks/useAppMenuController.test.ts src/hooks/useNativeWindowState.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/useNativeWindowState.ts src/hooks/useNativeWindowState.test.ts src/hooks/useAppMenuController.ts src/hooks/useAppMenuController.test.ts src/hooks/useAppShellLifecycle.ts src/App.tsx

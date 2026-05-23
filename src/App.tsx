@@ -152,7 +152,7 @@ export default function App({ initialPreferences }: AppProps) {
     themeMode,
   });
 
-  useAppMenuController(menuHandlers, menuState);
+  useAppMenuController(menuHandlers, menuState, lifecycle.isWindowFocused);
 
   return (
     <div className="app-shell">

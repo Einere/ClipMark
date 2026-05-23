@@ -20,12 +20,14 @@ vi.mock("../lib/menu", () => ({
 
 function Harness({
   handlers,
+  isMenuOwner = true,
   state,
 }: {
   handlers: MenuHandlers;
+  isMenuOwner?: boolean;
   state: MenuState;
 }) {
-  useAppMenuController(handlers, state);
+  useAppMenuController(handlers, state, isMenuOwner);
   return null;
 }
 
@@ -117,6 +119,74 @@ describe("useAppMenuController", () => {
 
     expect(setupAppMenu).toHaveBeenCalledTimes(1);
     expect(sync).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not sync menu state while the current window is not the menu owner", async () => {
+    const handlers = createHandlers("first");
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: false,
+        state: createState(),
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: false,
+        state: {
+          ...createState(),
+          isPreviewVisible: false,
+        },
+      }));
+    });
+
+    expect(setupAppMenu).toHaveBeenCalledTimes(1);
+    expect(sync).not.toHaveBeenCalled();
+  });
+
+  it("syncs the latest state when the current window becomes the menu owner", async () => {
+    const handlers = createHandlers("first");
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: false,
+        state: createState(),
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: false,
+        state: {
+          ...createState(),
+          isPreviewVisible: false,
+          isTocVisible: false,
+        },
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: true,
+        state: {
+          ...createState(),
+          isPreviewVisible: false,
+          isTocVisible: false,
+        },
+      }));
+    });
+
+    expect(sync).toHaveBeenCalledTimes(1);
+    expect(sync).toHaveBeenCalledWith(expect.objectContaining({
+      isPreviewVisible: false,
+      isTocVisible: false,
+    }));
   });
 
   it("syncs the latest state immediately after async menu setup resolves", async () => {
