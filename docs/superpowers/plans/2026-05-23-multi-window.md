@@ -806,7 +806,7 @@ git commit -m "feat(files): prevent save as conflicts across windows"
 - Modify: `src/hooks/useDocumentSession.ts`
 - Modify: `src/hooks/useAppShellActions.ts`
 
-- [ ] **Step 1: Update failing tests for New/Open/Open Recent behavior**
+- [x] **Step 1: Update failing tests for New/Open/Open Recent behavior**
 
 In `src/hooks/useDocumentFileActions.test.tsx`, add mocks:
 
@@ -893,13 +893,13 @@ it("opens recent files through native document windows", async () => {
 });
 ```
 
-- [ ] **Step 2: Run hook tests and verify they fail**
+- [x] **Step 2: Run hook tests and verify they fail**
 
 Run: `npm run test -- src/hooks/useDocumentFileActions.test.tsx`
 
 Expected: FAIL because the new controls and mocks are not implemented.
 
-- [ ] **Step 3: Implement window-oriented actions**
+- [x] **Step 3: Implement window-oriented actions**
 
 Modify `src/hooks/useDocumentFileActions.ts` imports:
 
@@ -989,13 +989,13 @@ const handleWelcomeOpenRecent = useEffectEvent((path: string) => {
 
 Keep `handleMenuOpen` and `handleWelcomeOpen` calling `openWithPicker()` through lifecycle until Task 8 removes hidden-window special cases.
 
-- [ ] **Step 4: Run hook tests**
+- [x] **Step 4: Run hook tests**
 
 Run: `npm run test -- src/hooks/useDocumentFileActions.test.tsx src/hooks/useAppShellActions.test.tsx`
 
 Expected: PASS after updating expected calls in `useAppShellActions.test.tsx` from pending actions to window action mocks.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/useDocumentFileActions.ts src/hooks/useDocumentFileActions.test.tsx src/hooks/useDocumentSession.ts src/hooks/useAppShellActions.ts src/hooks/useAppShellActions.test.tsx

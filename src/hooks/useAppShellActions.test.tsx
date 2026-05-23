@@ -20,7 +20,9 @@ function Harness({
   const controls = useAppShellActions({
     activeFilename: "draft.md",
     canSaveDocument: true,
+    createNewDocumentWindow: vi.fn().mockResolvedValue(undefined),
     filePath: "/tmp/draft.md",
+    openRecentDocumentWindow: vi.fn().mockResolvedValue(undefined),
     requestAction: vi.fn(),
     requestVisibleAction: vi.fn(),
     saveDocument: vi.fn().mockResolvedValue(true),
@@ -84,7 +86,35 @@ describe("useAppShellActions", () => {
     });
   });
 
-  it("routes menu actions through visible action requests", async () => {
+  it("routes menu new and open recent actions through native document windows", async () => {
+    const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const requestVisibleAction = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          createNewDocumentWindow,
+          openRecentDocumentWindow,
+          requestVisibleAction,
+        },
+      }));
+    });
+
+    await act(async () => {
+      controls.handleMenuNew();
+      controls.handleMenuOpenRecent("/tmp/recent.md");
+    });
+
+    expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(requestVisibleAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps menu open routed through visible action requests", async () => {
     const requestVisibleAction = vi.fn();
 
     await act(async () => {
@@ -99,20 +129,41 @@ describe("useAppShellActions", () => {
     });
 
     await act(async () => {
-      controls.handleMenuNew();
       controls.handleMenuOpen();
-      controls.handleMenuOpenRecent("/tmp/recent.md");
     });
 
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(1, { type: "new" });
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(2, { type: "open" });
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(3, {
-      path: "/tmp/recent.md",
-      type: "openRecent",
-    });
+    expect(requestVisibleAction).toHaveBeenCalledWith({ type: "open" });
   });
 
-  it("routes welcome actions through standard action requests", async () => {
+  it("routes welcome new and open recent actions through native document windows", async () => {
+    const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const requestAction = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          createNewDocumentWindow,
+          openRecentDocumentWindow,
+          requestAction,
+        },
+      }));
+    });
+
+    await act(async () => {
+      controls.handleWelcomeNew();
+      controls.handleWelcomeOpenRecent("/tmp/recent.md");
+    });
+
+    expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(requestAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps welcome open routed through standard action requests", async () => {
     const requestAction = vi.fn();
 
     await act(async () => {
@@ -127,17 +178,10 @@ describe("useAppShellActions", () => {
     });
 
     await act(async () => {
-      controls.handleWelcomeNew();
       controls.handleWelcomeOpen();
-      controls.handleWelcomeOpenRecent("/tmp/recent.md");
     });
 
-    expect(requestAction).toHaveBeenNthCalledWith(1, { type: "new" });
-    expect(requestAction).toHaveBeenNthCalledWith(2, { type: "open" });
-    expect(requestAction).toHaveBeenNthCalledWith(3, {
-      path: "/tmp/recent.md",
-      type: "openRecent",
-    });
+    expect(requestAction).toHaveBeenCalledWith({ type: "open" });
   });
 
   it("copies the current file path and reports success", async () => {

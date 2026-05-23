@@ -48,8 +48,10 @@ export function useDocumentSession({
   });
   const {
     fileInputRef,
+    createNewDocumentWindow,
     handleOpenFile,
     loadRecentDocument,
+    openRecentDocumentWindow,
     openWithPicker,
     openWithPickerWithoutShowingWindow,
     saveDocument,
@@ -69,6 +71,7 @@ export function useDocumentSession({
     clearRecentFilesList,
     closeCurrentDocument,
     createNewDocument,
+    createNewDocumentWindow,
     documentStore,
     editorDocumentKey: workspaceState.editorDocumentKey,
     fileInputRef,
@@ -77,6 +80,7 @@ export function useDocumentSession({
     handleOpenFile,
     isWelcomeVisible: workspaceState.isWelcomeVisible,
     loadRecentDocument,
+    openRecentDocumentWindow,
     openWithPicker,
     openWithPickerWithoutShowingWindow,
     recentFiles,

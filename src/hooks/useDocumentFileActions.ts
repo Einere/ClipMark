@@ -2,10 +2,14 @@ import type { ChangeEvent } from "react";
 import { useEffectEvent, useRef } from "react";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
 import {
-  openMarkdownDocument,
   openMarkdownDocumentWithoutShowingWindow,
+  pickMarkdownDocumentPath,
   saveMarkdownDocument,
 } from "../lib/file-system";
+import {
+  createDocumentWindow,
+  openDocumentWindow,
+} from "../lib/document-window";
 import { openRecentFile } from "../lib/recent-files";
 
 type UseDocumentFileActionsOptions = {
@@ -35,17 +39,21 @@ export function useDocumentFileActions({
 }: UseDocumentFileActionsOptions) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const createNewDocumentWindow = useEffectEvent(async () => {
+    await createDocumentWindow();
+  });
+
   const openWithPicker = useEffectEvent(async (fallbackToFileInput = true) => {
-    const document = await openMarkdownDocument();
-    if (!document) {
+    const path = await pickMarkdownDocumentPath();
+    if (!path) {
       if (fallbackToFileInput) {
         fileInputRef.current?.click();
       }
       return null;
     }
 
-    applyOpenedDocument(document);
-    return document;
+    await openDocumentWindow(path);
+    return null;
   });
 
   const openWithPickerWithoutShowingWindow = useEffectEvent(async () => {
@@ -65,6 +73,10 @@ export function useDocumentFileActions({
       onMissingRecentFile(path);
       return null;
     }
+  });
+
+  const openRecentDocumentWindow = useEffectEvent(async (path: string) => {
+    await openDocumentWindow(path);
   });
 
   const saveDocument = useEffectEvent(async ({
@@ -109,9 +121,11 @@ export function useDocumentFileActions({
   });
 
   return {
+    createNewDocumentWindow,
     fileInputRef,
     handleOpenFile,
     loadRecentDocument,
+    openRecentDocumentWindow,
     openWithPicker,
     openWithPickerWithoutShowingWindow,
     saveDocument,

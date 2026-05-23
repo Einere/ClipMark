@@ -2,12 +2,18 @@ import { useEffectEvent } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { PendingAction } from "../lib/pending-action";
 import type { ThemeMode } from "../lib/preview-preferences";
+import {
+  createDocumentWindow,
+  openDocumentWindow,
+} from "../lib/document-window";
 import { useCopyFilePath, type ShowToast } from "./useCopyFilePath";
 
 type UseAppShellActionsOptions = {
   activeFilename: string;
   canSaveDocument: boolean;
+  createNewDocumentWindow?: () => Promise<void>;
   filePath: string | null;
+  openRecentDocumentWindow?: (path: string) => Promise<void>;
   requestAction: (action: PendingAction) => void;
   requestVisibleAction: (action: PendingAction) => void;
   saveDocument: (options: {
@@ -24,7 +30,9 @@ type UseAppShellActionsOptions = {
 export function useAppShellActions({
   activeFilename,
   canSaveDocument,
+  createNewDocumentWindow = createDocumentWindow,
   filePath,
+  openRecentDocumentWindow = openDocumentWindow,
   requestAction,
   requestVisibleAction,
   saveDocument,
@@ -35,7 +43,7 @@ export function useAppShellActions({
   showToast,
 }: UseAppShellActionsOptions) {
   const handleMenuNew = useEffectEvent(() => {
-    requestVisibleAction({ type: "new" });
+    void createNewDocumentWindow();
   });
 
   const handleMenuOpen = useEffectEvent(() => {
@@ -43,7 +51,7 @@ export function useAppShellActions({
   });
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
-    requestVisibleAction({ path, type: "openRecent" });
+    void openRecentDocumentWindow(path);
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
@@ -75,7 +83,7 @@ export function useAppShellActions({
   });
 
   const handleWelcomeNew = useEffectEvent(() => {
-    requestAction({ type: "new" });
+    void createNewDocumentWindow();
   });
 
   const handleWelcomeOpen = useEffectEvent(() => {
@@ -83,7 +91,7 @@ export function useAppShellActions({
   });
 
   const handleWelcomeOpenRecent = useEffectEvent((path: string) => {
-    requestAction({ path, type: "openRecent" });
+    void openRecentDocumentWindow(path);
   });
 
   return {
