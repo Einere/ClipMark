@@ -61,20 +61,26 @@ vi.mock("../lib/debug-log", () => ({
 }));
 
 function Harness({
+  filePath = null,
+  isDirty = false,
   onReady,
   onRequestClose = noopRequestClose,
   onVisibilityChange,
+  windowTitle = "ClipMark",
 }: {
+  filePath?: string | null;
+  isDirty?: boolean;
   onReady?: (controls: ReturnType<typeof useNativeWindowState>) => void;
   onRequestClose?: () => void | Promise<void>;
   onVisibilityChange: (visible: boolean) => void;
+  windowTitle?: string;
 }) {
   const controls = useNativeWindowState({
-    filePath: null,
-    isDirty: false,
+    filePath,
+    isDirty,
     onRequestClose,
     onVisibilityChange,
-    windowTitle: "ClipMark",
+    windowTitle,
   });
   onReady?.(controls);
   return null;
@@ -314,6 +320,42 @@ describe("useNativeWindowState", () => {
     });
 
     expect(controls.isFocused).toBe(false);
+  });
+
+  it("updates the represented file only when the document path changes", async () => {
+    const onVisibilityChange = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        filePath: "/tmp/draft.md",
+        isDirty: true,
+        onVisibilityChange,
+        windowTitle: "draft.md - edited",
+      }));
+    });
+
+    expect(invoke).toHaveBeenCalledWith("sync_window_document_state", {
+      edited: true,
+      path: "/tmp/draft.md",
+      representedPathChanged: true,
+      title: "draft.md - edited",
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        filePath: "/tmp/draft.md",
+        isDirty: false,
+        onVisibilityChange,
+        windowTitle: "draft.md - saved",
+      }));
+    });
+
+    expect(invoke).toHaveBeenLastCalledWith("sync_window_document_state", {
+      edited: false,
+      path: "/tmp/draft.md",
+      representedPathChanged: false,
+      title: "draft.md - saved",
+    });
   });
 
   it("closes the current document window through the native adapter", async () => {

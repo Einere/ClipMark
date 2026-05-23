@@ -9,6 +9,7 @@ import { showNativeWindow } from "../lib/native-window";
 type WindowSyncState = {
   edited: boolean;
   path: string | null;
+  representedPathChanged: boolean;
   title: string;
 };
 
@@ -31,6 +32,7 @@ export function useNativeWindowState({
   const dirtyRef = useRef(isDirty);
   const closeRequestInFlightRef = useRef(false);
   const isProgrammaticCloseRef = useRef(false);
+  const lastRepresentedPathRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -88,8 +90,10 @@ export function useNativeWindowState({
     const nextState = {
       edited: isDirty,
       path: filePath,
+      representedPathChanged: lastRepresentedPathRef.current !== filePath,
       title: windowTitle,
     };
+    lastRepresentedPathRef.current = filePath;
 
     void syncNativeWindowState(nextState);
   }, [filePath, isDirty, syncNativeWindowState, windowTitle]);

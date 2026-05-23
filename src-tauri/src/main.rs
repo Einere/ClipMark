@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::HashMap;
+#[cfg(target_os = "macos")]
+use std::ffi::CStr;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -9,22 +11,22 @@ use std::process::Command;
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
 use std::sync::Mutex;
+#[cfg(target_os = "macos")]
+use std::sync::OnceLock;
 
 #[cfg(target_os = "macos")]
 use block2::StackBlock;
 #[cfg(target_os = "macos")]
-use objc2::runtime::AnyObject;
+use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
 #[cfg(target_os = "macos")]
-use objc2::MainThreadMarker;
+use objc2::{sel, MainThreadMarker};
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{
     NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertStyle,
     NSAlertThirdButtonReturn, NSApplication, NSWindow,
 };
 #[cfg(target_os = "macos")]
-use objc2_foundation::NSArray;
-#[cfg(target_os = "macos")]
-use objc2_foundation::NSString;
+use objc2_foundation::{NSArray, NSString, NSURL};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
@@ -33,6 +35,9 @@ const DEFAULT_WINDOW_WIDTH: f64 = 1440.0;
 const DEFAULT_WINDOW_HEIGHT: f64 = 920.0;
 const DEFAULT_WINDOW_MIN_WIDTH: f64 = 1100.0;
 const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 720.0;
+
+#[cfg(target_os = "macos")]
+static OPEN_URL_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 fn default_true() -> bool {
     true
@@ -280,6 +285,70 @@ fn open_document_window_with_path(
     }
 }
 
+fn document_paths_from_opened_urls(urls: impl IntoIterator<Item = Url>) -> Vec<String> {
+    urls.into_iter()
+        .filter_map(|url| url.to_file_path().ok())
+        .filter_map(|path| path.to_str().map(ToOwned::to_owned))
+        .collect()
+}
+
+fn open_document_paths(
+    app_handle: &AppHandle,
+    registry_state: &State<'_, WindowRegistryState>,
+    paths: impl IntoIterator<Item = String>,
+) {
+    for path in paths {
+        let _ = open_document_window_with_path(app_handle, registry_state, path);
+    }
+}
+
+#[cfg(target_os = "macos")]
+unsafe extern "C-unwind" fn clipmark_application_open_urls(
+    _: &AnyObject,
+    _: Sel,
+    _: &AnyObject,
+    urls: &NSArray<NSURL>,
+) {
+    let Some(app_handle) = OPEN_URL_APP_HANDLE.get() else {
+        return;
+    };
+    let Some(registry_state) = app_handle.try_state::<WindowRegistryState>() else {
+        return;
+    };
+
+    let urls = (0..urls.count()).filter_map(|index| {
+        let url = urls.objectAtIndex(index);
+        let absolute_string = url.absoluteString()?;
+        Url::parse(&absolute_string.to_string()).ok()
+    });
+
+    open_document_paths(
+        app_handle,
+        &registry_state,
+        document_paths_from_opened_urls(urls),
+    );
+}
+
+#[cfg(target_os = "macos")]
+fn install_safe_open_urls_delegate() {
+    let class_name = CStr::from_bytes_with_nul(b"TaoAppDelegateParent\0")
+        .expect("valid Tao app delegate class name");
+    let Some(class) = AnyClass::get(class_name) else {
+        return;
+    };
+    let Some(method) = class.instance_method(sel!(application:openURLs:)) else {
+        return;
+    };
+
+    unsafe {
+        let implementation: Imp = std::mem::transmute(
+            clipmark_application_open_urls
+                as unsafe extern "C-unwind" fn(&AnyObject, Sel, &AnyObject, &NSArray<NSURL>),
+        );
+        method.set_implementation(implementation);
+    }
+}
+
 fn is_document_path_open_elsewhere_in_registry(
     registry: &WindowRegistry,
     label: &str,
@@ -514,6 +583,7 @@ fn sync_window_document_state(
     window: tauri::Window,
     path: Option<String>,
     edited: bool,
+    represented_path_changed: bool,
     title: String,
 ) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -521,25 +591,26 @@ fn sync_window_document_state(
         let window_for_main_thread = window.clone();
         window
             .run_on_main_thread(move || {
-                let ns_window: &NSWindow = unsafe {
-                    &*(window_for_main_thread
-                        .ns_window()
-                        .expect("missing ns_window") as *mut NSWindow)
+                let Ok(ns_window) = window_for_main_thread.ns_window() else {
+                    return;
                 };
+                let ns_window: &NSWindow = unsafe { &*(ns_window as *mut NSWindow) };
 
                 let title = NSString::from_str(&title);
                 ns_window.setTitle(&title);
                 ns_window.setDocumentEdited(edited);
 
-                let represented_filename = NSString::from_str(path.as_deref().unwrap_or(""));
-                ns_window.setRepresentedFilename(&represented_filename);
+                if represented_path_changed {
+                    let represented_filename = NSString::from_str(path.as_deref().unwrap_or(""));
+                    ns_window.setRepresentedFilename(&represented_filename);
+                }
             })
             .map_err(|error| error.to_string())?;
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (window, path, edited, title);
+        let _ = (window, path, edited, represented_path_changed, title);
     }
 
     Ok(())
@@ -724,6 +795,12 @@ fn main() {
                 registry: Mutex::new(WindowRegistry::default()),
             });
 
+            #[cfg(target_os = "macos")]
+            {
+                let _ = OPEN_URL_APP_HANDLE.set(app.handle().clone());
+                install_safe_open_urls_delegate();
+            }
+
             if let Some(window) = app.get_webview_window("main") {
                 let registry_state = app.state::<WindowRegistryState>();
                 let mut registry = registry_state
@@ -765,21 +842,11 @@ fn main() {
         match event {
             tauri::RunEvent::Opened { urls } => {
                 let registry_state = app_handle.state::<WindowRegistryState>();
-                for url in urls {
-                    let Ok(path) = url.to_file_path() else {
-                        continue;
-                    };
-
-                    let Some(path) = path.to_str() else {
-                        continue;
-                    };
-
-                    let _ = open_document_window_with_path(
-                        app_handle,
-                        &registry_state,
-                        path.to_string(),
-                    );
-                }
+                open_document_paths(
+                    app_handle,
+                    &registry_state,
+                    document_paths_from_opened_urls(urls),
+                );
             }
             tauri::RunEvent::Reopen {
                 has_visible_windows: false,
@@ -804,15 +871,17 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        document_window_open_decision, encoded_document_url,
+        document_paths_from_opened_urls, document_window_open_decision, encoded_document_url,
         initial_document_window_state_for_label, is_document_path_open_elsewhere_in_registry,
         load_preferences_from_disk, normalize_document_path_for_registry,
         reserve_document_window_in_registry, rollback_reserved_document_window_in_registry,
         save_preferences_to_disk, validate_external_url, AppPreferences,
         DocumentWindowOpenDecision, InitialDocumentWindowState, ThemeMode, WindowRegistry,
     };
+    use serde_json::Value;
     use std::fs;
     use tauri::WebviewUrl;
+    use url::Url;
 
     #[test]
     fn accepts_supported_external_url_schemes() {
@@ -826,6 +895,52 @@ mod tests {
     fn rejects_unsupported_external_url_schemes() {
         assert!(validate_external_url("javascript:alert('x')").is_err());
         assert!(validate_external_url("data:text/plain,hello").is_err());
+    }
+
+    #[test]
+    fn document_paths_from_opened_urls_keeps_only_file_paths() {
+        let paths = document_paths_from_opened_urls([
+            Url::parse("file:///tmp/clipmark-a.md").expect("valid file URL"),
+            Url::parse("https://example.com/clipmark-b.md").expect("valid web URL"),
+            Url::parse("file:///tmp/clipmark%20space.md").expect("valid encoded file URL"),
+        ]);
+
+        assert_eq!(
+            paths,
+            vec![
+                "/tmp/clipmark-a.md".to_string(),
+                "/tmp/clipmark space.md".to_string(),
+            ],
+        );
+    }
+
+    #[test]
+    fn tauri_config_registers_markdown_file_association() {
+        let config_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tauri.conf.json");
+        let config: Value = serde_json::from_str(
+            &fs::read_to_string(config_path).expect("should read tauri config"),
+        )
+        .expect("tauri config should be valid JSON");
+
+        let associations = config["bundle"]["fileAssociations"]
+            .as_array()
+            .expect("bundle.fileAssociations should be configured");
+        let markdown = associations
+            .iter()
+            .find(|association| {
+                association["ext"]
+                    .as_array()
+                    .is_some_and(|extensions| extensions.iter().any(|ext| ext == "md"))
+            })
+            .expect("markdown association should exist");
+
+        assert_eq!(markdown["role"], "Editor");
+        assert_eq!(markdown["rank"], "Owner");
+        assert!(markdown["contentTypes"]
+            .as_array()
+            .expect("markdown association should declare content types")
+            .iter()
+            .any(|content_type| content_type == "net.daringfireball.markdown"));
     }
 
     #[test]

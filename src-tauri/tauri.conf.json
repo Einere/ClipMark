@@ -26,6 +26,23 @@
   },
   "bundle": {
     "active": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "markdown"
+        ],
+        "name": "Markdown Document",
+        "description": "Markdown document",
+        "contentTypes": [
+          "net.daringfireball.markdown",
+          "public.plain-text"
+        ],
+        "mimeType": "text/markdown",
+        "role": "Editor",
+        "rank": "Owner"
+      }
+    ],
     "icon": [
       "icons/icon.png"
     ],
