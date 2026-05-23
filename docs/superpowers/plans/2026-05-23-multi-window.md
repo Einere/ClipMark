@@ -521,7 +521,7 @@ git commit -m "feat(window): route native open events to document windows"
 - Create: `src/lib/document-window.ts`
 - Create: `src/lib/document-window.test.ts`
 
-- [ ] **Step 1: Write failing adapter tests**
+- [x] **Step 1: Write failing adapter tests**
 
 Create `src/lib/document-window.test.ts`:
 
@@ -584,13 +584,13 @@ describe("document-window", () => {
 });
 ```
 
-- [ ] **Step 2: Run adapter tests and verify they fail**
+- [x] **Step 2: Run adapter tests and verify they fail**
 
 Run: `npm run test -- src/lib/document-window.test.ts`
 
 Expected: FAIL because `src/lib/document-window.ts` does not exist.
 
-- [ ] **Step 3: Implement adapter**
+- [x] **Step 3: Implement adapter**
 
 Create `src/lib/document-window.ts`:
 
@@ -643,13 +643,13 @@ export async function closeCurrentDocumentWindow(): Promise<void> {
 }
 ```
 
-- [ ] **Step 4: Run adapter tests**
+- [x] **Step 4: Run adapter tests**
 
 Run: `npm run test -- src/lib/document-window.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/document-window.ts src/lib/document-window.test.ts
