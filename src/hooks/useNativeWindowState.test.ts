@@ -246,6 +246,76 @@ describe("useNativeWindowState", () => {
     expect(controls.isFocused).toBe(true);
   });
 
+  it("keeps a newer focus event when the initial native focus state resolves later", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusState.resolve(false);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(true);
+  });
+
+  it("keeps a newer blur event when the initial native focus state resolves later", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusHandler?.({ payload: false });
+    });
+
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusState.resolve(true);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(false);
+  });
+
   it("closes the current document window through the native adapter", async () => {
     const onVisibilityChange = vi.fn();
     let controls!: ReturnType<typeof useNativeWindowState>;

@@ -103,6 +103,7 @@ export function useNativeWindowState({
     let unlisten: (() => void) | undefined;
     let unlistenFocus: (() => void) | undefined;
     let disposed = false;
+    let hasReceivedFocusEvent = false;
 
     void Promise.all([
       currentWindow.isVisible(),
@@ -132,6 +133,7 @@ export function useNativeWindowState({
           });
       }),
       currentWindow.onFocusChanged(({ payload: focused }) => {
+        hasReceivedFocusEvent = true;
         setIsFocused(focused);
         if (focused) {
           onVisibilityChange(true);
@@ -143,7 +145,9 @@ export function useNativeWindowState({
         focusDispose();
         return;
       }
-      setIsFocused(initialFocused);
+      if (!hasReceivedFocusEvent) {
+        setIsFocused(initialFocused);
+      }
       onVisibilityChange(isVisible);
       unlisten = closeDispose;
       unlistenFocus = focusDispose;
