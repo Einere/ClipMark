@@ -38,6 +38,7 @@ const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 720.0;
 
 #[cfg(target_os = "macos")]
 static OPEN_URL_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+static PENDING_OPEN_DOCUMENT_PATHS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 fn default_true() -> bool {
     true
@@ -292,6 +293,22 @@ fn document_paths_from_opened_urls(urls: impl IntoIterator<Item = Url>) -> Vec<S
         .collect()
 }
 
+fn queue_pending_open_document_paths(paths: impl IntoIterator<Item = String>) {
+    let Ok(mut pending_paths) = PENDING_OPEN_DOCUMENT_PATHS.lock() else {
+        return;
+    };
+
+    pending_paths.extend(paths);
+}
+
+fn take_pending_open_document_paths() -> Vec<String> {
+    let Ok(mut pending_paths) = PENDING_OPEN_DOCUMENT_PATHS.lock() else {
+        return Vec::new();
+    };
+
+    std::mem::take(&mut *pending_paths)
+}
+
 fn open_document_paths(
     app_handle: &AppHandle,
     registry_state: &State<'_, WindowRegistryState>,
@@ -309,24 +326,26 @@ unsafe extern "C-unwind" fn clipmark_application_open_urls(
     _: &AnyObject,
     urls: &NSArray<NSURL>,
 ) {
-    let Some(app_handle) = OPEN_URL_APP_HANDLE.get() else {
-        return;
-    };
-    let Some(registry_state) = app_handle.try_state::<WindowRegistryState>() else {
-        return;
-    };
-
-    let urls = (0..urls.count()).filter_map(|index| {
+    let paths = document_paths_from_opened_urls((0..urls.count()).filter_map(|index| {
         let url = urls.objectAtIndex(index);
         let absolute_string = url.absoluteString()?;
         Url::parse(&absolute_string.to_string()).ok()
-    });
+    }));
 
-    open_document_paths(
-        app_handle,
-        &registry_state,
-        document_paths_from_opened_urls(urls),
-    );
+    if paths.is_empty() {
+        return;
+    }
+
+    let Some(app_handle) = OPEN_URL_APP_HANDLE.get() else {
+        queue_pending_open_document_paths(paths);
+        return;
+    };
+    let Some(registry_state) = app_handle.try_state::<WindowRegistryState>() else {
+        queue_pending_open_document_paths(paths);
+        return;
+    };
+
+    open_document_paths(app_handle, &registry_state, paths);
 }
 
 #[cfg(target_os = "macos")]
@@ -795,12 +814,6 @@ fn main() {
                 registry: Mutex::new(WindowRegistry::default()),
             });
 
-            #[cfg(target_os = "macos")]
-            {
-                let _ = OPEN_URL_APP_HANDLE.set(app.handle().clone());
-                install_safe_open_urls_delegate();
-            }
-
             if let Some(window) = app.get_webview_window("main") {
                 let registry_state = app.state::<WindowRegistryState>();
                 let mut registry = registry_state
@@ -808,6 +821,12 @@ fn main() {
                     .lock()
                     .map_err(|error| error.to_string())?;
                 registry.register_window(window.label().to_string());
+            }
+
+            let pending_paths = take_pending_open_document_paths();
+            if !pending_paths.is_empty() {
+                let registry_state = app.state::<WindowRegistryState>();
+                open_document_paths(app.handle(), &registry_state, pending_paths);
             }
 
             Ok(())
@@ -836,6 +855,12 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building ClipMark");
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = OPEN_URL_APP_HANDLE.set(app.handle().clone());
+        install_safe_open_urls_delegate();
+    }
 
     app.run(|app_handle, event| {
         #[cfg(target_os = "macos")]
@@ -874,8 +899,9 @@ mod tests {
         document_paths_from_opened_urls, document_window_open_decision, encoded_document_url,
         initial_document_window_state_for_label, is_document_path_open_elsewhere_in_registry,
         load_preferences_from_disk, normalize_document_path_for_registry,
-        reserve_document_window_in_registry, rollback_reserved_document_window_in_registry,
-        save_preferences_to_disk, validate_external_url, AppPreferences,
+        queue_pending_open_document_paths, reserve_document_window_in_registry,
+        rollback_reserved_document_window_in_registry, save_preferences_to_disk,
+        take_pending_open_document_paths, validate_external_url, AppPreferences,
         DocumentWindowOpenDecision, InitialDocumentWindowState, ThemeMode, WindowRegistry,
     };
     use serde_json::Value;
@@ -1151,6 +1177,24 @@ mod tests {
             document_window_open_decision(None, false),
             DocumentWindowOpenDecision::Create,
         );
+    }
+
+    #[test]
+    fn pending_open_document_paths_are_drained_once() {
+        let _ = take_pending_open_document_paths();
+        queue_pending_open_document_paths(vec![
+            "/tmp/finder-a.md".to_string(),
+            "/tmp/finder-b.md".to_string(),
+        ]);
+
+        assert_eq!(
+            take_pending_open_document_paths(),
+            vec![
+                "/tmp/finder-a.md".to_string(),
+                "/tmp/finder-b.md".to_string(),
+            ],
+        );
+        assert_eq!(take_pending_open_document_paths(), Vec::<String>::new());
     }
 
     #[test]
