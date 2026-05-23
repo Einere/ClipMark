@@ -16,7 +16,6 @@ function Harness({
   const controls = usePendingDocumentAction({
     activeFilename: "draft.md",
     hideWindowAndResetDocument: vi.fn().mockResolvedValue(undefined),
-    isDirty: false,
     saveDocument: vi.fn().mockResolvedValue(true),
     ...overrides,
   });
@@ -43,7 +42,7 @@ describe("usePendingDocumentAction", () => {
     container.remove();
   });
 
-  it("queues close actions instead of performing them immediately when the document is dirty", async () => {
+  it("starts without a queued close action", async () => {
     const hideWindowAndResetDocument = vi.fn().mockResolvedValue(undefined);
 
     await act(async () => {
@@ -53,17 +52,12 @@ describe("usePendingDocumentAction", () => {
         },
         overrides: {
           hideWindowAndResetDocument,
-          isDirty: true,
         },
       }));
     });
 
-    await act(async () => {
-      controls.requestAction({ type: "closeWindow" });
-    });
-
     expect(hideWindowAndResetDocument).not.toHaveBeenCalled();
-    expect(controls.pendingAction).toEqual({ type: "closeWindow" });
+    expect(controls.pendingAction).toBe(null);
   });
 
   it("does not expose hidden-window visible action requests", async () => {
@@ -71,9 +65,6 @@ describe("usePendingDocumentAction", () => {
       root.render(createElement(Harness, {
         onReady: (nextControls) => {
           controls = nextControls;
-        },
-        overrides: {
-          isDirty: true,
         },
       }));
     });

@@ -61,7 +61,6 @@ export function useAppShellLifecycle({
   const pendingDocumentAction = usePendingDocumentAction({
     activeFilename: shellViewState.activeFilename,
     hideWindowAndResetDocument: closeCurrentWindowSession,
-    isDirty,
     saveDocument,
   });
 
@@ -71,7 +70,6 @@ export function useAppShellLifecycle({
     handleEditorFocusChange,
     isWindowVisible,
     pendingAction: pendingDocumentAction.pendingAction,
-    requestAction: pendingDocumentAction.requestAction,
     resolvePendingActionWithDiscard: pendingDocumentAction.resolvePendingActionWithDiscard,
     resolvePendingActionWithSave: pendingDocumentAction.resolvePendingActionWithSave,
   };

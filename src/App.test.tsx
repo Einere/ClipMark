@@ -76,7 +76,6 @@ const shellState = vi.hoisted(() => {
       handleEditorFocusChange: vi.fn(),
       isWindowVisible: true,
       pendingAction: null as null | { type: string },
-      requestAction: vi.fn(),
       resolvePendingActionWithDiscard: vi.fn(),
       resolvePendingActionWithSave: vi.fn(),
     },

@@ -7,7 +7,6 @@ import { useAppShellLifecycle } from "./useAppShellLifecycle";
 const pendingActionControls = vi.hoisted(() => ({
   pendingAction: null,
   queuePendingAction: vi.fn(),
-  requestAction: vi.fn(),
   resolvePendingActionWithDiscard: vi.fn(),
   resolvePendingActionWithSave: vi.fn(),
 }));
@@ -66,7 +65,6 @@ describe("useAppShellLifecycle", () => {
 
     pendingActionControls.pendingAction = null;
     pendingActionControls.queuePendingAction.mockReset();
-    pendingActionControls.requestAction.mockReset();
     pendingActionControls.resolvePendingActionWithDiscard.mockReset();
     pendingActionControls.resolvePendingActionWithSave.mockReset();
 
@@ -126,7 +124,6 @@ describe("useAppShellLifecycle", () => {
       loadRecentDocument,
       openWithPicker,
     }));
-    expect(controls.requestAction).toBe(pendingActionControls.requestAction);
     expect("requestVisibleAction" in controls).toBe(false);
     expect(controls.resolvePendingActionWithDiscard)
       .toBe(pendingActionControls.resolvePendingActionWithDiscard);

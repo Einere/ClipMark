@@ -4,7 +4,6 @@ import type { PendingAction } from "../lib/pending-action";
 type UsePendingDocumentActionOptions = {
   activeFilename: string;
   hideWindowAndResetDocument: () => Promise<void>;
-  isDirty: boolean;
   saveDocument: (options: {
     activeFilename: string;
     saveAs?: boolean;
@@ -14,22 +13,12 @@ type UsePendingDocumentActionOptions = {
 export function usePendingDocumentAction({
   activeFilename,
   hideWindowAndResetDocument,
-  isDirty,
   saveDocument,
 }: UsePendingDocumentActionOptions) {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const performAction = useEffectEvent(async (_action: PendingAction) => {
     await hideWindowAndResetDocument();
-  });
-
-  const requestAction = useEffectEvent((action: PendingAction) => {
-    if (isDirty) {
-      setPendingAction(action);
-      return;
-    }
-
-    void performAction(action);
   });
 
   const resolvePendingActionWithSave = useEffectEvent(async () => {
@@ -61,7 +50,6 @@ export function usePendingDocumentAction({
   return {
     pendingAction,
     queuePendingAction: setPendingAction,
-    requestAction,
     resolvePendingActionWithDiscard,
     resolvePendingActionWithSave,
   };
