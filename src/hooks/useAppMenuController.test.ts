@@ -1,5 +1,6 @@
-import { act } from "react";
+import { act, useLayoutEffect } from "react";
 import { createElement } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppMenuController } from "./useAppMenuController";
@@ -21,13 +22,18 @@ vi.mock("../lib/menu", () => ({
 function Harness({
   handlers,
   isMenuOwner = true,
+  onCommit,
   state,
 }: {
   handlers: MenuHandlers;
   isMenuOwner?: boolean;
+  onCommit?: (isMenuOwner: boolean) => void;
   state: MenuState;
 }) {
   useAppMenuController(handlers, state, isMenuOwner);
+  useLayoutEffect(() => {
+    onCommit?.(isMenuOwner);
+  }, [isMenuOwner, onCommit]);
   return null;
 }
 
@@ -71,6 +77,22 @@ function createDeferredController() {
   return {
     promise,
     resolve: () => resolve?.({ dispose, sync }),
+  };
+}
+
+function createSynchronousSetupController() {
+  let onResolve: ((value: { dispose: typeof dispose; sync: typeof sync }) => void) | undefined;
+  const controller = { dispose, sync };
+
+  return {
+    setupResult: {
+      then: (
+        resolve: (value: { dispose: typeof dispose; sync: typeof sync }) => void,
+      ) => {
+        onResolve = resolve;
+      },
+    },
+    resolve: () => onResolve?.(controller),
   };
 }
 
@@ -224,6 +246,41 @@ describe("useAppMenuController", () => {
       isPreviewVisible: false,
       isTocVisible: false,
     }));
+  });
+
+  it("does not sync after async menu setup resolves if the current window stopped owning the menu", async () => {
+    const setupController = createSynchronousSetupController();
+    setupAppMenu.mockReturnValueOnce(setupController.setupResult);
+    const handlers = createHandlers("first");
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        handlers,
+        isMenuOwner: true,
+        state: createState(),
+      }));
+    });
+
+    await act(async () => {
+      flushSync(() => {
+        root.render(createElement(Harness, {
+          handlers,
+          isMenuOwner: false,
+          onCommit: (nextIsMenuOwner) => {
+            if (!nextIsMenuOwner) {
+              setupController.resolve();
+            }
+          },
+          state: {
+            ...createState(),
+            isPreviewVisible: false,
+            isTocVisible: false,
+          },
+        }));
+      });
+    });
+
+    expect(sync).not.toHaveBeenCalled();
   });
 
   it("uses the latest handler callbacks without recreating the menu", async () => {

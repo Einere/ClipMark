@@ -106,6 +106,7 @@ export function useNativeWindowState({
 
     void Promise.all([
       currentWindow.isVisible(),
+      currentWindow.isFocused(),
       currentWindow.onCloseRequested((event) => {
         logDebug(`window:closeRequested dirty=${dirtyRef.current}`);
         if (isProgrammaticCloseRef.current) {
@@ -136,12 +137,13 @@ export function useNativeWindowState({
           onVisibilityChange(true);
         }
       }),
-    ]).then(([isVisible, closeDispose, focusDispose]) => {
+    ]).then(([isVisible, initialFocused, closeDispose, focusDispose]) => {
       if (disposed) {
         closeDispose();
         focusDispose();
         return;
       }
+      setIsFocused(initialFocused);
       onVisibilityChange(isVisible);
       unlisten = closeDispose;
       unlistenFocus = focusDispose;

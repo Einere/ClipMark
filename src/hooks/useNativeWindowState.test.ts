@@ -7,6 +7,7 @@ import { useNativeWindowState } from "./useNativeWindowState";
 const {
   closeCurrentDocumentWindow,
   invoke,
+  isFocused,
   isVisible,
   onCloseRequested,
   onFocusChanged,
@@ -17,6 +18,7 @@ const {
   invoke: vi.fn().mockResolvedValue(undefined),
   closeCurrentDocumentWindow: vi.fn().mockResolvedValue(undefined),
   showNativeWindow: vi.fn().mockResolvedValue(undefined),
+  isFocused: vi.fn().mockResolvedValue(true),
   isVisible: vi.fn().mockResolvedValue(true),
   setFocus: vi.fn().mockResolvedValue(undefined),
   onCloseRequested: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
+    isFocused,
     isVisible,
     onCloseRequested,
     onFocusChanged,
@@ -89,6 +92,8 @@ describe("useNativeWindowState", () => {
     focusHandler = null;
     invoke.mockClear();
     closeCurrentDocumentWindow.mockClear();
+    isFocused.mockClear();
+    isFocused.mockResolvedValue(true);
     isVisible.mockClear();
     isVisible.mockResolvedValue(true);
     onCloseRequested.mockReset();
@@ -176,6 +181,27 @@ describe("useNativeWindowState", () => {
 
     expect(controls.isFocused).toBe(true);
     expect(onVisibilityChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("uses the native window focus state on initial mount", async () => {
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockResolvedValueOnce(false);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(isFocused).toHaveBeenCalledTimes(1);
+    expect(controls.isFocused).toBe(false);
   });
 
   it("closes the current document window through the native adapter", async () => {

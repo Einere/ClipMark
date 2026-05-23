@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import type { MenuHandlers, MenuState } from "../lib/menu";
 import { setupAppMenu } from "../lib/menu";
 import { useStableMenuHandlers } from "./useStableMenuHandlers";
@@ -13,10 +13,12 @@ export function useAppMenuController(
   const latestStateRef = useRef(state);
   const stableMenuHandlers = useStableMenuHandlers(handlers);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     isMenuOwnerRef.current = isMenuOwner;
     latestStateRef.current = state;
+  }, [isMenuOwner, state]);
 
+  useEffect(() => {
     if (!isMenuOwner || !menuControllerRef.current) {
       return;
     }
