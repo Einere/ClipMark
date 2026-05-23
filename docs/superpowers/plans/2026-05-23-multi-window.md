@@ -1630,19 +1630,19 @@ git commit -m "refactor(window): remove renderer open-document listener"
 **Files:**
 - No source edits unless verification exposes a failure.
 
-- [ ] **Step 1: Run frontend tests**
+- [x] **Step 1: Run frontend tests**
 
 Run: `npm run test`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run Rust tests**
+- [x] **Step 2: Run Rust tests**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml`
 
 Expected: PASS.
 
-- [ ] **Step 3: Run frontend build**
+- [x] **Step 3: Run frontend build**
 
 Run: `npm run build`
 
@@ -1665,7 +1665,13 @@ Manual checks:
 - `Save As...` to a path open in another window is blocked with an error toast.
 - Closing the final window and clicking the Dock icon opens a new empty window.
 
-- [ ] **Step 5: Commit verification fixes when verification changed files**
+Partial verification performed on 2026-05-23:
+
+- [x] `npm run tauri:dev` launched the Vite dev server and Tauri app after running with local server/GUI permissions.
+- [x] `Cmd+N` / File > New created additional untitled windows in the running app.
+- [ ] Native file picker, Finder/Open With, dirty-close, Save As conflict, and Dock reopen scenarios were not checked because this environment could not complete those GUI workflows reliably.
+
+- [x] **Step 5: Commit verification updates**
 
 If any verification step required source changes:
 
