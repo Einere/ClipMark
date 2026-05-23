@@ -2,8 +2,9 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logDebug } from "../lib/debug-log";
+import { closeCurrentDocumentWindow } from "../lib/document-window";
 import { isTauriRuntime } from "../lib/file-system";
-import { hideNativeWindow, showNativeWindow } from "../lib/native-window";
+import { showNativeWindow } from "../lib/native-window";
 
 type WindowSyncState = {
   edited: boolean;
@@ -46,13 +47,12 @@ export function useNativeWindowState({
     logDebug(`editor:focusChange focused=${focused}`);
   });
 
-  const hideWindow = useEffectEvent(async () => {
+  const closeWindow = useEffectEvent(async () => {
     if (!isTauriRuntime()) {
       return;
     }
 
-    await hideNativeWindow();
-    onVisibilityChange(false);
+    await closeCurrentDocumentWindow();
   });
 
   const ensureWindowVisible = useEffectEvent(async () => {
@@ -136,8 +136,8 @@ export function useNativeWindowState({
   }, [onRequestClose, onVisibilityChange]);
 
   return {
+    closeWindow,
     ensureWindowVisible,
     handleEditorFocusChange,
-    hideWindow,
   };
 }

@@ -1271,7 +1271,7 @@ git commit -m "feat(window): register document paths per window"
 - Modify: `src/hooks/useWindowCloseRequest.ts`
 - Modify: `src/hooks/useWindowCloseRequest.test.tsx`
 
-- [ ] **Step 1: Update lifecycle close test to expect native close**
+- [x] **Step 1: Update lifecycle close test to expect native close**
 
 In `src/hooks/useAppShellLifecycle.test.tsx`, replace `hideWindow` with `closeWindow` in `nativeWindowControls`:
 
@@ -1310,13 +1310,13 @@ it("closes the current window session through the native close command", async (
 });
 ```
 
-- [ ] **Step 2: Run lifecycle tests and verify they fail**
+- [x] **Step 2: Run lifecycle tests and verify they fail**
 
 Run: `npm run test -- src/hooks/useAppShellLifecycle.test.tsx`
 
 Expected: FAIL because `useNativeWindowState` still returns `hideWindow`.
 
-- [ ] **Step 3: Implement close adapter in native window state**
+- [x] **Step 3: Implement close adapter in native window state**
 
 In `src/hooks/useNativeWindowState.ts`, import:
 
@@ -1364,17 +1364,17 @@ closeWindowRef.current = closeWindow;
 
 Remove `resetDocumentAfterHide`.
 
-- [ ] **Step 4: Keep dirty close behavior intact**
+- [x] **Step 4: Keep dirty close behavior intact**
 
 In `src/hooks/useWindowCloseRequest.ts`, no behavior change is needed if it still calls `closeWindowSession` after save or discard. Update names in tests from hide to close.
 
-- [ ] **Step 5: Run close-related tests**
+- [x] **Step 5: Run close-related tests**
 
 Run: `npm run test -- src/hooks/useAppShellLifecycle.test.tsx src/hooks/useWindowCloseRequest.test.tsx src/hooks/useNativeWindowState.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/hooks/useNativeWindowState.ts src/hooks/useNativeWindowState.test.ts src/hooks/useAppShellLifecycle.ts src/hooks/useAppShellLifecycle.test.tsx src/hooks/useWindowCloseRequest.ts src/hooks/useWindowCloseRequest.test.tsx

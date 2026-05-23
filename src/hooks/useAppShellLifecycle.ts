@@ -1,4 +1,4 @@
-import { startTransition, useEffectEvent, useRef, useState } from "react";
+import { useEffectEvent, useRef, useState } from "react";
 import type { PendingAction } from "../lib/pending-action";
 import { deriveAppViewState } from "./useAppViewState";
 import { useNativeWindowState } from "./useNativeWindowState";
@@ -30,7 +30,6 @@ type UseAppShellLifecycleOptions = {
 
 export function useAppShellLifecycle({
   applyOpenedDocument,
-  closeCurrentDocument,
   createNewDocument,
   filePath,
   filename,
@@ -42,7 +41,7 @@ export function useAppShellLifecycle({
   saveDocument,
 }: UseAppShellLifecycleOptions) {
   const [isWindowVisible, setIsWindowVisible] = useState(true);
-  const hideWindowRef = useRef<() => Promise<void>>(async () => {});
+  const closeWindowRef = useRef<() => Promise<void>>(async () => {});
   const queuePendingActionRef = useRef<(action: PendingAction) => void>(() => undefined);
   const shellViewState = deriveAppViewState({
     filePath,
@@ -51,15 +50,8 @@ export function useAppShellLifecycle({
     isWelcomeVisible,
   });
 
-  const resetDocumentAfterHide = useEffectEvent(() => {
-    startTransition(() => {
-      closeCurrentDocument();
-    });
-  });
-
   const closeCurrentWindowSession = useEffectEvent(async () => {
-    await hideWindowRef.current();
-    resetDocumentAfterHide();
+    await closeWindowRef.current();
   });
 
   const handleCloseRequested = useWindowCloseRequest({
@@ -71,9 +63,9 @@ export function useAppShellLifecycle({
   });
 
   const {
+    closeWindow,
     ensureWindowVisible,
     handleEditorFocusChange,
-    hideWindow,
   } = useNativeWindowState({
     filePath,
     isDirty,
@@ -82,7 +74,7 @@ export function useAppShellLifecycle({
     windowTitle: shellViewState.windowTitle,
   });
 
-  hideWindowRef.current = hideWindow;
+  closeWindowRef.current = closeWindow;
 
   const pendingDocumentAction = usePendingDocumentAction({
     activeFilename: shellViewState.activeFilename,

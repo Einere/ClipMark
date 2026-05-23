@@ -14,9 +14,9 @@ const pendingActionControls = vi.hoisted(() => ({
 }));
 
 const nativeWindowControls = vi.hoisted(() => ({
+  closeWindow: vi.fn().mockResolvedValue(undefined),
   ensureWindowVisible: vi.fn().mockResolvedValue(undefined),
   handleEditorFocusChange: vi.fn(),
-  hideWindow: vi.fn().mockResolvedValue(undefined),
 }));
 
 const useWindowCloseRequestMock = vi.hoisted(() => vi.fn());
@@ -81,8 +81,8 @@ describe("useAppShellLifecycle", () => {
     nativeWindowControls.ensureWindowVisible.mockReset();
     nativeWindowControls.ensureWindowVisible.mockResolvedValue(undefined);
     nativeWindowControls.handleEditorFocusChange.mockReset();
-    nativeWindowControls.hideWindow.mockReset();
-    nativeWindowControls.hideWindow.mockResolvedValue(undefined);
+    nativeWindowControls.closeWindow.mockReset();
+    nativeWindowControls.closeWindow.mockResolvedValue(undefined);
 
     useWindowCloseRequestMock.mockReset();
     useWindowCloseRequestMock.mockReturnValue(vi.fn());
@@ -151,7 +151,7 @@ describe("useAppShellLifecycle", () => {
     expect(controls.isWindowVisible).toBe(true);
   });
 
-  it("closes the current window session by hiding first and then resetting the document", async () => {
+  it("closes the current window session through the native close command", async () => {
     const closeCurrentDocument = vi.fn();
     let closeWindowSession:
       | ((() => Promise<void>))
@@ -179,10 +179,8 @@ describe("useAppShellLifecycle", () => {
       await closeWindowSession?.();
     });
 
-    expect(nativeWindowControls.hideWindow).toHaveBeenCalledTimes(1);
-    expect(closeCurrentDocument).toHaveBeenCalledTimes(1);
-    expect(nativeWindowControls.hideWindow.mock.invocationCallOrder[0])
-      .toBeLessThan(closeCurrentDocument.mock.invocationCallOrder[0]);
+    expect(nativeWindowControls.closeWindow).toHaveBeenCalledTimes(1);
+    expect(closeCurrentDocument).not.toHaveBeenCalled();
   });
 
   it("derives welcome-mode filename and window title before wiring lifecycle hooks", async () => {
