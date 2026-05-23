@@ -115,6 +115,12 @@ impl WindowRegistry {
         self.window_paths.insert(label.to_string(), path.clone());
 
         if let Some(next_path) = path {
+            if let Some(previous_label) = self.path_windows.get(&next_path) {
+                if previous_label != label {
+                    self.window_paths.insert(previous_label.clone(), None);
+                }
+            }
+
             self.path_windows.insert(next_path, label.to_string());
         }
     }
@@ -665,5 +671,31 @@ mod tests {
         registry.unregister_window("document-2");
 
         assert_eq!(registry.window_for_path(&path), None);
+    }
+
+    #[test]
+    fn window_registry_clears_previous_owner_when_path_moves_between_windows() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/moved-owner.md");
+
+        registry.register_window("main".to_string());
+        registry.register_window("document-1".to_string());
+        registry.register_document_path("main", Some(path.clone()));
+        registry.register_document_path("document-1", Some(path.clone()));
+
+        assert_eq!(registry.window_paths.get("main"), Some(&None));
+        assert_eq!(
+            registry.window_paths.get("document-1"),
+            Some(&Some(path.clone()))
+        );
+        assert_eq!(
+            registry.window_for_path(&path),
+            Some("document-1".to_string())
+        );
+
+        registry.unregister_window("document-1");
+
+        assert_eq!(registry.window_for_path(&path), None);
+        assert!(!registry.is_path_open_elsewhere("document-2", &path));
     }
 }
