@@ -191,6 +191,24 @@ fn rollback_reserved_document_window_in_registry(registry: &mut WindowRegistry, 
     registry.unregister_window(label);
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum DocumentWindowOpenDecision {
+    Focus(String),
+    AlreadyOpening,
+    Create,
+}
+
+fn document_window_open_decision(
+    existing_label: Option<String>,
+    window_exists: bool,
+) -> DocumentWindowOpenDecision {
+    match (existing_label, window_exists) {
+        (Some(label), true) => DocumentWindowOpenDecision::Focus(label),
+        (Some(_), false) => DocumentWindowOpenDecision::AlreadyOpening,
+        (None, _) => DocumentWindowOpenDecision::Create,
+    }
+}
+
 fn create_document_window_with_path(
     app_handle: &AppHandle,
     registry_state: &State<'_, WindowRegistryState>,
@@ -240,13 +258,20 @@ fn open_document_window_with_path(
         registry.window_for_path(&normalized_path)
     };
 
-    if let Some(label) = existing_label {
-        if let Some(window) = app_handle.get_webview_window(&label) {
-            return focus_window(&window);
+    let existing_window = existing_label
+        .as_deref()
+        .and_then(|label| app_handle.get_webview_window(label));
+
+    match document_window_open_decision(existing_label, existing_window.is_some()) {
+        DocumentWindowOpenDecision::Focus(_) => {
+            let window = existing_window.expect("window should exist for focus decision");
+            focus_window(&window)
+        }
+        DocumentWindowOpenDecision::AlreadyOpening => Ok(()),
+        DocumentWindowOpenDecision::Create => {
+            create_document_window_with_path(app_handle, registry_state, Some(path))
         }
     }
-
-    create_document_window_with_path(app_handle, registry_state, Some(path))
 }
 
 fn is_document_path_open_elsewhere_in_registry(
@@ -742,10 +767,11 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        is_document_path_open_elsewhere_in_registry, load_preferences_from_disk,
-        normalize_document_path_for_registry, reserve_document_window_in_registry,
-        rollback_reserved_document_window_in_registry, save_preferences_to_disk,
-        validate_external_url, AppPreferences, ThemeMode, WindowRegistry,
+        document_window_open_decision, is_document_path_open_elsewhere_in_registry,
+        load_preferences_from_disk, normalize_document_path_for_registry,
+        reserve_document_window_in_registry, rollback_reserved_document_window_in_registry,
+        save_preferences_to_disk, validate_external_url, AppPreferences,
+        DocumentWindowOpenDecision, ThemeMode, WindowRegistry,
     };
     use std::fs;
 
@@ -947,5 +973,29 @@ mod tests {
 
         assert_eq!(registry.window_for_path(&path), None);
         assert_eq!(registry.window_paths.get(&label), None);
+    }
+
+    #[test]
+    fn document_window_open_decision_treats_reserved_path_as_already_opening() {
+        assert_eq!(
+            document_window_open_decision(Some("document-1".to_string()), false),
+            DocumentWindowOpenDecision::AlreadyOpening,
+        );
+    }
+
+    #[test]
+    fn document_window_open_decision_focuses_existing_window() {
+        assert_eq!(
+            document_window_open_decision(Some("document-1".to_string()), true),
+            DocumentWindowOpenDecision::Focus("document-1".to_string()),
+        );
+    }
+
+    #[test]
+    fn document_window_open_decision_creates_when_path_is_not_registered() {
+        assert_eq!(
+            document_window_open_decision(None, false),
+            DocumentWindowOpenDecision::Create,
+        );
     }
 }
