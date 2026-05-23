@@ -1,29 +1,10 @@
-import { flushSync } from "react-dom";
 import { useEffectEvent, useState } from "react";
-import {
-  getPostDiscardResolution,
-  getPostSaveResolution,
-  type PendingAction,
-} from "../lib/pending-action";
-
-type OpenedDocumentLike = {
-  filename: string;
-  markdown: string;
-  path: string | null;
-};
+import type { PendingAction } from "../lib/pending-action";
 
 type UsePendingDocumentActionOptions = {
   activeFilename: string;
-  applyOpenedDocument: (document: OpenedDocumentLike) => void;
-  createNewDocument: () => void;
-  ensureWindowVisible: () => Promise<void>;
   hideWindowAndResetDocument: () => Promise<void>;
   isDirty: boolean;
-  isWindowVisible: boolean;
-  loadRecentDocument: (path: string) => Promise<OpenedDocumentLike | null>;
-  onWindowVisibleChange: (isVisible: boolean) => void;
-  openWithPicker: () => Promise<OpenedDocumentLike | null>;
-  openWithPickerWithoutShowingWindow: () => Promise<OpenedDocumentLike | null>;
   saveDocument: (options: {
     activeFilename: string;
     saveAs?: boolean;
@@ -32,42 +13,14 @@ type UsePendingDocumentActionOptions = {
 
 export function usePendingDocumentAction({
   activeFilename,
-  applyOpenedDocument,
-  createNewDocument,
-  ensureWindowVisible,
   hideWindowAndResetDocument,
   isDirty,
-  isWindowVisible,
-  loadRecentDocument,
-  onWindowVisibleChange,
-  openWithPicker,
-  openWithPickerWithoutShowingWindow,
   saveDocument,
 }: UsePendingDocumentActionOptions) {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
-  const performAction = useEffectEvent(async (action: PendingAction) => {
-    if (action.type === "closeWindow") {
-      await hideWindowAndResetDocument();
-      return;
-    }
-
-    if (action.type === "new") {
-      createNewDocument();
-      return;
-    }
-
-    if (action.type === "open") {
-      await openWithPicker();
-      return;
-    }
-
-    const document = await loadRecentDocument(action.path);
-    if (!document) {
-      return;
-    }
-
-    applyOpenedDocument(document);
+  const performAction = useEffectEvent(async (_action: PendingAction) => {
+    await hideWindowAndResetDocument();
   });
 
   const requestAction = useEffectEvent((action: PendingAction) => {
@@ -77,52 +30,6 @@ export function usePendingDocumentAction({
     }
 
     void performAction(action);
-  });
-
-  const showHiddenWindowWithDocument = useEffectEvent((
-    loadDocument: () => Promise<OpenedDocumentLike | null>,
-  ) => {
-    void loadDocument().then((document) => {
-      if (!document) {
-        return;
-      }
-
-      flushSync(() => {
-        applyOpenedDocument(document);
-        onWindowVisibleChange(true);
-      });
-      void ensureWindowVisible();
-    });
-  });
-
-  const requestVisibleAction = useEffectEvent((action: PendingAction) => {
-    if (isWindowVisible) {
-      requestAction(action);
-      return;
-    }
-
-    if (action.type === "new") {
-      flushSync(() => {
-        createNewDocument();
-        onWindowVisibleChange(true);
-      });
-      void ensureWindowVisible();
-      return;
-    }
-
-    if (action.type === "open") {
-      showHiddenWindowWithDocument(() => openWithPickerWithoutShowingWindow());
-      return;
-    }
-
-    if (action.type === "openRecent") {
-      showHiddenWindowWithDocument(() => loadRecentDocument(action.path));
-      return;
-    }
-
-    void ensureWindowVisible().then(() => {
-      onWindowVisibleChange(true);
-    });
   });
 
   const resolvePendingActionWithSave = useEffectEvent(async () => {
@@ -137,11 +44,6 @@ export function usePendingDocumentAction({
     }
 
     setPendingAction(null);
-    if (getPostSaveResolution(action) === "hide-window") {
-      await hideWindowAndResetDocument();
-      return;
-    }
-
     await performAction(action);
   });
 
@@ -149,7 +51,7 @@ export function usePendingDocumentAction({
     const action = pendingAction;
     setPendingAction(null);
 
-    if (!action || getPostDiscardResolution(action) === "cancel") {
+    if (!action) {
       return;
     }
 
@@ -160,7 +62,6 @@ export function usePendingDocumentAction({
     pendingAction,
     queuePendingAction: setPendingAction,
     requestAction,
-    requestVisibleAction,
     resolvePendingActionWithDiscard,
     resolvePendingActionWithSave,
   };

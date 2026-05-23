@@ -1392,7 +1392,7 @@ git commit -m "feat(window): close document windows instead of hiding them"
 - Modify: `src/lib/pending-action.ts`
 - Modify: `src/lib/pending-action.test.ts`
 
-- [ ] **Step 1: Update pending action tests around New/Open**
+- [x] **Step 1: Update pending action tests around New/Open**
 
 In `src/hooks/usePendingDocumentAction.test.tsx`, remove expectations for hidden-window document loading. Add tests that dirty state only gates actions that mutate the current document. For MVP, `new`, `open`, and `openRecent` should no longer be queued here because they are handled by window commands before reaching pending action.
 
@@ -1404,7 +1404,7 @@ expect(result.current.pendingAction).toBe(null);
 
 for menu New/Open flows that no longer call `requestVisibleAction`.
 
-- [ ] **Step 2: Simplify pending action type**
+- [x] **Step 2: Simplify pending action type**
 
 In `src/lib/pending-action.ts`, keep:
 
@@ -1430,7 +1430,7 @@ export function getPostDiscardResolution(_action: PendingAction) {
 
 Keep the return literal names for now to minimize test churn, or rename to `"close-window"` in this task and update tests consistently.
 
-- [ ] **Step 3: Remove unused hidden-window lifecycle options**
+- [x] **Step 3: Remove unused hidden-window lifecycle options**
 
 In `src/hooks/useAppShellLifecycle.ts`, remove:
 
@@ -1442,13 +1442,13 @@ from options and from `usePendingDocumentAction` inputs.
 
 In `src/hooks/usePendingDocumentAction.ts`, remove `requestVisibleAction`, `showHiddenWindowWithDocument`, and the open/new/openRecent branches from `performAction`.
 
-- [ ] **Step 4: Run pending action tests**
+- [x] **Step 4: Run pending action tests**
 
 Run: `npm run test -- src/hooks/usePendingDocumentAction.test.tsx src/lib/pending-action.test.ts src/hooks/useAppShellLifecycle.test.tsx`
 
 Expected: PASS after updating expected type surface.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/usePendingDocumentAction.ts src/hooks/usePendingDocumentAction.test.tsx src/hooks/useAppShellLifecycle.ts src/lib/pending-action.ts src/lib/pending-action.test.ts

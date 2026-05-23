@@ -6,7 +6,6 @@ import { useDocumentFileActions } from "./useDocumentFileActions";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
 
 const openMarkdownDocument = vi.fn();
-const openMarkdownDocumentWithoutShowingWindow = vi.fn();
 const pickMarkdownDocumentPath = vi.fn();
 const saveMarkdownDocument = vi.fn();
 const openRecentFile = vi.fn();
@@ -15,7 +14,6 @@ const openDocumentWindow = vi.fn();
 
 vi.mock("../lib/file-system", () => ({
   openMarkdownDocument: () => openMarkdownDocument(),
-  openMarkdownDocumentWithoutShowingWindow: () => openMarkdownDocumentWithoutShowingWindow(),
   pickMarkdownDocumentPath: () => pickMarkdownDocumentPath(),
   saveMarkdownDocument: (input: unknown) => saveMarkdownDocument(input),
 }));
@@ -64,7 +62,6 @@ describe("useDocumentFileActions", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     openMarkdownDocument.mockReset();
-    openMarkdownDocumentWithoutShowingWindow.mockReset();
     pickMarkdownDocumentPath.mockReset();
     saveMarkdownDocument.mockReset();
     openRecentFile.mockReset();

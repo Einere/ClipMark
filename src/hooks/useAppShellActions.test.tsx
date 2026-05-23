@@ -22,9 +22,8 @@ function Harness({
     canSaveDocument: true,
     createNewDocumentWindow: vi.fn().mockResolvedValue(undefined),
     filePath: "/tmp/draft.md",
+    openWithPicker: vi.fn().mockResolvedValue(null),
     openRecentDocumentWindow: vi.fn().mockResolvedValue(undefined),
-    requestAction: vi.fn(),
-    requestVisibleAction: vi.fn(),
     saveDocument: vi.fn().mockResolvedValue(true),
     setIsExternalMediaAutoLoadEnabled: createSetterSpy(),
     setIsPreviewVisible: createSetterSpy(),
@@ -89,7 +88,7 @@ describe("useAppShellActions", () => {
   it("routes menu new and open recent actions through native document windows", async () => {
     const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
     const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
-    const requestVisibleAction = vi.fn();
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -99,7 +98,7 @@ describe("useAppShellActions", () => {
         overrides: {
           createNewDocumentWindow,
           openRecentDocumentWindow,
-          requestVisibleAction,
+          openWithPicker,
         },
       }));
     });
@@ -111,11 +110,11 @@ describe("useAppShellActions", () => {
 
     expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
     expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
-    expect(requestVisibleAction).not.toHaveBeenCalled();
+    expect(openWithPicker).not.toHaveBeenCalled();
   });
 
-  it("keeps menu open routed through visible action requests", async () => {
-    const requestVisibleAction = vi.fn();
+  it("routes menu open through the document window picker", async () => {
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -123,7 +122,7 @@ describe("useAppShellActions", () => {
           controls = nextControls;
         },
         overrides: {
-          requestVisibleAction,
+          openWithPicker,
         },
       }));
     });
@@ -132,13 +131,13 @@ describe("useAppShellActions", () => {
       controls.handleMenuOpen();
     });
 
-    expect(requestVisibleAction).toHaveBeenCalledWith({ type: "open" });
+    expect(openWithPicker).toHaveBeenCalledTimes(1);
   });
 
   it("routes welcome new and open recent actions through native document windows", async () => {
     const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
     const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
-    const requestAction = vi.fn();
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -148,7 +147,7 @@ describe("useAppShellActions", () => {
         overrides: {
           createNewDocumentWindow,
           openRecentDocumentWindow,
-          requestAction,
+          openWithPicker,
         },
       }));
     });
@@ -160,11 +159,11 @@ describe("useAppShellActions", () => {
 
     expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
     expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
-    expect(requestAction).not.toHaveBeenCalled();
+    expect(openWithPicker).not.toHaveBeenCalled();
   });
 
-  it("keeps welcome open routed through standard action requests", async () => {
-    const requestAction = vi.fn();
+  it("routes welcome open through the document window picker", async () => {
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -172,7 +171,7 @@ describe("useAppShellActions", () => {
           controls = nextControls;
         },
         overrides: {
-          requestAction,
+          openWithPicker,
         },
       }));
     });
@@ -181,7 +180,7 @@ describe("useAppShellActions", () => {
       controls.handleWelcomeOpen();
     });
 
-    expect(requestAction).toHaveBeenCalledWith({ type: "open" });
+    expect(openWithPicker).toHaveBeenCalledTimes(1);
   });
 
   it("copies the current file path and reports success", async () => {

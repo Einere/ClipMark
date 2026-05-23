@@ -93,15 +93,10 @@ export default function App({ initialPreferences }: AppProps) {
   }, []);
 
   const lifecycle = useAppShellLifecycle({
-    applyOpenedDocument: session.applyOpenedDocument,
-    createNewDocument: session.createNewDocument,
     filePath: session.filePath,
     filename: session.filename,
     isDirty,
     isWelcomeVisible: session.isWelcomeVisible,
-    loadRecentDocument: session.loadRecentDocument,
-    openWithPicker: session.openWithPicker,
-    openWithPickerWithoutShowingWindow: session.openWithPickerWithoutShowingWindow,
     saveDocument: session.saveDocument,
   });
   const viewState = useAppViewState({
@@ -116,8 +111,7 @@ export default function App({ initialPreferences }: AppProps) {
     activeFilename: viewState.activeFilename,
     canSaveDocument: viewState.canSaveDocument,
     filePath: session.filePath,
-    requestAction: lifecycle.requestAction,
-    requestVisibleAction: lifecycle.requestVisibleAction,
+    openWithPicker: session.openWithPicker,
     saveDocument: session.saveDocument,
     setIsExternalMediaAutoLoadEnabled,
     setIsPreviewVisible,

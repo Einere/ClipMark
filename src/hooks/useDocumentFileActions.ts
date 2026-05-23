@@ -2,7 +2,6 @@ import type { ChangeEvent } from "react";
 import { useEffectEvent, useRef } from "react";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
 import {
-  openMarkdownDocumentWithoutShowingWindow,
   pickMarkdownDocumentPath,
   saveMarkdownDocument,
 } from "../lib/file-system";
@@ -54,10 +53,6 @@ export function useDocumentFileActions({
 
     await openDocumentWindow(path);
     return null;
-  });
-
-  const openWithPickerWithoutShowingWindow = useEffectEvent(async () => {
-    return openMarkdownDocumentWithoutShowingWindow();
   });
 
   const loadRecentDocument = useEffectEvent(async (path: string) => {
@@ -127,7 +122,6 @@ export function useDocumentFileActions({
     loadRecentDocument,
     openRecentDocumentWindow,
     openWithPicker,
-    openWithPickerWithoutShowingWindow,
     saveDocument,
   };
 }

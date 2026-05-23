@@ -1,6 +1,5 @@
 import { useEffectEvent } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { PendingAction } from "../lib/pending-action";
 import type { ThemeMode } from "../lib/preview-preferences";
 import {
   createDocumentWindow,
@@ -13,9 +12,8 @@ type UseAppShellActionsOptions = {
   canSaveDocument: boolean;
   createNewDocumentWindow?: () => Promise<void>;
   filePath: string | null;
+  openWithPicker: () => Promise<unknown>;
   openRecentDocumentWindow?: (path: string) => Promise<void>;
-  requestAction: (action: PendingAction) => void;
-  requestVisibleAction: (action: PendingAction) => void;
   saveDocument: (options: {
     activeFilename: string;
     saveAs?: boolean;
@@ -32,9 +30,8 @@ export function useAppShellActions({
   canSaveDocument,
   createNewDocumentWindow = createDocumentWindow,
   filePath,
+  openWithPicker,
   openRecentDocumentWindow = openDocumentWindow,
-  requestAction,
-  requestVisibleAction,
   saveDocument,
   setIsExternalMediaAutoLoadEnabled,
   setIsPreviewVisible,
@@ -47,7 +44,7 @@ export function useAppShellActions({
   });
 
   const handleMenuOpen = useEffectEvent(() => {
-    requestVisibleAction({ type: "open" });
+    void openWithPicker();
   });
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
@@ -87,7 +84,7 @@ export function useAppShellActions({
   });
 
   const handleWelcomeOpen = useEffectEvent(() => {
-    requestAction({ type: "open" });
+    void openWithPicker();
   });
 
   const handleWelcomeOpenRecent = useEffectEvent((path: string) => {

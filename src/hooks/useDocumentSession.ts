@@ -56,7 +56,6 @@ export function useDocumentSession({
     loadRecentDocument,
     openRecentDocumentWindow,
     openWithPicker,
-    openWithPickerWithoutShowingWindow,
     saveDocument,
   } = useDocumentFileActions({
     activeFilePath: workspaceState.filePath,
@@ -85,7 +84,6 @@ export function useDocumentSession({
     loadRecentDocument,
     openRecentDocumentWindow,
     openWithPicker,
-    openWithPickerWithoutShowingWindow,
     recentFiles,
     savedRevision: workspaceState.savedRevision,
     saveDocument,

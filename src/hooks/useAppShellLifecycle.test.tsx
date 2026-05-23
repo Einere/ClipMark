@@ -8,7 +8,6 @@ const pendingActionControls = vi.hoisted(() => ({
   pendingAction: null,
   queuePendingAction: vi.fn(),
   requestAction: vi.fn(),
-  requestVisibleAction: vi.fn(),
   resolvePendingActionWithDiscard: vi.fn(),
   resolvePendingActionWithSave: vi.fn(),
 }));
@@ -43,15 +42,10 @@ function Harness({
   overrides?: Partial<Parameters<typeof useAppShellLifecycle>[0]>;
 }) {
   const controls = useAppShellLifecycle({
-    applyOpenedDocument: vi.fn(),
-    createNewDocument: vi.fn(),
     filePath: "/tmp/draft.md",
     filename: "draft.md",
     isDirty: false,
     isWelcomeVisible: false,
-    loadRecentDocument: vi.fn().mockResolvedValue(null),
-    openWithPicker: vi.fn().mockResolvedValue(null),
-    openWithPickerWithoutShowingWindow: vi.fn().mockResolvedValue(null),
     saveDocument: vi.fn().mockResolvedValue(true),
     ...overrides,
   });
@@ -73,7 +67,6 @@ describe("useAppShellLifecycle", () => {
     pendingActionControls.pendingAction = null;
     pendingActionControls.queuePendingAction.mockReset();
     pendingActionControls.requestAction.mockReset();
-    pendingActionControls.requestVisibleAction.mockReset();
     pendingActionControls.resolvePendingActionWithDiscard.mockReset();
     pendingActionControls.resolvePendingActionWithSave.mockReset();
 
@@ -105,7 +98,6 @@ describe("useAppShellLifecycle", () => {
     const createNewDocument = vi.fn();
     const loadRecentDocument = vi.fn().mockResolvedValue(null);
     const openWithPicker = vi.fn().mockResolvedValue(null);
-    const openWithPickerWithoutShowingWindow = vi.fn().mockResolvedValue(null);
     const saveDocument = vi.fn().mockResolvedValue(true);
 
     await act(async () => {
@@ -114,11 +106,6 @@ describe("useAppShellLifecycle", () => {
           controls = nextControls;
         },
         overrides: {
-          applyOpenedDocument,
-          createNewDocument,
-          loadRecentDocument,
-          openWithPicker,
-          openWithPickerWithoutShowingWindow,
           saveDocument,
         },
       }));
@@ -131,16 +118,16 @@ describe("useAppShellLifecycle", () => {
     }));
     expect(usePendingDocumentActionMock).toHaveBeenCalledWith(expect.objectContaining({
       activeFilename: "draft.md",
-      applyOpenedDocument,
-      createNewDocument,
-      ensureWindowVisible: nativeWindowControls.ensureWindowVisible,
-      loadRecentDocument,
-      openWithPicker,
-      openWithPickerWithoutShowingWindow,
       saveDocument,
     }));
+    expect(usePendingDocumentActionMock).not.toHaveBeenCalledWith(expect.objectContaining({
+      applyOpenedDocument,
+      createNewDocument,
+      loadRecentDocument,
+      openWithPicker,
+    }));
     expect(controls.requestAction).toBe(pendingActionControls.requestAction);
-    expect(controls.requestVisibleAction).toBe(pendingActionControls.requestVisibleAction);
+    expect("requestVisibleAction" in controls).toBe(false);
     expect(controls.resolvePendingActionWithDiscard)
       .toBe(pendingActionControls.resolvePendingActionWithDiscard);
     expect(controls.resolvePendingActionWithSave)
