@@ -253,4 +253,46 @@ describe("useInitialDocumentPath", () => {
     expect(applyOpenedDocument).toHaveBeenCalledTimes(1);
     expect(applyOpenedDocument).toHaveBeenCalledWith(secondDocument);
   });
+
+  it("keeps the initial path load alive when callback identities change during a rerender", async () => {
+    const document = {
+      filename: "stable.md",
+      markdown: "# Stable",
+      path: "/tmp/stable.md",
+    };
+    const deferred = createDeferred<OpenedDocumentLike | null>();
+    const firstLoadRecentDocument = vi.fn(() => deferred.promise);
+    const secondLoadRecentDocument = vi.fn(() => Promise.resolve(null));
+    const firstApplyOpenedDocument = vi.fn();
+    const secondApplyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument: firstApplyOpenedDocument,
+        createNewDocument,
+        loadRecentDocument: firstLoadRecentDocument,
+        search: "?path=%2Ftmp%2Fstable.md",
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument: secondApplyOpenedDocument,
+        createNewDocument,
+        loadRecentDocument: secondLoadRecentDocument,
+        search: "?path=%2Ftmp%2Fstable.md",
+      }));
+    });
+
+    await act(async () => {
+      deferred.resolve(document);
+      await deferred.promise;
+    });
+
+    expect(firstLoadRecentDocument).toHaveBeenCalledTimes(1);
+    expect(secondLoadRecentDocument).not.toHaveBeenCalled();
+    expect(firstApplyOpenedDocument).not.toHaveBeenCalled();
+    expect(secondApplyOpenedDocument).toHaveBeenCalledWith(document);
+  });
 });

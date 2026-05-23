@@ -27,6 +27,13 @@ export function useInitialDocumentPath({
   search = window.location.search,
 }: UseInitialDocumentPathOptions) {
   const consumedRequestRef = useRef<string | null>(null);
+  const applyOpenedDocumentRef = useRef(applyOpenedDocument);
+  const createNewDocumentRef = useRef(createNewDocument);
+  const loadRecentDocumentRef = useRef(loadRecentDocument);
+
+  applyOpenedDocumentRef.current = applyOpenedDocument;
+  createNewDocumentRef.current = createNewDocument;
+  loadRecentDocumentRef.current = loadRecentDocument;
 
   useEffect(() => {
     const path = getInitialDocumentPath(search);
@@ -40,24 +47,24 @@ export function useInitialDocumentPath({
     consumedRequestRef.current = requestKey;
 
     if (!path) {
-      createNewDocument();
+      createNewDocumentRef.current();
       return;
     }
 
     let cancelled = false;
 
-    void loadRecentDocument(path).then((document) => {
+    void loadRecentDocumentRef.current(path).then((document) => {
       if (cancelled) {
         return;
       }
 
       if (document) {
-        applyOpenedDocument(document);
+        applyOpenedDocumentRef.current(document);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [applyOpenedDocument, createNewDocument, loadRecentDocument, search]);
+  }, [search]);
 }
