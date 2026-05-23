@@ -41,6 +41,12 @@ type UnsavedChangesDialogProps = {
   title: string;
 };
 
+type OpenedDocumentLike = {
+  filename: string;
+  markdown: string;
+  path: string | null;
+};
+
 const shellState = vi.hoisted(() => {
   const fileInputRef = { current: null as HTMLInputElement | null };
   const handleOpenFile = vi.fn();
@@ -106,7 +112,7 @@ const shellState = vi.hoisted(() => {
       filename: null as string | null,
       handleOpenFile,
       isWelcomeVisible: true,
-      loadRecentDocument: vi.fn(async () => null),
+      loadRecentDocument: vi.fn<(path: string) => Promise<OpenedDocumentLike | null>>(async () => null),
       openWithPicker: vi.fn(async () => null),
       openWithPickerWithoutShowingWindow: vi.fn(async () => null),
       recentFiles: [],

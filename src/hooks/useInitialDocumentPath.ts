@@ -33,10 +33,20 @@ export function useInitialDocumentPath({
     }
 
     consumedPathRef.current = path;
+    let cancelled = false;
+
     void loadRecentDocument(path).then((document) => {
+      if (cancelled) {
+        return;
+      }
+
       if (document) {
         applyOpenedDocument(document);
       }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [applyOpenedDocument, loadRecentDocument, search]);
 }

@@ -13,6 +13,20 @@ type OpenedDocumentLike = {
   path: string | null;
 };
 
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
+
+function createDeferred<T>(): Deferred<T> {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+
+  return { promise, resolve };
+}
+
 function Harness({
   applyOpenedDocument,
   loadRecentDocument,
@@ -121,5 +135,87 @@ describe("useInitialDocumentPath", () => {
 
     expect(loadRecentDocument).toHaveBeenCalledWith("/tmp/missing.md");
     expect(applyOpenedDocument).not.toHaveBeenCalled();
+  });
+
+  it("does not apply a document after the hook unmounts before loading resolves", async () => {
+    const document = {
+      filename: "late.md",
+      markdown: "# Late",
+      path: "/tmp/late.md",
+    };
+    const deferred = createDeferred<OpenedDocumentLike | null>();
+    const loadRecentDocument = vi.fn(() => deferred.promise);
+    const applyOpenedDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        loadRecentDocument,
+        search: "?path=%2Ftmp%2Flate.md",
+      }));
+    });
+
+    await act(async () => {
+      root.unmount();
+    });
+
+    await act(async () => {
+      deferred.resolve(document);
+      await deferred.promise;
+    });
+
+    expect(loadRecentDocument).toHaveBeenCalledWith("/tmp/late.md");
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
+  });
+
+  it("does not apply an older path when it resolves after the search changes", async () => {
+    const firstDocument = {
+      filename: "first.md",
+      markdown: "# First",
+      path: "/tmp/first.md",
+    };
+    const secondDocument = {
+      filename: "second.md",
+      markdown: "# Second",
+      path: "/tmp/second.md",
+    };
+    const firstDeferred = createDeferred<OpenedDocumentLike | null>();
+    const secondDeferred = createDeferred<OpenedDocumentLike | null>();
+    const loadRecentDocument = vi
+      .fn()
+      .mockReturnValueOnce(firstDeferred.promise)
+      .mockReturnValueOnce(secondDeferred.promise);
+    const applyOpenedDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        loadRecentDocument,
+        search: "?path=%2Ftmp%2Ffirst.md",
+      }));
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        loadRecentDocument,
+        search: "?path=%2Ftmp%2Fsecond.md",
+      }));
+    });
+
+    await act(async () => {
+      secondDeferred.resolve(secondDocument);
+      await secondDeferred.promise;
+    });
+
+    await act(async () => {
+      firstDeferred.resolve(firstDocument);
+      await firstDeferred.promise;
+    });
+
+    expect(loadRecentDocument).toHaveBeenCalledWith("/tmp/first.md");
+    expect(loadRecentDocument).toHaveBeenCalledWith("/tmp/second.md");
+    expect(applyOpenedDocument).toHaveBeenCalledTimes(1);
+    expect(applyOpenedDocument).toHaveBeenCalledWith(secondDocument);
   });
 });
