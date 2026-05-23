@@ -455,7 +455,7 @@ git commit -m "feat(window): add multi-window commands"
 **Files:**
 - Modify: `src-tauri/src/main.rs`
 
-- [ ] **Step 1: Update `RunEvent::Opened` to route through window orchestration**
+- [x] **Step 1: Update `RunEvent::Opened` to route through window orchestration**
 
 Replace the current `RunEvent::Opened` branch with:
 
@@ -480,7 +480,7 @@ tauri::RunEvent::Opened { urls } => {
 }
 ```
 
-- [ ] **Step 2: Update `RunEvent::Reopen` to create a fresh empty window**
+- [x] **Step 2: Update `RunEvent::Reopen` to create a fresh empty window**
 
 Replace the `"main"` lookup in `RunEvent::Reopen { has_visible_windows: false, .. }` with:
 
@@ -489,7 +489,7 @@ let registry_state = app_handle.state::<WindowRegistryState>();
 let _ = create_document_window_with_path(app_handle, &registry_state, None);
 ```
 
-- [ ] **Step 3: Remove unused open-document event pieces**
+- [x] **Step 3: Remove unused open-document event pieces**
 
 Remove:
 
@@ -500,13 +500,13 @@ const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
 The frontend listener will be removed in a later task.
 
-- [ ] **Step 4: Run Rust tests**
+- [x] **Step 4: Run Rust tests**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/src/main.rs

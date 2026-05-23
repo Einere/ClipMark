@@ -26,14 +26,13 @@ use objc2_foundation::NSArray;
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSString;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 const DEFAULT_WINDOW_WIDTH: f64 = 1440.0;
 const DEFAULT_WINDOW_HEIGHT: f64 = 920.0;
 const DEFAULT_WINDOW_MIN_WIDTH: f64 = 1100.0;
 const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 720.0;
-const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
 fn default_true() -> bool {
     true
@@ -729,6 +728,7 @@ fn main() {
         #[cfg(target_os = "macos")]
         match event {
             tauri::RunEvent::Opened { urls } => {
+                let registry_state = app_handle.state::<WindowRegistryState>();
                 for url in urls {
                     let Ok(path) = url.to_file_path() else {
                         continue;
@@ -738,8 +738,11 @@ fn main() {
                         continue;
                     };
 
-                    let _ =
-                        app_handle.emit(OPEN_DOCUMENT_EVENT, serde_json::json!({ "path": path }));
+                    let _ = open_document_window_with_path(
+                        app_handle,
+                        &registry_state,
+                        path.to_string(),
+                    );
                 }
             }
             tauri::RunEvent::Reopen {
@@ -754,10 +757,8 @@ fn main() {
                     return;
                 }
 
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                let registry_state = app_handle.state::<WindowRegistryState>();
+                let _ = create_document_window_with_path(app_handle, &registry_state, None);
             }
             _ => {}
         }
