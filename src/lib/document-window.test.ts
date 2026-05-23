@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   closeCurrentDocumentWindow,
   createDocumentWindow,
+  getInitialDocumentWindowState,
   isDocumentPathOpenElsewhere,
   openDocumentWindow,
   registerWindowDocumentPath,
@@ -48,6 +49,15 @@ describe("document-window", () => {
     expect(invoke).toHaveBeenCalledWith("is_document_path_open_elsewhere", {
       path: "/tmp/a.md",
     });
+  });
+
+  it("loads the initial document state for the current window", async () => {
+    invoke.mockResolvedValue({ isNewDocument: false, path: "/tmp/a.md" });
+    await expect(getInitialDocumentWindowState()).resolves.toEqual({
+      isNewDocument: false,
+      path: "/tmp/a.md",
+    });
+    expect(invoke).toHaveBeenCalledWith("get_initial_document_window_state");
   });
 
   it("closes the current document window", async () => {

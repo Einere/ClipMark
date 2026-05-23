@@ -150,6 +150,13 @@ struct WindowRegistryState {
     registry: Mutex<WindowRegistry>,
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct InitialDocumentWindowState {
+    is_new_document: bool,
+    path: Option<String>,
+}
+
 fn normalize_document_path_for_registry(path: &str) -> String {
     fs::canonicalize(path)
         .unwrap_or_else(|_| PathBuf::from(path))
@@ -282,6 +289,18 @@ fn is_document_path_open_elsewhere_in_registry(
     registry.is_path_open_elsewhere(label, &normalized_path)
 }
 
+fn initial_document_window_state_for_label(
+    registry: &WindowRegistry,
+    label: &str,
+) -> InitialDocumentWindowState {
+    let path = registry.window_paths.get(label).cloned().flatten();
+
+    InitialDocumentWindowState {
+        is_new_document: label.starts_with("document-") && path.is_none(),
+        path,
+    }
+}
+
 fn load_preferences_from_disk(path: &Path) -> AppPreferences {
     let Ok(contents) = fs::read_to_string(path) else {
         return AppPreferences::default();
@@ -397,6 +416,22 @@ fn is_document_path_open_elsewhere(
         &registry,
         window.label(),
         &path,
+    ))
+}
+
+#[tauri::command]
+fn get_initial_document_window_state(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+) -> Result<InitialDocumentWindowState, String> {
+    let registry = registry_state
+        .registry
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    Ok(initial_document_window_state_for_label(
+        &registry,
+        window.label(),
     ))
 }
 
@@ -707,6 +742,7 @@ fn main() {
             clear_debug_log,
             close_document_window,
             create_document_window,
+            get_initial_document_window_state,
             hide_window,
             is_document_path_open_elsewhere,
             load_app_preferences,
@@ -769,11 +805,11 @@ fn main() {
 mod tests {
     use super::{
         document_window_open_decision, encoded_document_url,
-        is_document_path_open_elsewhere_in_registry, load_preferences_from_disk,
-        normalize_document_path_for_registry, reserve_document_window_in_registry,
-        rollback_reserved_document_window_in_registry, save_preferences_to_disk,
-        validate_external_url, AppPreferences,
-        DocumentWindowOpenDecision, ThemeMode, WindowRegistry,
+        initial_document_window_state_for_label, is_document_path_open_elsewhere_in_registry,
+        load_preferences_from_disk, normalize_document_path_for_registry,
+        reserve_document_window_in_registry, rollback_reserved_document_window_in_registry,
+        save_preferences_to_disk, validate_external_url, AppPreferences,
+        DocumentWindowOpenDecision, InitialDocumentWindowState, ThemeMode, WindowRegistry,
     };
     use std::fs;
     use tauri::WebviewUrl;
@@ -1020,6 +1056,49 @@ mod tests {
         assert_eq!(
             path.to_string_lossy(),
             "index.html?path=%2Ftmp%2Fnote%20with%20space.md"
+        );
+    }
+
+    #[test]
+    fn initial_document_window_state_returns_reserved_path_for_document_window() {
+        let mut registry = WindowRegistry::default();
+        registry.register_window("document-1".to_string());
+        registry.register_document_path("document-1", Some("/tmp/open.md".to_string()));
+
+        assert_eq!(
+            initial_document_window_state_for_label(&registry, "document-1"),
+            InitialDocumentWindowState {
+                is_new_document: false,
+                path: Some("/tmp/open.md".to_string()),
+            },
+        );
+    }
+
+    #[test]
+    fn initial_document_window_state_marks_pathless_document_window_as_new() {
+        let mut registry = WindowRegistry::default();
+        registry.register_window("document-1".to_string());
+
+        assert_eq!(
+            initial_document_window_state_for_label(&registry, "document-1"),
+            InitialDocumentWindowState {
+                is_new_document: true,
+                path: None,
+            },
+        );
+    }
+
+    #[test]
+    fn initial_document_window_state_keeps_main_window_as_welcome() {
+        let mut registry = WindowRegistry::default();
+        registry.register_window("main".to_string());
+
+        assert_eq!(
+            initial_document_window_state_for_label(&registry, "main"),
+            InitialDocumentWindowState {
+                is_new_document: false,
+                path: None,
+            },
         );
     }
 }

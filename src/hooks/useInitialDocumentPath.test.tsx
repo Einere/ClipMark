@@ -13,6 +13,11 @@ type OpenedDocumentLike = {
   path: string | null;
 };
 
+type InitialDocumentWindowState = {
+  isNewDocument: boolean;
+  path: string | null;
+};
+
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -30,17 +35,20 @@ function createDeferred<T>(): Deferred<T> {
 function Harness({
   applyOpenedDocument,
   createNewDocument,
+  loadInitialDocumentWindowState,
   loadRecentDocument,
   search,
 }: {
   applyOpenedDocument: (document: OpenedDocumentLike) => void;
   createNewDocument: () => void;
+  loadInitialDocumentWindowState?: () => Promise<InitialDocumentWindowState | null>;
   loadRecentDocument: (path: string) => Promise<OpenedDocumentLike | null>;
   search: string;
 }) {
   useInitialDocumentPath({
     applyOpenedDocument,
     createNewDocument,
+    loadInitialDocumentWindowState,
     loadRecentDocument,
     search,
   });
@@ -109,6 +117,60 @@ describe("useInitialDocumentPath", () => {
 
     expect(loadRecentDocument).toHaveBeenCalledTimes(1);
     expect(applyOpenedDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads the path from the current native document window state", async () => {
+    const document = {
+      filename: "native.md",
+      markdown: "# Native",
+      path: "/tmp/native.md",
+    };
+    const loadInitialDocumentWindowState = vi.fn().mockResolvedValue({
+      isNewDocument: false,
+      path: "/tmp/native.md",
+    });
+    const loadRecentDocument = vi.fn().mockResolvedValue(document);
+    const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        createNewDocument,
+        loadInitialDocumentWindowState,
+        loadRecentDocument,
+        search: "",
+      }));
+    });
+
+    expect(loadInitialDocumentWindowState).toHaveBeenCalledTimes(1);
+    expect(loadRecentDocument).toHaveBeenCalledWith("/tmp/native.md");
+    expect(applyOpenedDocument).toHaveBeenCalledWith(document);
+    expect(createNewDocument).not.toHaveBeenCalled();
+  });
+
+  it("creates a blank document from the current native document window state", async () => {
+    const loadInitialDocumentWindowState = vi.fn().mockResolvedValue({
+      isNewDocument: true,
+      path: null,
+    });
+    const loadRecentDocument = vi.fn();
+    const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        createNewDocument,
+        loadInitialDocumentWindowState,
+        loadRecentDocument,
+        search: "",
+      }));
+    });
+
+    expect(createNewDocument).toHaveBeenCalledTimes(1);
+    expect(loadRecentDocument).not.toHaveBeenCalled();
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
   });
 
   it("does nothing when the query string has no path", async () => {

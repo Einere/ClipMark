@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "./file-system";
 
+export type InitialDocumentWindowState = {
+  isNewDocument: boolean;
+  path: string | null;
+};
+
 export async function createDocumentWindow(): Promise<void> {
   if (!isTauriRuntime()) {
     return;
@@ -35,6 +40,14 @@ export async function isDocumentPathOpenElsewhere(
   }
 
   return invoke<boolean>("is_document_path_open_elsewhere", { path });
+}
+
+export async function getInitialDocumentWindowState(): Promise<InitialDocumentWindowState | null> {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+
+  return invoke<InitialDocumentWindowState>("get_initial_document_window_state");
 }
 
 export async function closeCurrentDocumentWindow(): Promise<void> {
