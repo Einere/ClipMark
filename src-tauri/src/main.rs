@@ -162,7 +162,7 @@ fn encoded_document_url(path: Option<&str>) -> WebviewUrl {
         Some(path) => {
             WebviewUrl::App(format!("index.html?path={}", urlencoding::encode(path)).into())
         }
-        None => WebviewUrl::App("index.html".into()),
+        None => WebviewUrl::App("index.html?new=1".into()),
     }
 }
 
@@ -768,13 +768,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        document_window_open_decision, is_document_path_open_elsewhere_in_registry,
-        load_preferences_from_disk, normalize_document_path_for_registry,
-        reserve_document_window_in_registry, rollback_reserved_document_window_in_registry,
-        save_preferences_to_disk, validate_external_url, AppPreferences,
+        document_window_open_decision, encoded_document_url,
+        is_document_path_open_elsewhere_in_registry, load_preferences_from_disk,
+        normalize_document_path_for_registry, reserve_document_window_in_registry,
+        rollback_reserved_document_window_in_registry, save_preferences_to_disk,
+        validate_external_url, AppPreferences,
         DocumentWindowOpenDecision, ThemeMode, WindowRegistry,
     };
     use std::fs;
+    use tauri::WebviewUrl;
 
     #[test]
     fn accepts_supported_external_url_schemes() {
@@ -997,6 +999,27 @@ mod tests {
         assert_eq!(
             document_window_open_decision(None, false),
             DocumentWindowOpenDecision::Create,
+        );
+    }
+
+    #[test]
+    fn document_window_url_marks_untitled_windows_as_new_documents() {
+        let WebviewUrl::App(path) = encoded_document_url(None) else {
+            panic!("document windows should use an app URL");
+        };
+
+        assert_eq!(path.to_string_lossy(), "index.html?new=1");
+    }
+
+    #[test]
+    fn document_window_url_encodes_initial_document_path() {
+        let WebviewUrl::App(path) = encoded_document_url(Some("/tmp/note with space.md")) else {
+            panic!("document windows should use an app URL");
+        };
+
+        assert_eq!(
+            path.to_string_lossy(),
+            "index.html?path=%2Ftmp%2Fnote%20with%20space.md"
         );
     }
 }

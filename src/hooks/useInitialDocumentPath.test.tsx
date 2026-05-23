@@ -29,15 +29,18 @@ function createDeferred<T>(): Deferred<T> {
 
 function Harness({
   applyOpenedDocument,
+  createNewDocument,
   loadRecentDocument,
   search,
 }: {
   applyOpenedDocument: (document: OpenedDocumentLike) => void;
+  createNewDocument: () => void;
   loadRecentDocument: (path: string) => Promise<OpenedDocumentLike | null>;
   search: string;
 }) {
   useInitialDocumentPath({
     applyOpenedDocument,
+    createNewDocument,
     loadRecentDocument,
     search,
   });
@@ -80,10 +83,12 @@ describe("useInitialDocumentPath", () => {
     };
     const loadRecentDocument = vi.fn().mockResolvedValue(document);
     const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
 
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Fnote.md",
       }));
@@ -96,6 +101,7 @@ describe("useInitialDocumentPath", () => {
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Fnote.md",
       }));
@@ -108,10 +114,12 @@ describe("useInitialDocumentPath", () => {
   it("does nothing when the query string has no path", async () => {
     const loadRecentDocument = vi.fn();
     const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
 
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "",
       }));
@@ -119,15 +127,37 @@ describe("useInitialDocumentPath", () => {
 
     expect(loadRecentDocument).not.toHaveBeenCalled();
     expect(applyOpenedDocument).not.toHaveBeenCalled();
+    expect(createNewDocument).not.toHaveBeenCalled();
+  });
+
+  it("creates a blank document when the window query requests a new document", async () => {
+    const loadRecentDocument = vi.fn();
+    const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        applyOpenedDocument,
+        createNewDocument,
+        loadRecentDocument,
+        search: "?new=1",
+      }));
+    });
+
+    expect(createNewDocument).toHaveBeenCalledTimes(1);
+    expect(loadRecentDocument).not.toHaveBeenCalled();
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
   });
 
   it("does not apply a document when initial path loading returns null", async () => {
     const loadRecentDocument = vi.fn().mockResolvedValue(null);
     const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
 
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Fmissing.md",
       }));
@@ -146,10 +176,12 @@ describe("useInitialDocumentPath", () => {
     const deferred = createDeferred<OpenedDocumentLike | null>();
     const loadRecentDocument = vi.fn(() => deferred.promise);
     const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
 
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Flate.md",
       }));
@@ -186,10 +218,12 @@ describe("useInitialDocumentPath", () => {
       .mockReturnValueOnce(firstDeferred.promise)
       .mockReturnValueOnce(secondDeferred.promise);
     const applyOpenedDocument = vi.fn();
+    const createNewDocument = vi.fn();
 
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Ffirst.md",
       }));
@@ -198,6 +232,7 @@ describe("useInitialDocumentPath", () => {
     await act(async () => {
       root.render(createElement(Harness, {
         applyOpenedDocument,
+        createNewDocument,
         loadRecentDocument,
         search: "?path=%2Ftmp%2Fsecond.md",
       }));

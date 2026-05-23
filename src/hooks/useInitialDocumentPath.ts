@@ -8,6 +8,7 @@ type OpenedDocumentLike = {
 
 type UseInitialDocumentPathOptions = {
   applyOpenedDocument: (document: OpenedDocumentLike) => void;
+  createNewDocument: () => void;
   loadRecentDocument: (path: string) => Promise<OpenedDocumentLike | null>;
   search?: string;
 };
@@ -21,18 +22,28 @@ export function getInitialDocumentPath(search: string): string | null {
 
 export function useInitialDocumentPath({
   applyOpenedDocument,
+  createNewDocument,
   loadRecentDocument,
   search = window.location.search,
 }: UseInitialDocumentPathOptions) {
-  const consumedPathRef = useRef<string | null>(null);
+  const consumedRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     const path = getInitialDocumentPath(search);
-    if (!path || consumedPathRef.current === path) {
+    const newDocumentRequested = new URLSearchParams(search).get("new") === "1";
+    const requestKey = path ? `path:${path}` : newDocumentRequested ? "new" : null;
+
+    if (!requestKey || consumedRequestRef.current === requestKey) {
       return;
     }
 
-    consumedPathRef.current = path;
+    consumedRequestRef.current = requestKey;
+
+    if (!path) {
+      createNewDocument();
+      return;
+    }
+
     let cancelled = false;
 
     void loadRecentDocument(path).then((document) => {
@@ -48,5 +59,5 @@ export function useInitialDocumentPath({
     return () => {
       cancelled = true;
     };
-  }, [applyOpenedDocument, loadRecentDocument, search]);
+  }, [applyOpenedDocument, createNewDocument, loadRecentDocument, search]);
 }

@@ -78,6 +78,7 @@ export default function App({ initialPreferences }: AppProps) {
 
   useInitialDocumentPath({
     applyOpenedDocument: session.applyOpenedDocument,
+    createNewDocument: session.createNewDocument,
     loadRecentDocument: session.loadRecentDocument,
   });
 
