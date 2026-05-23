@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isDocumentPathOpenElsewhere } from "./document-window";
 
 export type OpenedDocument = {
   filename: string;
@@ -49,6 +50,20 @@ function downloadMarkdown(filename: string, markdown: string) {
 }
 
 export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
+  const selected = await pickMarkdownDocumentPath();
+  if (!selected) {
+    return null;
+  }
+
+  const markdown = await invoke<string>("read_markdown_file", { path: selected });
+  return {
+    filename: getFilenameFromPath(selected),
+    markdown,
+    path: selected,
+  };
+}
+
+export async function pickMarkdownDocumentPath(): Promise<string | null> {
   if (!isTauriRuntime()) {
     return null;
   }
@@ -65,12 +80,14 @@ export async function openMarkdownDocument(): Promise<OpenedDocument | null> {
     return null;
   }
 
-  const markdown = await invoke<string>("read_markdown_file", { path: selected });
-  return {
-    filename: getFilenameFromPath(selected),
-    markdown,
-    path: selected,
-  };
+  return selected;
+}
+
+export async function assertSaveTargetAvailable(path: string): Promise<void> {
+  const isOpenElsewhere = await isDocumentPathOpenElsewhere(path);
+  if (isOpenElsewhere) {
+    throw new Error("That file is already open in another window.");
+  }
 }
 
 export async function openMarkdownDocumentWithoutShowingWindow(): Promise<OpenedDocument | null> {
@@ -134,6 +151,10 @@ export async function saveMarkdownDocument({
 
   if (!targetPath) {
     return null;
+  }
+
+  if (saveAs || targetPath !== path) {
+    await assertSaveTargetAvailable(targetPath);
   }
 
   await invoke("write_markdown_file", { contents: markdown, path: targetPath });

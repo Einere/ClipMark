@@ -664,7 +664,7 @@ git commit -m "feat(window): add frontend document window adapter"
 - Modify: `src/lib/file-system.ts`
 - Modify: `src/lib/file-system.test.ts`
 
-- [ ] **Step 1: Add failing tests for save conflict helper**
+- [x] **Step 1: Add failing tests for save conflict helper**
 
 Extend `src/lib/file-system.test.ts`:
 
@@ -712,13 +712,13 @@ describe("assertSaveTargetAvailable", () => {
 
 Update the import list to include `assertSaveTargetAvailable`.
 
-- [ ] **Step 2: Run file-system tests and verify they fail**
+- [x] **Step 2: Run file-system tests and verify they fail**
 
 Run: `npm run test -- src/lib/file-system.test.ts`
 
 Expected: FAIL because `assertSaveTargetAvailable` does not exist.
 
-- [ ] **Step 3: Implement path-only picker and conflict helper**
+- [x] **Step 3: Implement path-only picker and conflict helper**
 
 Modify `src/lib/file-system.ts`:
 
@@ -783,13 +783,13 @@ if (saveAs || targetPath !== path) {
 }
 ```
 
-- [ ] **Step 4: Run file-system tests**
+- [x] **Step 4: Run file-system tests**
 
 Run: `npm run test -- src/lib/file-system.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/file-system.ts src/lib/file-system.test.ts
