@@ -208,7 +208,7 @@ git commit -m "feat(window): add document window registry"
 **Files:**
 - Modify: `src-tauri/src/main.rs`
 
-- [ ] **Step 1: Write failing tests for path conflict command helper**
+- [x] **Step 1: Write failing tests for path conflict command helper**
 
 Add a pure helper so command behavior can be tested without constructing a Tauri window:
 
@@ -235,13 +235,13 @@ fn document_path_open_elsewhere_helper_uses_registry() {
 }
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml document_path_open_elsewhere_helper_uses_registry`
 
 Expected: FAIL because `is_document_path_open_elsewhere_in_registry` does not exist.
 
-- [ ] **Step 3: Implement command helpers and commands**
+- [x] **Step 3: Implement command helpers and commands**
 
 Add imports:
 
@@ -427,7 +427,7 @@ open_document_window,
 register_window_document_path,
 ```
 
-- [ ] **Step 4: Add dependency for query encoding**
+- [x] **Step 4: Add dependency for query encoding**
 
 Modify `src-tauri/Cargo.toml`:
 
@@ -435,13 +435,13 @@ Modify `src-tauri/Cargo.toml`:
 urlencoding = "2"
 ```
 
-- [ ] **Step 5: Run Rust tests**
+- [x] **Step 5: Run Rust tests**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src-tauri/src/main.rs src-tauri/Cargo.toml src-tauri/Cargo.lock

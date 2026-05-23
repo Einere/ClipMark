@@ -6,29 +6,33 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
 #[cfg(target_os = "macos")]
 use std::sync::mpsc;
+use std::sync::Mutex;
 
 #[cfg(target_os = "macos")]
 use block2::StackBlock;
 #[cfg(target_os = "macos")]
-use objc2::MainThreadMarker;
-#[cfg(target_os = "macos")]
 use objc2::runtime::AnyObject;
+#[cfg(target_os = "macos")]
+use objc2::MainThreadMarker;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{
     NSAlert, NSAlertFirstButtonReturn, NSAlertSecondButtonReturn, NSAlertStyle,
     NSAlertThirdButtonReturn, NSApplication, NSWindow,
 };
 #[cfg(target_os = "macos")]
-use objc2_foundation::NSString;
-#[cfg(target_os = "macos")]
 use objc2_foundation::NSArray;
+#[cfg(target_os = "macos")]
+use objc2_foundation::NSString;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
+const DEFAULT_WINDOW_WIDTH: f64 = 1440.0;
+const DEFAULT_WINDOW_HEIGHT: f64 = 920.0;
+const DEFAULT_WINDOW_MIN_WIDTH: f64 = 1100.0;
+const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 720.0;
 const OPEN_DOCUMENT_EVENT: &str = "clipmark://open-document";
 
 fn default_true() -> bool {
@@ -154,6 +158,77 @@ fn normalize_document_path_for_registry(path: &str) -> String {
         .to_string()
 }
 
+fn encoded_document_url(path: Option<&str>) -> WebviewUrl {
+    match path {
+        Some(path) => {
+            WebviewUrl::App(format!("index.html?path={}", urlencoding::encode(path)).into())
+        }
+        None => WebviewUrl::App("index.html".into()),
+    }
+}
+
+fn focus_window(window: &tauri::WebviewWindow) -> Result<(), String> {
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}
+
+fn create_document_window_with_path(
+    app_handle: &AppHandle,
+    registry_state: &State<'_, WindowRegistryState>,
+    path: Option<String>,
+) -> Result<(), String> {
+    let label = {
+        let mut registry = registry_state
+            .registry
+            .lock()
+            .map_err(|error| error.to_string())?;
+        let label = registry.next_document_label();
+        registry.register_window(label.clone());
+        label
+    };
+
+    WebviewWindowBuilder::new(app_handle, label, encoded_document_url(path.as_deref()))
+        .title("ClipMark")
+        .inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
+        .min_inner_size(DEFAULT_WINDOW_MIN_WIDTH, DEFAULT_WINDOW_MIN_HEIGHT)
+        .build()
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
+fn open_document_window_with_path(
+    app_handle: &AppHandle,
+    registry_state: &State<'_, WindowRegistryState>,
+    path: String,
+) -> Result<(), String> {
+    let normalized_path = normalize_document_path_for_registry(&path);
+    let existing_label = {
+        let registry = registry_state
+            .registry
+            .lock()
+            .map_err(|error| error.to_string())?;
+        registry.window_for_path(&normalized_path)
+    };
+
+    if let Some(label) = existing_label {
+        if let Some(window) = app_handle.get_webview_window(&label) {
+            return focus_window(&window);
+        }
+    }
+
+    create_document_window_with_path(app_handle, registry_state, Some(path))
+}
+
+fn is_document_path_open_elsewhere_in_registry(
+    registry: &WindowRegistry,
+    label: &str,
+    path: &str,
+) -> bool {
+    let normalized_path = normalize_document_path_for_registry(path);
+    registry.is_path_open_elsewhere(label, &normalized_path)
+}
+
 fn load_preferences_from_disk(path: &Path) -> AppPreferences {
     let Ok(contents) = fs::read_to_string(path) else {
         return AppPreferences::default();
@@ -191,7 +266,9 @@ fn write_markdown_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn load_app_preferences(preferences_state: State<'_, PreferencesState>) -> Result<AppPreferences, String> {
+fn load_app_preferences(
+    preferences_state: State<'_, PreferencesState>,
+) -> Result<AppPreferences, String> {
     let preferences = preferences_state
         .preferences
         .lock()
@@ -214,6 +291,77 @@ fn save_app_preferences(
     *current_preferences = preferences;
 
     Ok(())
+}
+
+#[tauri::command]
+fn create_document_window(
+    app_handle: AppHandle,
+    registry_state: State<'_, WindowRegistryState>,
+) -> Result<(), String> {
+    create_document_window_with_path(&app_handle, &registry_state, None)
+}
+
+#[tauri::command]
+fn open_document_window(
+    app_handle: AppHandle,
+    registry_state: State<'_, WindowRegistryState>,
+    path: String,
+) -> Result<(), String> {
+    open_document_window_with_path(&app_handle, &registry_state, path)
+}
+
+#[tauri::command]
+fn register_window_document_path(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+    path: Option<String>,
+) -> Result<(), String> {
+    let label = window.label().to_string();
+    let normalized_path = path.map(|path| normalize_document_path_for_registry(&path));
+    let mut registry = registry_state
+        .registry
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    registry.register_window(label.clone());
+    registry.register_document_path(&label, normalized_path);
+
+    Ok(())
+}
+
+#[tauri::command]
+fn is_document_path_open_elsewhere(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+    path: String,
+) -> Result<bool, String> {
+    let registry = registry_state
+        .registry
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    Ok(is_document_path_open_elsewhere_in_registry(
+        &registry,
+        window.label(),
+        &path,
+    ))
+}
+
+#[tauri::command]
+fn close_document_window(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+) -> Result<(), String> {
+    let label = window.label().to_string();
+    {
+        let mut registry = registry_state
+            .registry
+            .lock()
+            .map_err(|error| error.to_string())?;
+        registry.unregister_window(&label);
+    }
+
+    window.close().map_err(|error| error.to_string())
 }
 
 fn validate_external_url(url: &str) -> Result<Url, String> {
@@ -285,8 +433,11 @@ fn sync_window_document_state(
         let window_for_main_thread = window.clone();
         window
             .run_on_main_thread(move || {
-                let ns_window: &NSWindow =
-                    unsafe { &*(window_for_main_thread.ns_window().expect("missing ns_window") as *mut NSWindow) };
+                let ns_window: &NSWindow = unsafe {
+                    &*(window_for_main_thread
+                        .ns_window()
+                        .expect("missing ns_window") as *mut NSWindow)
+                };
 
                 let title = NSString::from_str(&title);
                 ns_window.setTitle(&title);
@@ -316,8 +467,7 @@ fn hide_window(window: tauri::Window) -> Result<(), String> {
                 let ns_window: &NSWindow = unsafe {
                     &*(window_for_main_thread
                         .ns_window()
-                        .expect("missing ns_window")
-                        as *mut NSWindow)
+                        .expect("missing ns_window") as *mut NSWindow)
                 };
 
                 ns_window.orderOut(None::<&AnyObject>);
@@ -344,8 +494,7 @@ fn show_window(window: tauri::Window) -> Result<(), String> {
                 let ns_window: &NSWindow = unsafe {
                     &*(window_for_main_thread
                         .ns_window()
-                        .expect("missing ns_window")
-                        as *mut NSWindow)
+                        .expect("missing ns_window") as *mut NSWindow)
                 };
 
                 NSApplication::sharedApplication(mtm).activate();
@@ -420,9 +569,7 @@ fn show_unsaved_changes_sheet(window: tauri::Window, filename: String) -> Result
             })
             .map_err(|error| error.to_string())?;
 
-        return rx
-            .recv()
-            .map_err(|error| error.to_string())?;
+        return rx.recv().map_err(|error| error.to_string())?;
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -436,8 +583,8 @@ fn show_unsaved_changes_sheet(window: tauri::Window, filename: String) -> Result
 fn pick_markdown_file() -> Result<Option<String>, String> {
     #[cfg(target_os = "macos")]
     {
-        let mtm =
-            MainThreadMarker::new().ok_or_else(|| "failed to access the main thread".to_string())?;
+        let mtm = MainThreadMarker::new()
+            .ok_or_else(|| "failed to access the main thread".to_string())?;
         let panel = objc2_app_kit::NSOpenPanel::openPanel(mtm);
 
         panel.setCanChooseDirectories(false);
@@ -457,7 +604,9 @@ fn pick_markdown_file() -> Result<Option<String>, String> {
         }
 
         let urls = panel.URLs();
-        let url = urls.firstObject().ok_or_else(|| "missing selected file url".to_string())?;
+        let url = urls
+            .firstObject()
+            .ok_or_else(|| "missing selected file url".to_string())?;
         let path = url
             .path()
             .map(|path| path.to_string())
@@ -483,6 +632,19 @@ fn main() {
                 preferences: Mutex::new(preferences),
             });
 
+            app.manage(WindowRegistryState {
+                registry: Mutex::new(WindowRegistry::default()),
+            });
+
+            if let Some(window) = app.get_webview_window("main") {
+                let registry_state = app.state::<WindowRegistryState>();
+                let mut registry = registry_state
+                    .registry
+                    .lock()
+                    .map_err(|error| error.to_string())?;
+                registry.register_window(window.label().to_string());
+            }
+
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
@@ -490,11 +652,16 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             append_debug_log,
             clear_debug_log,
+            close_document_window,
+            create_document_window,
             hide_window,
+            is_document_path_open_elsewhere,
             load_app_preferences,
+            open_document_window,
             open_external_url,
             pick_markdown_file,
             read_markdown_file,
+            register_window_document_path,
             save_app_preferences,
             show_window,
             show_unsaved_changes_sheet,
@@ -517,10 +684,8 @@ fn main() {
                         continue;
                     };
 
-                    let _ = app_handle.emit(
-                        OPEN_DOCUMENT_EVENT,
-                        serde_json::json!({ "path": path }),
-                    );
+                    let _ =
+                        app_handle.emit(OPEN_DOCUMENT_EVENT, serde_json::json!({ "path": path }));
                 }
             }
             tauri::RunEvent::Reopen {
@@ -528,7 +693,10 @@ fn main() {
                 ..
             } => {
                 let mtm = MainThreadMarker::new().expect("failed to access the main thread");
-                if NSApplication::sharedApplication(mtm).modalWindow().is_some() {
+                if NSApplication::sharedApplication(mtm)
+                    .modalWindow()
+                    .is_some()
+                {
                     return;
                 }
 
@@ -545,8 +713,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        load_preferences_from_disk, normalize_document_path_for_registry, save_preferences_to_disk,
-        validate_external_url, AppPreferences, ThemeMode, WindowRegistry,
+        is_document_path_open_elsewhere_in_registry, load_preferences_from_disk,
+        normalize_document_path_for_registry, save_preferences_to_disk, validate_external_url,
+        AppPreferences, ThemeMode, WindowRegistry,
     };
     use std::fs;
 
@@ -697,5 +866,26 @@ mod tests {
 
         assert_eq!(registry.window_for_path(&path), None);
         assert!(!registry.is_path_open_elsewhere("document-2", &path));
+    }
+
+    #[test]
+    fn document_path_open_elsewhere_helper_uses_registry() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/shared-save-as.md");
+
+        registry.register_window("main".to_string());
+        registry.register_window("document-1".to_string());
+        registry.register_document_path("document-1", Some(path.clone()));
+
+        assert!(is_document_path_open_elsewhere_in_registry(
+            &registry,
+            "main",
+            "/tmp/shared-save-as.md",
+        ));
+        assert!(!is_document_path_open_elsewhere_in_registry(
+            &registry,
+            "document-1",
+            "/tmp/shared-save-as.md",
+        ));
     }
 }
