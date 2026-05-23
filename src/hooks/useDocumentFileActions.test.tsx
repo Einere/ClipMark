@@ -6,18 +6,25 @@ import { useDocumentFileActions } from "./useDocumentFileActions";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
 
 const openMarkdownDocument = vi.fn();
-const openMarkdownDocumentWithoutShowingWindow = vi.fn();
+const pickMarkdownDocumentPath = vi.fn();
 const saveMarkdownDocument = vi.fn();
 const openRecentFile = vi.fn();
+const createDocumentWindow = vi.fn();
+const openDocumentWindow = vi.fn();
 
 vi.mock("../lib/file-system", () => ({
   openMarkdownDocument: () => openMarkdownDocument(),
-  openMarkdownDocumentWithoutShowingWindow: () => openMarkdownDocumentWithoutShowingWindow(),
+  pickMarkdownDocumentPath: () => pickMarkdownDocumentPath(),
   saveMarkdownDocument: (input: unknown) => saveMarkdownDocument(input),
 }));
 
 vi.mock("../lib/recent-files", () => ({
   openRecentFile: (path: string) => openRecentFile(path),
+}));
+
+vi.mock("../lib/document-window", () => ({
+  createDocumentWindow: () => createDocumentWindow(),
+  openDocumentWindow: (path: string) => openDocumentWindow(path),
 }));
 
 type Controls = ReturnType<typeof useDocumentFileActions>;
@@ -55,9 +62,11 @@ describe("useDocumentFileActions", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     openMarkdownDocument.mockReset();
-    openMarkdownDocumentWithoutShowingWindow.mockReset();
+    pickMarkdownDocumentPath.mockReset();
     saveMarkdownDocument.mockReset();
     openRecentFile.mockReset();
+    createDocumentWindow.mockReset();
+    openDocumentWindow.mockReset();
   });
 
   afterEach(async () => {
@@ -69,7 +78,7 @@ describe("useDocumentFileActions", () => {
 
   it("falls back to the hidden file input when the picker returns nothing", async () => {
     const applyOpenedDocument = vi.fn();
-    openMarkdownDocument.mockResolvedValue(null);
+    pickMarkdownDocumentPath.mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -91,6 +100,68 @@ describe("useDocumentFileActions", () => {
 
     expect(click).toHaveBeenCalledTimes(1);
     expect(applyOpenedDocument).not.toHaveBeenCalled();
+  });
+
+  it("creates a new native document window instead of replacing the current document", async () => {
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          createNewDocument,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.createNewDocumentWindow();
+    });
+
+    expect(createDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(createNewDocument).not.toHaveBeenCalled();
+  });
+
+  it("opens picker results through native document windows", async () => {
+    const applyOpenedDocument = vi.fn();
+    pickMarkdownDocumentPath.mockResolvedValue("/tmp/open.md");
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          applyOpenedDocument,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openWithPicker();
+    });
+
+    expect(openDocumentWindow).toHaveBeenCalledWith("/tmp/open.md");
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
+  });
+
+  it("opens recent files through native document windows", async () => {
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openRecentDocumentWindow("/tmp/recent.md");
+    });
+
+    expect(openDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(openRecentFile).not.toHaveBeenCalled();
   });
 
   it("reports unavailable recent files through the provided callbacks", async () => {

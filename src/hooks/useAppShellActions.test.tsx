@@ -20,9 +20,10 @@ function Harness({
   const controls = useAppShellActions({
     activeFilename: "draft.md",
     canSaveDocument: true,
+    createNewDocumentWindow: vi.fn().mockResolvedValue(undefined),
     filePath: "/tmp/draft.md",
-    requestAction: vi.fn(),
-    requestVisibleAction: vi.fn(),
+    openWithPicker: vi.fn().mockResolvedValue(null),
+    openRecentDocumentWindow: vi.fn().mockResolvedValue(undefined),
     saveDocument: vi.fn().mockResolvedValue(true),
     setIsExternalMediaAutoLoadEnabled: createSetterSpy(),
     setIsPreviewVisible: createSetterSpy(),
@@ -84,8 +85,10 @@ describe("useAppShellActions", () => {
     });
   });
 
-  it("routes menu actions through visible action requests", async () => {
-    const requestVisibleAction = vi.fn();
+  it("routes menu new and open recent actions through native document windows", async () => {
+    const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -93,27 +96,25 @@ describe("useAppShellActions", () => {
           controls = nextControls;
         },
         overrides: {
-          requestVisibleAction,
+          createNewDocumentWindow,
+          openRecentDocumentWindow,
+          openWithPicker,
         },
       }));
     });
 
     await act(async () => {
       controls.handleMenuNew();
-      controls.handleMenuOpen();
       controls.handleMenuOpenRecent("/tmp/recent.md");
     });
 
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(1, { type: "new" });
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(2, { type: "open" });
-    expect(requestVisibleAction).toHaveBeenNthCalledWith(3, {
-      path: "/tmp/recent.md",
-      type: "openRecent",
-    });
+    expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(openWithPicker).not.toHaveBeenCalled();
   });
 
-  it("routes welcome actions through standard action requests", async () => {
-    const requestAction = vi.fn();
+  it("routes menu open through the document window picker", async () => {
+    const openWithPicker = vi.fn().mockResolvedValue(null);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -121,23 +122,65 @@ describe("useAppShellActions", () => {
           controls = nextControls;
         },
         overrides: {
-          requestAction,
+          openWithPicker,
+        },
+      }));
+    });
+
+    await act(async () => {
+      controls.handleMenuOpen();
+    });
+
+    expect(openWithPicker).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes welcome new and open recent actions through native document windows", async () => {
+    const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
+    const openWithPicker = vi.fn().mockResolvedValue(null);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          createNewDocumentWindow,
+          openRecentDocumentWindow,
+          openWithPicker,
         },
       }));
     });
 
     await act(async () => {
       controls.handleWelcomeNew();
-      controls.handleWelcomeOpen();
       controls.handleWelcomeOpenRecent("/tmp/recent.md");
     });
 
-    expect(requestAction).toHaveBeenNthCalledWith(1, { type: "new" });
-    expect(requestAction).toHaveBeenNthCalledWith(2, { type: "open" });
-    expect(requestAction).toHaveBeenNthCalledWith(3, {
-      path: "/tmp/recent.md",
-      type: "openRecent",
+    expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(openWithPicker).not.toHaveBeenCalled();
+  });
+
+  it("routes welcome open through the document window picker", async () => {
+    const openWithPicker = vi.fn().mockResolvedValue(null);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          openWithPicker,
+        },
+      }));
     });
+
+    await act(async () => {
+      controls.handleWelcomeOpen();
+    });
+
+    expect(openWithPicker).toHaveBeenCalledTimes(1);
   });
 
   it("copies the current file path and reports success", async () => {

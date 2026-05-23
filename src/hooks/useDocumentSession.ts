@@ -28,6 +28,7 @@ export function useDocumentSession({
   const {
     applyOpenedDocument,
     applySavedDocument,
+    clearRegisteredWindowDocumentPath,
     handleMissingRecentFile,
     handleUnavailableRecentFile,
   } = useDocumentSessionFileEffects({
@@ -41,17 +42,20 @@ export function useDocumentSession({
 
   const createNewDocument = useEffectEvent(() => {
     workspaceState.createNewDocument();
+    clearRegisteredWindowDocumentPath();
   });
 
   const closeCurrentDocument = useEffectEvent(() => {
     workspaceState.closeCurrentDocument();
+    clearRegisteredWindowDocumentPath();
   });
   const {
     fileInputRef,
+    createNewDocumentWindow,
     handleOpenFile,
     loadRecentDocument,
+    openRecentDocumentWindow,
     openWithPicker,
-    openWithPickerWithoutShowingWindow,
     saveDocument,
   } = useDocumentFileActions({
     activeFilePath: workspaceState.filePath,
@@ -69,6 +73,7 @@ export function useDocumentSession({
     clearRecentFilesList,
     closeCurrentDocument,
     createNewDocument,
+    createNewDocumentWindow,
     documentStore,
     editorDocumentKey: workspaceState.editorDocumentKey,
     fileInputRef,
@@ -77,8 +82,8 @@ export function useDocumentSession({
     handleOpenFile,
     isWelcomeVisible: workspaceState.isWelcomeVisible,
     loadRecentDocument,
+    openRecentDocumentWindow,
     openWithPicker,
-    openWithPickerWithoutShowingWindow,
     recentFiles,
     savedRevision: workspaceState.savedRevision,
     saveDocument,

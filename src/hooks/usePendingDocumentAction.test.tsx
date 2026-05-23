@@ -6,14 +6,6 @@ import { usePendingDocumentAction } from "./usePendingDocumentAction";
 
 type Controls = ReturnType<typeof usePendingDocumentAction>;
 
-function createDocument(path = "/tmp/recent.md") {
-  return {
-    filename: path.split("/").at(-1) ?? path,
-    markdown: "# Heading",
-    path,
-  };
-}
-
 function Harness({
   onReady,
   overrides,
@@ -23,16 +15,7 @@ function Harness({
 }) {
   const controls = usePendingDocumentAction({
     activeFilename: "draft.md",
-    applyOpenedDocument: vi.fn(),
-    createNewDocument: vi.fn(),
-    ensureWindowVisible: vi.fn().mockResolvedValue(undefined),
     hideWindowAndResetDocument: vi.fn().mockResolvedValue(undefined),
-    isDirty: false,
-    isWindowVisible: true,
-    loadRecentDocument: vi.fn().mockResolvedValue(null),
-    onWindowVisibleChange: vi.fn(),
-    openWithPicker: vi.fn().mockResolvedValue(null),
-    openWithPickerWithoutShowingWindow: vi.fn().mockResolvedValue(null),
     saveDocument: vi.fn().mockResolvedValue(true),
     ...overrides,
   });
@@ -59,8 +42,8 @@ describe("usePendingDocumentAction", () => {
     container.remove();
   });
 
-  it("queues actions instead of performing them immediately when the document is dirty", async () => {
-    const openWithPicker = vi.fn().mockResolvedValue(null);
+  it("starts without a queued close action", async () => {
+    const hideWindowAndResetDocument = vi.fn().mockResolvedValue(undefined);
 
     await act(async () => {
       root.render(createElement(Harness, {
@@ -68,18 +51,26 @@ describe("usePendingDocumentAction", () => {
           controls = nextControls;
         },
         overrides: {
-          isDirty: true,
-          openWithPicker,
+          hideWindowAndResetDocument,
         },
       }));
     });
 
+    expect(hideWindowAndResetDocument).not.toHaveBeenCalled();
+    expect(controls.pendingAction).toBe(null);
+  });
+
+  it("does not expose hidden-window visible action requests", async () => {
     await act(async () => {
-      controls.requestAction({ type: "open" });
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+      }));
     });
 
-    expect(openWithPicker).not.toHaveBeenCalled();
-    expect(controls.pendingAction).toEqual({ type: "open" });
+    expect(controls.pendingAction).toBe(null);
+    expect("requestVisibleAction" in controls).toBe(false);
   });
 
   it("resolves queued close actions by saving and then hiding the window", async () => {
@@ -111,64 +102,4 @@ describe("usePendingDocumentAction", () => {
     expect(controls.pendingAction).toBeNull();
   });
 
-  it("opens hidden recent documents and shows the window once the document is loaded", async () => {
-    const document = createDocument();
-    const applyOpenedDocument = vi.fn();
-    const ensureWindowVisible = vi.fn().mockResolvedValue(undefined);
-    const loadRecentDocument = vi.fn().mockResolvedValue(document);
-    const onWindowVisibleChange = vi.fn();
-
-    await act(async () => {
-      root.render(createElement(Harness, {
-        onReady: (nextControls) => {
-          controls = nextControls;
-        },
-        overrides: {
-          applyOpenedDocument,
-          ensureWindowVisible,
-          isWindowVisible: false,
-          loadRecentDocument,
-          onWindowVisibleChange,
-        },
-      }));
-    });
-
-    await act(async () => {
-      controls.requestVisibleAction({ path: document.path, type: "openRecent" });
-      await Promise.resolve();
-    });
-
-    expect(loadRecentDocument).toHaveBeenCalledWith(document.path);
-    expect(applyOpenedDocument).toHaveBeenCalledWith(document);
-    expect(onWindowVisibleChange).toHaveBeenCalledWith(true);
-    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
-  });
-
-  it("creates a new document immediately when the window is hidden", async () => {
-    const createNewDocument = vi.fn();
-    const ensureWindowVisible = vi.fn().mockResolvedValue(undefined);
-    const onWindowVisibleChange = vi.fn();
-
-    await act(async () => {
-      root.render(createElement(Harness, {
-        onReady: (nextControls) => {
-          controls = nextControls;
-        },
-        overrides: {
-          createNewDocument,
-          ensureWindowVisible,
-          isWindowVisible: false,
-          onWindowVisibleChange,
-        },
-      }));
-    });
-
-    await act(async () => {
-      controls.requestVisibleAction({ type: "new" });
-    });
-
-    expect(createNewDocument).toHaveBeenCalledTimes(1);
-    expect(onWindowVisibleChange).toHaveBeenCalledWith(true);
-    expect(ensureWindowVisible).toHaveBeenCalledTimes(1);
-  });
 });

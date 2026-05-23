@@ -10,8 +10,8 @@ describe("getUnsavedDialogState", () => {
     });
   });
 
-  it("returns the continue-editing copy for all non-close actions", () => {
-    expect(getUnsavedDialogState("draft.md", { type: "open" })).toEqual({
+  it("returns the continue-editing copy when there is no pending action", () => {
+    expect(getUnsavedDialogState("draft.md", null)).toEqual({
       confirmLabel: "Continue Editing",
       description: "draft.md has unsaved changes. Save first, or keep editing without changing the current document.",
       title: "Save changes before continuing?",

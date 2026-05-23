@@ -41,6 +41,12 @@ type UnsavedChangesDialogProps = {
   title: string;
 };
 
+type OpenedDocumentLike = {
+  filename: string;
+  markdown: string;
+  path: string | null;
+};
+
 const shellState = vi.hoisted(() => {
   const fileInputRef = { current: null as HTMLInputElement | null };
   const handleOpenFile = vi.fn();
@@ -70,8 +76,6 @@ const shellState = vi.hoisted(() => {
       handleEditorFocusChange: vi.fn(),
       isWindowVisible: true,
       pendingAction: null as null | { type: string },
-      requestAction: vi.fn(),
-      requestVisibleAction: vi.fn(),
       resolvePendingActionWithDiscard: vi.fn(),
       resolvePendingActionWithSave: vi.fn(),
     },
@@ -106,9 +110,8 @@ const shellState = vi.hoisted(() => {
       filename: null as string | null,
       handleOpenFile,
       isWelcomeVisible: true,
-      loadRecentDocument: vi.fn(async () => null),
+      loadRecentDocument: vi.fn<(path: string) => Promise<OpenedDocumentLike | null>>(async () => null),
       openWithPicker: vi.fn(async () => null),
-      openWithPickerWithoutShowingWindow: vi.fn(async () => null),
       recentFiles: [],
       savedRevision: 0,
       saveDocument: vi.fn(async () => false),
@@ -211,10 +214,6 @@ vi.mock("./hooks/useDocumentSession", () => ({
   useDocumentSession: () => shellState.session,
 }));
 
-vi.mock("./hooks/useNativeOpenDocumentListener", () => ({
-  useNativeOpenDocumentListener: () => undefined,
-}));
-
 vi.mock("./hooks/useWindowShortcuts", () => ({
   useWindowShortcuts: () => undefined,
 }));
@@ -260,6 +259,7 @@ function renderApp() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
+  window.history.replaceState(null, "", "/");
   shellState.editorWorkspaceLoad = Promise.resolve();
   shellState.fallbackRendered = false;
   shellState.rendered.dialog = null;
@@ -328,6 +328,30 @@ describe("App shell", () => {
     expect(shellState.session.handleOpenFile).toHaveBeenCalledTimes(1);
     expect(renderer.container.querySelector("[data-testid='editor-shell']")).toBeNull();
     expect(renderer.container.querySelector("[data-testid='unsaved-dialog']")).toBeNull();
+  });
+
+  it("loads an initial document path from the window query string through the session", async () => {
+    const renderer = renderApp();
+    const openedDocument = {
+      filename: "initial.md",
+      markdown: "# Initial",
+      path: "/tmp/initial.md",
+    };
+
+    window.history.replaceState(null, "", "/?path=%2Ftmp%2Finitial.md");
+    shellState.session.loadRecentDocument.mockResolvedValue(openedDocument);
+
+    await act(async () => {
+      renderer.render(
+        <ToastProvider>
+          <App initialPreferences={DEFAULT_APP_PREFERENCES} />
+        </ToastProvider>,
+      );
+      await Promise.resolve();
+    });
+
+    expect(shellState.session.loadRecentDocument).toHaveBeenCalledWith("/tmp/initial.md");
+    expect(shellState.session.applyOpenedDocument).toHaveBeenCalledWith(openedDocument);
   });
 
   it("renders the editor workspace wiring when welcome mode is hidden", async () => {

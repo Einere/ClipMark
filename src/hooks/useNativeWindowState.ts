@@ -1,13 +1,15 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logDebug } from "../lib/debug-log";
+import { closeCurrentDocumentWindow } from "../lib/document-window";
 import { isTauriRuntime } from "../lib/file-system";
-import { hideNativeWindow, showNativeWindow } from "../lib/native-window";
+import { showNativeWindow } from "../lib/native-window";
 
 type WindowSyncState = {
   edited: boolean;
   path: string | null;
+  representedPathChanged: boolean;
   title: string;
 };
 
@@ -26,8 +28,11 @@ export function useNativeWindowState({
   onVisibilityChange,
   windowTitle,
 }: UseNativeWindowStateOptions) {
+  const [isFocused, setIsFocused] = useState(() => !isTauriRuntime());
   const dirtyRef = useRef(isDirty);
   const closeRequestInFlightRef = useRef(false);
+  const isProgrammaticCloseRef = useRef(false);
+  const lastRepresentedPathRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -46,13 +51,18 @@ export function useNativeWindowState({
     logDebug(`editor:focusChange focused=${focused}`);
   });
 
-  const hideWindow = useEffectEvent(async () => {
+  const closeWindow = useEffectEvent(async () => {
     if (!isTauriRuntime()) {
       return;
     }
 
-    await hideNativeWindow();
-    onVisibilityChange(false);
+    isProgrammaticCloseRef.current = true;
+    try {
+      await closeCurrentDocumentWindow();
+    } catch (error) {
+      isProgrammaticCloseRef.current = false;
+      throw error;
+    }
   });
 
   const ensureWindowVisible = useEffectEvent(async () => {
@@ -80,8 +90,10 @@ export function useNativeWindowState({
     const nextState = {
       edited: isDirty,
       path: filePath,
+      representedPathChanged: lastRepresentedPathRef.current !== filePath,
       title: windowTitle,
     };
+    lastRepresentedPathRef.current = filePath;
 
     void syncNativeWindowState(nextState);
   }, [filePath, isDirty, syncNativeWindowState, windowTitle]);
@@ -95,11 +107,19 @@ export function useNativeWindowState({
     let unlisten: (() => void) | undefined;
     let unlistenFocus: (() => void) | undefined;
     let disposed = false;
+    let hasReceivedFocusEvent = false;
 
     void Promise.all([
       currentWindow.isVisible(),
+      currentWindow.isFocused(),
       currentWindow.onCloseRequested((event) => {
         logDebug(`window:closeRequested dirty=${dirtyRef.current}`);
+        if (isProgrammaticCloseRef.current) {
+          isProgrammaticCloseRef.current = false;
+          logDebug("window:closeRequested programmatic");
+          return;
+        }
+
         event.preventDefault();
         if (closeRequestInFlightRef.current) {
           logDebug("window:closeRequested ignored in-flight");
@@ -108,20 +128,29 @@ export function useNativeWindowState({
 
         logDebug("window:closeRequested prevented");
         closeRequestInFlightRef.current = true;
-        void Promise.resolve(onRequestClose()).finally(() => {
-          closeRequestInFlightRef.current = false;
-        });
+        void Promise.resolve(onRequestClose())
+          .catch((error) => {
+            logDebug(`window:closeRequested failed ${String(error)}`);
+          })
+          .finally(() => {
+            closeRequestInFlightRef.current = false;
+          });
       }),
       currentWindow.onFocusChanged(({ payload: focused }) => {
+        hasReceivedFocusEvent = true;
+        setIsFocused(focused);
         if (focused) {
           onVisibilityChange(true);
         }
       }),
-    ]).then(([isVisible, closeDispose, focusDispose]) => {
+    ]).then(([isVisible, initialFocused, closeDispose, focusDispose]) => {
       if (disposed) {
         closeDispose();
         focusDispose();
         return;
+      }
+      if (!hasReceivedFocusEvent) {
+        setIsFocused(initialFocused);
       }
       onVisibilityChange(isVisible);
       unlisten = closeDispose;
@@ -136,8 +165,9 @@ export function useNativeWindowState({
   }, [onRequestClose, onVisibilityChange]);
 
   return {
+    closeWindow,
     ensureWindowVisible,
     handleEditorFocusChange,
-    hideWindow,
+    isFocused,
   };
 }

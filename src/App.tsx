@@ -16,8 +16,8 @@ import { useAppViewState } from "./hooks/useAppViewState";
 import { useAppMenuController } from "./hooks/useAppMenuController";
 import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
+import { useInitialDocumentPath } from "./hooks/useInitialDocumentPath";
 import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
-import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
@@ -76,6 +76,12 @@ export default function App({ initialPreferences }: AppProps) {
     onInfo: (message) => showToast(message, "info"),
   });
 
+  useInitialDocumentPath({
+    applyOpenedDocument: session.applyOpenedDocument,
+    createNewDocument: session.createNewDocument,
+    loadRecentDocument: session.loadRecentDocument,
+  });
+
   const isDirty = useDocumentDirty(
     session.documentStore,
     session.savedRevision,
@@ -87,16 +93,10 @@ export default function App({ initialPreferences }: AppProps) {
   }, []);
 
   const lifecycle = useAppShellLifecycle({
-    applyOpenedDocument: session.applyOpenedDocument,
-    closeCurrentDocument: session.closeCurrentDocument,
-    createNewDocument: session.createNewDocument,
     filePath: session.filePath,
     filename: session.filename,
     isDirty,
     isWelcomeVisible: session.isWelcomeVisible,
-    loadRecentDocument: session.loadRecentDocument,
-    openWithPicker: session.openWithPicker,
-    openWithPickerWithoutShowingWindow: session.openWithPickerWithoutShowingWindow,
     saveDocument: session.saveDocument,
   });
   const viewState = useAppViewState({
@@ -111,8 +111,7 @@ export default function App({ initialPreferences }: AppProps) {
     activeFilename: viewState.activeFilename,
     canSaveDocument: viewState.canSaveDocument,
     filePath: session.filePath,
-    requestAction: lifecycle.requestAction,
-    requestVisibleAction: lifecycle.requestVisibleAction,
+    openWithPicker: session.openWithPicker,
     saveDocument: session.saveDocument,
     setIsExternalMediaAutoLoadEnabled,
     setIsPreviewVisible,
@@ -125,9 +124,6 @@ export default function App({ initialPreferences }: AppProps) {
     onNew: actions.handleWelcomeNew,
     onOpen: actions.handleWelcomeOpen,
     onSave: actions.handleMenuSave,
-  });
-  useNativeOpenDocumentListener({
-    onOpenDocument: actions.handleMenuOpenRecent,
   });
 
   const { menuHandlers, menuState } = useAppMenuBindings({
@@ -153,7 +149,7 @@ export default function App({ initialPreferences }: AppProps) {
     themeMode,
   });
 
-  useAppMenuController(menuHandlers, menuState);
+  useAppMenuController(menuHandlers, menuState, lifecycle.isWindowFocused);
 
   return (
     <div className="app-shell">

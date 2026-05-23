@@ -1,15 +1,19 @@
 import { useEffectEvent } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { PendingAction } from "../lib/pending-action";
 import type { ThemeMode } from "../lib/preview-preferences";
+import {
+  createDocumentWindow,
+  openDocumentWindow,
+} from "../lib/document-window";
 import { useCopyFilePath, type ShowToast } from "./useCopyFilePath";
 
 type UseAppShellActionsOptions = {
   activeFilename: string;
   canSaveDocument: boolean;
+  createNewDocumentWindow?: () => Promise<void>;
   filePath: string | null;
-  requestAction: (action: PendingAction) => void;
-  requestVisibleAction: (action: PendingAction) => void;
+  openWithPicker: () => Promise<unknown>;
+  openRecentDocumentWindow?: (path: string) => Promise<void>;
   saveDocument: (options: {
     activeFilename: string;
     saveAs?: boolean;
@@ -24,9 +28,10 @@ type UseAppShellActionsOptions = {
 export function useAppShellActions({
   activeFilename,
   canSaveDocument,
+  createNewDocumentWindow = createDocumentWindow,
   filePath,
-  requestAction,
-  requestVisibleAction,
+  openWithPicker,
+  openRecentDocumentWindow = openDocumentWindow,
   saveDocument,
   setIsExternalMediaAutoLoadEnabled,
   setIsPreviewVisible,
@@ -35,15 +40,15 @@ export function useAppShellActions({
   showToast,
 }: UseAppShellActionsOptions) {
   const handleMenuNew = useEffectEvent(() => {
-    requestVisibleAction({ type: "new" });
+    void createNewDocumentWindow();
   });
 
   const handleMenuOpen = useEffectEvent(() => {
-    requestVisibleAction({ type: "open" });
+    void openWithPicker();
   });
 
   const handleMenuOpenRecent = useEffectEvent((path: string) => {
-    requestVisibleAction({ path, type: "openRecent" });
+    void openRecentDocumentWindow(path);
   });
 
   const handleMenuSave = useEffectEvent((saveAs = false) => {
@@ -75,15 +80,15 @@ export function useAppShellActions({
   });
 
   const handleWelcomeNew = useEffectEvent(() => {
-    requestAction({ type: "new" });
+    void createNewDocumentWindow();
   });
 
   const handleWelcomeOpen = useEffectEvent(() => {
-    requestAction({ type: "open" });
+    void openWithPicker();
   });
 
   const handleWelcomeOpenRecent = useEffectEvent((path: string) => {
-    requestAction({ path, type: "openRecent" });
+    void openRecentDocumentWindow(path);
   });
 
   return {

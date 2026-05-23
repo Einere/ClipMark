@@ -5,25 +5,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNativeWindowState } from "./useNativeWindowState";
 
 const {
-  hideNativeWindow,
+  closeCurrentDocumentWindow,
   invoke,
+  isFocused,
   isVisible,
   onCloseRequested,
   onFocusChanged,
   setFocus,
   showNativeWindow,
+  logDebug,
 } = vi.hoisted(() => ({
   invoke: vi.fn().mockResolvedValue(undefined),
-  hideNativeWindow: vi.fn().mockResolvedValue(undefined),
+  closeCurrentDocumentWindow: vi.fn().mockResolvedValue(undefined),
   showNativeWindow: vi.fn().mockResolvedValue(undefined),
+  isFocused: vi.fn().mockResolvedValue(true),
   isVisible: vi.fn().mockResolvedValue(true),
   setFocus: vi.fn().mockResolvedValue(undefined),
   onCloseRequested: vi.fn(),
   onFocusChanged: vi.fn(),
+  logDebug: vi.fn(),
 }));
 
 let closeHandler: ((event: { preventDefault: () => void }) => void | Promise<void>) | null = null;
 let focusHandler: ((event: { payload: boolean }) => void) | null = null;
+const noopRequestClose = () => undefined;
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke,
@@ -31,6 +36,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
+    isFocused,
     isVisible,
     onCloseRequested,
     onFocusChanged,
@@ -42,28 +48,54 @@ vi.mock("../lib/file-system", () => ({
   isTauriRuntime: () => true,
 }));
 
+vi.mock("../lib/document-window", () => ({
+  closeCurrentDocumentWindow,
+}));
+
 vi.mock("../lib/native-window", () => ({
-  hideNativeWindow,
   showNativeWindow,
 }));
 
 vi.mock("../lib/debug-log", () => ({
-  logDebug: vi.fn(),
+  logDebug,
 }));
 
 function Harness({
+  filePath = null,
+  isDirty = false,
+  onReady,
+  onRequestClose = noopRequestClose,
   onVisibilityChange,
+  windowTitle = "ClipMark",
 }: {
+  filePath?: string | null;
+  isDirty?: boolean;
+  onReady?: (controls: ReturnType<typeof useNativeWindowState>) => void;
+  onRequestClose?: () => void | Promise<void>;
   onVisibilityChange: (visible: boolean) => void;
+  windowTitle?: string;
 }) {
-  useNativeWindowState({
-    filePath: null,
-    isDirty: false,
-    onRequestClose: () => undefined,
+  const controls = useNativeWindowState({
+    filePath,
+    isDirty,
+    onRequestClose,
     onVisibilityChange,
-    windowTitle: "ClipMark",
+    windowTitle,
   });
+  onReady?.(controls);
   return null;
+}
+
+function createDeferredFocusState() {
+  let resolve: ((focused: boolean) => void) | undefined;
+  const promise = new Promise<boolean>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return {
+    promise,
+    resolve: (focused: boolean) => resolve?.(focused),
+  };
 }
 
 describe("useNativeWindowState", () => {
@@ -78,7 +110,9 @@ describe("useNativeWindowState", () => {
     closeHandler = null;
     focusHandler = null;
     invoke.mockClear();
-    hideNativeWindow.mockClear();
+    closeCurrentDocumentWindow.mockClear();
+    isFocused.mockClear();
+    isFocused.mockResolvedValue(true);
     isVisible.mockClear();
     isVisible.mockResolvedValue(true);
     onCloseRequested.mockReset();
@@ -93,6 +127,7 @@ describe("useNativeWindowState", () => {
     });
     setFocus.mockClear();
     showNativeWindow.mockClear();
+    logDebug.mockClear();
   });
 
   afterEach(async () => {
@@ -120,10 +155,11 @@ describe("useNativeWindowState", () => {
   });
 
   it("does not mark the window hidden when focus is lost", async () => {
+    const onRequestClose = vi.fn();
     const onVisibilityChange = vi.fn();
 
     await act(async () => {
-      root.render(createElement(Harness, { onVisibilityChange }));
+      root.render(createElement(Harness, { onRequestClose, onVisibilityChange }));
     });
 
     onVisibilityChange.mockClear();
@@ -133,5 +169,269 @@ describe("useNativeWindowState", () => {
     });
 
     expect(onVisibilityChange).not.toHaveBeenCalled();
+  });
+
+  it("exposes the current native window focus state", async () => {
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusHandler?.({ payload: false });
+    });
+
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+    expect(onVisibilityChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("uses the native window focus state on initial mount", async () => {
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockResolvedValueOnce(false);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(isFocused).toHaveBeenCalledTimes(1);
+    expect(controls.isFocused).toBe(false);
+  });
+
+  it("does not report focused before the initial native focus state resolves", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(isFocused).toHaveBeenCalledTimes(1);
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusState.resolve(true);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(true);
+  });
+
+  it("keeps a newer focus event when the initial native focus state resolves later", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusState.resolve(false);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(true);
+  });
+
+  it("keeps a newer blur event when the initial native focus state resolves later", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      focusHandler?.({ payload: true });
+    });
+
+    expect(controls.isFocused).toBe(true);
+
+    await act(async () => {
+      focusHandler?.({ payload: false });
+    });
+
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusState.resolve(true);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(false);
+  });
+
+  it("updates the represented file only when the document path changes", async () => {
+    const onVisibilityChange = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        filePath: "/tmp/draft.md",
+        isDirty: true,
+        onVisibilityChange,
+        windowTitle: "draft.md - edited",
+      }));
+    });
+
+    expect(invoke).toHaveBeenCalledWith("sync_window_document_state", {
+      edited: true,
+      path: "/tmp/draft.md",
+      representedPathChanged: true,
+      title: "draft.md - edited",
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        filePath: "/tmp/draft.md",
+        isDirty: false,
+        onVisibilityChange,
+        windowTitle: "draft.md - saved",
+      }));
+    });
+
+    expect(invoke).toHaveBeenLastCalledWith("sync_window_document_state", {
+      edited: false,
+      path: "/tmp/draft.md",
+      representedPathChanged: false,
+      title: "draft.md - saved",
+    });
+  });
+
+  it("closes the current document window through the native adapter", async () => {
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      await controls.closeWindow();
+    });
+
+    expect(closeCurrentDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(onVisibilityChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("allows a programmatic native close request to continue without preventing it", async () => {
+    const onVisibilityChange = vi.fn();
+    const preventDefault = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    closeCurrentDocumentWindow.mockImplementation(async () => {
+      closeHandler?.({ preventDefault });
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      await controls.closeWindow();
+    });
+
+    expect(closeCurrentDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("restores close request state and logs when the close request handler rejects", async () => {
+    const closeError = new Error("close failed");
+    const onRequestClose = vi.fn()
+      .mockRejectedValueOnce(closeError)
+      .mockResolvedValueOnce(undefined);
+    const onVisibilityChange = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      closeHandler?.({ preventDefault: vi.fn() });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      closeHandler?.({ preventDefault: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(onRequestClose).toHaveBeenCalledTimes(2);
+    expect(logDebug).toHaveBeenCalledWith(
+      `window:closeRequested failed ${String(closeError)}`,
+    );
   });
 });
