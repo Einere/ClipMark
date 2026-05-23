@@ -172,6 +172,25 @@ fn focus_window(window: &tauri::WebviewWindow) -> Result<(), String> {
     window.set_focus().map_err(|error| error.to_string())
 }
 
+fn reserve_document_window_in_registry(
+    registry: &mut WindowRegistry,
+    path: Option<&str>,
+) -> String {
+    let label = registry.next_document_label();
+    registry.register_window(label.clone());
+
+    if let Some(path) = path {
+        let normalized_path = normalize_document_path_for_registry(path);
+        registry.register_document_path(&label, Some(normalized_path));
+    }
+
+    label
+}
+
+fn rollback_reserved_document_window_in_registry(registry: &mut WindowRegistry, label: &str) {
+    registry.unregister_window(label);
+}
+
 fn create_document_window_with_path(
     app_handle: &AppHandle,
     registry_state: &State<'_, WindowRegistryState>,
@@ -182,17 +201,27 @@ fn create_document_window_with_path(
             .registry
             .lock()
             .map_err(|error| error.to_string())?;
-        let label = registry.next_document_label();
-        registry.register_window(label.clone());
-        label
+        reserve_document_window_in_registry(&mut registry, path.as_deref())
     };
 
-    WebviewWindowBuilder::new(app_handle, label, encoded_document_url(path.as_deref()))
-        .title("ClipMark")
-        .inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
-        .min_inner_size(DEFAULT_WINDOW_MIN_WIDTH, DEFAULT_WINDOW_MIN_HEIGHT)
-        .build()
-        .map_err(|error| error.to_string())?;
+    let build_result = WebviewWindowBuilder::new(
+        app_handle,
+        label.clone(),
+        encoded_document_url(path.as_deref()),
+    )
+    .title("ClipMark")
+    .inner_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
+    .min_inner_size(DEFAULT_WINDOW_MIN_WIDTH, DEFAULT_WINDOW_MIN_HEIGHT)
+    .build();
+
+    if let Err(error) = build_result {
+        let mut registry = registry_state
+            .registry
+            .lock()
+            .map_err(|lock_error| lock_error.to_string())?;
+        rollback_reserved_document_window_in_registry(&mut registry, &label);
+        return Err(error.to_string());
+    }
 
     Ok(())
 }
@@ -714,8 +743,9 @@ fn main() {
 mod tests {
     use super::{
         is_document_path_open_elsewhere_in_registry, load_preferences_from_disk,
-        normalize_document_path_for_registry, save_preferences_to_disk, validate_external_url,
-        AppPreferences, ThemeMode, WindowRegistry,
+        normalize_document_path_for_registry, reserve_document_window_in_registry,
+        rollback_reserved_document_window_in_registry, save_preferences_to_disk,
+        validate_external_url, AppPreferences, ThemeMode, WindowRegistry,
     };
     use std::fs;
 
@@ -887,5 +917,35 @@ mod tests {
             "document-1",
             "/tmp/shared-save-as.md",
         ));
+    }
+
+    #[test]
+    fn document_window_reservation_registers_path_before_window_build() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/reserved-before-build.md");
+
+        let label = reserve_document_window_in_registry(
+            &mut registry,
+            Some("/tmp/reserved-before-build.md"),
+        );
+
+        assert_eq!(label, "document-1");
+        assert_eq!(registry.window_for_path(&path), Some(label));
+    }
+
+    #[test]
+    fn document_window_reservation_rolls_back_path_when_build_fails() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/rollback-build-failure.md");
+
+        let label = reserve_document_window_in_registry(
+            &mut registry,
+            Some("/tmp/rollback-build-failure.md"),
+        );
+
+        rollback_reserved_document_window_in_registry(&mut registry, &label);
+
+        assert_eq!(registry.window_for_path(&path), None);
+        assert_eq!(registry.window_paths.get(&label), None);
     }
 }
