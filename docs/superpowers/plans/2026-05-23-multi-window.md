@@ -1580,7 +1580,7 @@ git commit -m "feat(menu): sync app menu from focused window"
 - Delete: `src/lib/native-open-document.ts`
 - Delete: `src/lib/native-open-document.test.ts`
 
-- [ ] **Step 1: Remove listener wiring from App**
+- [x] **Step 1: Remove listener wiring from App**
 
 Delete this import:
 
@@ -1596,7 +1596,7 @@ useNativeOpenDocumentListener({
 });
 ```
 
-- [ ] **Step 2: Delete obsolete listener files**
+- [x] **Step 2: Delete obsolete listener files**
 
 Run:
 
@@ -1604,19 +1604,19 @@ Run:
 git rm src/hooks/useNativeOpenDocumentListener.ts src/hooks/useNativeOpenDocumentListener.test.tsx src/lib/native-open-document.ts src/lib/native-open-document.test.ts
 ```
 
-- [ ] **Step 3: Search for stale references**
+- [x] **Step 3: Search for stale references**
 
 Run: `rg -n "NativeOpenDocument|native-open-document|clipmark://open-document|useNativeOpenDocumentListener" src src-tauri`
 
 Expected: no matches.
 
-- [ ] **Step 4: Run affected tests**
+- [x] **Step 4: Run affected tests**
 
 Run: `npm run test -- src/App.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/App.tsx

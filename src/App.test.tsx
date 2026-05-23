@@ -214,10 +214,6 @@ vi.mock("./hooks/useDocumentSession", () => ({
   useDocumentSession: () => shellState.session,
 }));
 
-vi.mock("./hooks/useNativeOpenDocumentListener", () => ({
-  useNativeOpenDocumentListener: () => undefined,
-}));
-
 vi.mock("./hooks/useWindowShortcuts", () => ({
   useWindowShortcuts: () => undefined,
 }));

@@ -18,7 +18,6 @@ import { useAppPreferences } from "./hooks/useAppPreferences";
 import { useDocumentSession } from "./hooks/useDocumentSession";
 import { useInitialDocumentPath } from "./hooks/useInitialDocumentPath";
 import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
-import { useNativeOpenDocumentListener } from "./hooks/useNativeOpenDocumentListener";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
@@ -124,9 +123,6 @@ export default function App({ initialPreferences }: AppProps) {
     onNew: actions.handleWelcomeNew,
     onOpen: actions.handleWelcomeOpen,
     onSave: actions.handleMenuSave,
-  });
-  useNativeOpenDocumentListener({
-    onOpenDocument: actions.handleMenuOpenRecent,
   });
 
   const { menuHandlers, menuState } = useAppMenuBindings({
