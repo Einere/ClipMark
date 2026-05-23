@@ -1,5 +1,6 @@
 import { useEffectEvent } from "react";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
+import { registerWindowDocumentPath } from "../lib/document-window";
 
 type WorkspaceDocument = OpenedDocument | {
   filename: string;
@@ -27,11 +28,17 @@ export function useDocumentSessionFileEffects({
   const applyOpenedDocument = useEffectEvent((document: WorkspaceDocument) => {
     applyWorkspaceDocument(document);
     rememberRecentFile(document.path);
+    void registerWindowDocumentPath(document.path);
   });
 
   const applySavedDocument = useEffectEvent((saved: SavedDocument) => {
     applySavedDocumentToWorkspace(saved);
     rememberRecentFile(saved.path);
+    void registerWindowDocumentPath(saved.path);
+  });
+
+  const clearRegisteredWindowDocumentPath = useEffectEvent(() => {
+    void registerWindowDocumentPath(null);
   });
 
   const handleMissingRecentFile = useEffectEvent((path: string) => {
@@ -46,6 +53,7 @@ export function useDocumentSessionFileEffects({
   return {
     applyOpenedDocument,
     applySavedDocument,
+    clearRegisteredWindowDocumentPath,
     handleMissingRecentFile,
     handleUnavailableRecentFile,
   };

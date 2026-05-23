@@ -1189,7 +1189,7 @@ git commit -m "feat(files): load initial document path per window"
 - Modify: `src/hooks/useDocumentSessionFileEffects.test.tsx`
 - Modify: `src/hooks/useDocumentSession.ts`
 
-- [ ] **Step 1: Add failing tests for registry registration**
+- [x] **Step 1: Add failing tests for registry registration**
 
 In `src/hooks/useDocumentSessionFileEffects.test.tsx`, mock:
 
@@ -1213,13 +1213,13 @@ For missing/closed state, add:
 expect(registerWindowDocumentPath).toHaveBeenCalledWith(null);
 ```
 
-- [ ] **Step 2: Run tests and verify they fail**
+- [x] **Step 2: Run tests and verify they fail**
 
 Run: `npm run test -- src/hooks/useDocumentSessionFileEffects.test.tsx`
 
 Expected: FAIL because the hook does not register paths.
 
-- [ ] **Step 3: Register paths after opened/saved/closed state changes**
+- [x] **Step 3: Register paths after opened/saved/closed state changes**
 
 In `src/hooks/useDocumentSessionFileEffects.ts`, import:
 
@@ -1247,13 +1247,13 @@ void registerWindowDocumentPath(null);
 
 If this hook does not own close, pass a `registerWindowDocumentPath(null)` call from `useDocumentWorkspaceState.closeCurrentDocument()` through `useDocumentSession`.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npm run test -- src/hooks/useDocumentSessionFileEffects.test.tsx src/hooks/useDocumentSessionFileEffects.test.tsx`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/hooks/useDocumentSessionFileEffects.ts src/hooks/useDocumentSessionFileEffects.test.tsx src/hooks/useDocumentSession.ts

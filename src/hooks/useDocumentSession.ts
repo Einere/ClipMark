@@ -28,6 +28,7 @@ export function useDocumentSession({
   const {
     applyOpenedDocument,
     applySavedDocument,
+    clearRegisteredWindowDocumentPath,
     handleMissingRecentFile,
     handleUnavailableRecentFile,
   } = useDocumentSessionFileEffects({
@@ -41,10 +42,12 @@ export function useDocumentSession({
 
   const createNewDocument = useEffectEvent(() => {
     workspaceState.createNewDocument();
+    clearRegisteredWindowDocumentPath();
   });
 
   const closeCurrentDocument = useEffectEvent(() => {
     workspaceState.closeCurrentDocument();
+    clearRegisteredWindowDocumentPath();
   });
   const {
     fileInputRef,
