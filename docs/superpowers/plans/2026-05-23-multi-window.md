@@ -51,7 +51,7 @@
 **Files:**
 - Modify: `src-tauri/src/main.rs`
 
-- [ ] **Step 1: Write failing Rust tests for registry behavior**
+- [x] **Step 1: Write failing Rust tests for registry behavior**
 
 Add these helpers and tests inside the existing `#[cfg(test)] mod tests` in `src-tauri/src/main.rs`. The implementation types do not exist yet, so this should fail to compile.
 
@@ -113,13 +113,13 @@ fn window_registry_removes_window_mappings_on_close() {
 }
 ```
 
-- [ ] **Step 2: Run Rust tests and verify they fail**
+- [x] **Step 2: Run Rust tests and verify they fail**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml window_registry`
 
 Expected: FAIL because `WindowRegistry` and `normalize_document_path_for_registry` are not defined.
 
-- [ ] **Step 3: Add minimal registry implementation**
+- [x] **Step 3: Add minimal registry implementation**
 
 Add imports near the top of `src-tauri/src/main.rs`:
 
@@ -188,13 +188,13 @@ fn normalize_document_path_for_registry(path: &str) -> String {
 }
 ```
 
-- [ ] **Step 4: Run Rust registry tests and verify they pass**
+- [x] **Step 4: Run Rust registry tests and verify they pass**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml window_registry`
 
 Expected: PASS for the four registry tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/src/main.rs

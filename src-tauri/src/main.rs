@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::HashMap;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -85,6 +86,66 @@ impl Default for AppPreferences {
 struct PreferencesState {
     file_path: PathBuf,
     preferences: Mutex<AppPreferences>,
+}
+
+#[allow(dead_code)]
+#[derive(Default)]
+struct WindowRegistry {
+    next_window_id: u64,
+    window_paths: HashMap<String, Option<String>>,
+    path_windows: HashMap<String, String>,
+}
+
+#[allow(dead_code)]
+impl WindowRegistry {
+    fn register_window(&mut self, label: String) {
+        self.window_paths.entry(label).or_insert(None);
+    }
+
+    fn next_document_label(&mut self) -> String {
+        self.next_window_id += 1;
+        format!("document-{}", self.next_window_id)
+    }
+
+    fn register_document_path(&mut self, label: &str, path: Option<String>) {
+        if let Some(Some(previous_path)) = self.window_paths.get(label) {
+            self.path_windows.remove(previous_path);
+        }
+
+        self.window_paths.insert(label.to_string(), path.clone());
+
+        if let Some(next_path) = path {
+            self.path_windows.insert(next_path, label.to_string());
+        }
+    }
+
+    fn unregister_window(&mut self, label: &str) {
+        if let Some(Some(path)) = self.window_paths.remove(label) {
+            self.path_windows.remove(&path);
+        }
+    }
+
+    fn window_for_path(&self, path: &str) -> Option<String> {
+        self.path_windows.get(path).cloned()
+    }
+
+    fn is_path_open_elsewhere(&self, label: &str, path: &str) -> bool {
+        self.path_windows
+            .get(path)
+            .is_some_and(|window_label| window_label != label)
+    }
+}
+
+#[allow(dead_code)]
+struct WindowRegistryState {
+    registry: Mutex<WindowRegistry>,
+}
+
+fn normalize_document_path_for_registry(path: &str) -> String {
+    fs::canonicalize(path)
+        .unwrap_or_else(|_| PathBuf::from(path))
+        .to_string_lossy()
+        .to_string()
 }
 
 fn load_preferences_from_disk(path: &Path) -> AppPreferences {
@@ -478,8 +539,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        load_preferences_from_disk, save_preferences_to_disk, validate_external_url, AppPreferences,
-        ThemeMode,
+        load_preferences_from_disk, normalize_document_path_for_registry, save_preferences_to_disk,
+        validate_external_url, AppPreferences, ThemeMode, WindowRegistry,
     };
     use std::fs;
 
@@ -551,5 +612,58 @@ mod tests {
         );
 
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn window_registry_reuses_existing_window_for_open_path() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/clipmark-a.md");
+
+        registry.register_window("main".to_string());
+        registry.register_document_path("main", Some(path.clone()));
+
+        assert_eq!(registry.window_for_path(&path), Some("main".to_string()));
+    }
+
+    #[test]
+    fn window_registry_replaces_old_path_when_window_document_changes() {
+        let mut registry = WindowRegistry::default();
+        let old_path = normalize_document_path_for_registry("/tmp/old.md");
+        let new_path = normalize_document_path_for_registry("/tmp/new.md");
+
+        registry.register_window("document-1".to_string());
+        registry.register_document_path("document-1", Some(old_path.clone()));
+        registry.register_document_path("document-1", Some(new_path.clone()));
+
+        assert_eq!(registry.window_for_path(&old_path), None);
+        assert_eq!(
+            registry.window_for_path(&new_path),
+            Some("document-1".to_string())
+        );
+    }
+
+    #[test]
+    fn window_registry_detects_paths_open_in_other_windows() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/shared.md");
+
+        registry.register_window("main".to_string());
+        registry.register_window("document-1".to_string());
+        registry.register_document_path("document-1", Some(path.clone()));
+
+        assert!(registry.is_path_open_elsewhere("main", &path));
+        assert!(!registry.is_path_open_elsewhere("document-1", &path));
+    }
+
+    #[test]
+    fn window_registry_removes_window_mappings_on_close() {
+        let mut registry = WindowRegistry::default();
+        let path = normalize_document_path_for_registry("/tmp/closing.md");
+
+        registry.register_window("document-2".to_string());
+        registry.register_document_path("document-2", Some(path.clone()));
+        registry.unregister_window("document-2");
+
+        assert_eq!(registry.window_for_path(&path), None);
     }
 }
