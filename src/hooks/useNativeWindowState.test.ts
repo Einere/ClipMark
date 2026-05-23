@@ -28,6 +28,7 @@ const {
 
 let closeHandler: ((event: { preventDefault: () => void }) => void | Promise<void>) | null = null;
 let focusHandler: ((event: { payload: boolean }) => void) | null = null;
+const noopRequestClose = () => undefined;
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke,
@@ -61,7 +62,7 @@ vi.mock("../lib/debug-log", () => ({
 
 function Harness({
   onReady,
-  onRequestClose = () => undefined,
+  onRequestClose = noopRequestClose,
   onVisibilityChange,
 }: {
   onReady?: (controls: ReturnType<typeof useNativeWindowState>) => void;
@@ -77,6 +78,18 @@ function Harness({
   });
   onReady?.(controls);
   return null;
+}
+
+function createDeferredFocusState() {
+  let resolve: ((focused: boolean) => void) | undefined;
+  const promise = new Promise<boolean>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return {
+    promise,
+    resolve: (focused: boolean) => resolve?.(focused),
+  };
 }
 
 describe("useNativeWindowState", () => {
@@ -202,6 +215,35 @@ describe("useNativeWindowState", () => {
 
     expect(isFocused).toHaveBeenCalledTimes(1);
     expect(controls.isFocused).toBe(false);
+  });
+
+  it("does not report focused before the initial native focus state resolves", async () => {
+    const focusState = createDeferredFocusState();
+    const onRequestClose = vi.fn();
+    const onVisibilityChange = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    isFocused.mockReturnValueOnce(focusState.promise);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    expect(isFocused).toHaveBeenCalledTimes(1);
+    expect(controls.isFocused).toBe(false);
+
+    await act(async () => {
+      focusState.resolve(true);
+      await focusState.promise;
+    });
+
+    expect(controls.isFocused).toBe(true);
   });
 
   it("closes the current document window through the native adapter", async () => {

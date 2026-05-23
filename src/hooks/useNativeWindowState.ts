@@ -27,7 +27,7 @@ export function useNativeWindowState({
   onVisibilityChange,
   windowTitle,
 }: UseNativeWindowStateOptions) {
-  const [isFocused, setIsFocused] = useState(true);
+  const [isFocused, setIsFocused] = useState(() => !isTauriRuntime());
   const dirtyRef = useRef(isDirty);
   const closeRequestInFlightRef = useRef(false);
   const isProgrammaticCloseRef = useRef(false);
