@@ -43,6 +43,7 @@ describe("useDocumentSessionFileEffects", () => {
 
   beforeEach(() => {
     registerWindowDocumentPath.mockReset();
+    registerWindowDocumentPath.mockResolvedValue(undefined);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -130,6 +131,45 @@ describe("useDocumentSessionFileEffects", () => {
     });
 
     expect(registerWindowDocumentPath).toHaveBeenCalledWith(null);
+  });
+
+  it("consumes window path registration failures for opened, saved, and clear flows", async () => {
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+      }));
+    });
+
+    const rejectedRegistration = {
+      catch: vi.fn(() => Promise.resolve()),
+    };
+    registerWindowDocumentPath.mockReturnValue(rejectedRegistration);
+
+    await act(async () => {
+      controls.applyOpenedDocument({
+        filename: "draft.md",
+        markdown: "# Heading",
+        path: "/tmp/draft.md",
+      });
+    });
+
+    await act(async () => {
+      controls.applySavedDocument({
+        filename: "saved.md",
+        path: "/tmp/saved.md",
+      });
+    });
+
+    await act(async () => {
+      controls.clearRegisteredWindowDocumentPath();
+    });
+
+    expect(registerWindowDocumentPath).toHaveBeenCalledWith("/tmp/draft.md");
+    expect(registerWindowDocumentPath).toHaveBeenCalledWith("/tmp/saved.md");
+    expect(registerWindowDocumentPath).toHaveBeenCalledWith(null);
+    expect(rejectedRegistration.catch).toHaveBeenCalledTimes(3);
   });
 
   it("forgets missing recent files and reports the error message", async () => {
