@@ -94,7 +94,6 @@ export default function App({ initialPreferences }: AppProps) {
 
   const lifecycle = useAppShellLifecycle({
     applyOpenedDocument: session.applyOpenedDocument,
-    closeCurrentDocument: session.closeCurrentDocument,
     createNewDocument: session.createNewDocument,
     filePath: session.filePath,
     filename: session.filename,

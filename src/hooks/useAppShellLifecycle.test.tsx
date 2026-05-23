@@ -44,7 +44,6 @@ function Harness({
 }) {
   const controls = useAppShellLifecycle({
     applyOpenedDocument: vi.fn(),
-    closeCurrentDocument: vi.fn(),
     createNewDocument: vi.fn(),
     filePath: "/tmp/draft.md",
     filename: "draft.md",
@@ -152,7 +151,6 @@ describe("useAppShellLifecycle", () => {
   });
 
   it("closes the current window session through the native close command", async () => {
-    const closeCurrentDocument = vi.fn();
     let closeWindowSession:
       | ((() => Promise<void>))
       | undefined;
@@ -167,9 +165,6 @@ describe("useAppShellLifecycle", () => {
         onReady: (nextControls) => {
           controls = nextControls;
         },
-        overrides: {
-          closeCurrentDocument,
-        },
       }));
     });
 
@@ -180,7 +175,6 @@ describe("useAppShellLifecycle", () => {
     });
 
     expect(nativeWindowControls.closeWindow).toHaveBeenCalledTimes(1);
-    expect(closeCurrentDocument).not.toHaveBeenCalled();
   });
 
   it("derives welcome-mode filename and window title before wiring lifecycle hooks", async () => {

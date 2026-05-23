@@ -13,7 +13,6 @@ type OpenedDocumentLike = {
 
 type UseAppShellLifecycleOptions = {
   applyOpenedDocument: (document: OpenedDocumentLike) => void;
-  closeCurrentDocument: () => void;
   createNewDocument: () => void;
   filePath: string | null;
   filename: string | null;

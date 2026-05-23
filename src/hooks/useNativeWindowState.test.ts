@@ -12,6 +12,7 @@ const {
   onFocusChanged,
   setFocus,
   showNativeWindow,
+  logDebug,
 } = vi.hoisted(() => ({
   invoke: vi.fn().mockResolvedValue(undefined),
   closeCurrentDocumentWindow: vi.fn().mockResolvedValue(undefined),
@@ -20,6 +21,7 @@ const {
   setFocus: vi.fn().mockResolvedValue(undefined),
   onCloseRequested: vi.fn(),
   onFocusChanged: vi.fn(),
+  logDebug: vi.fn(),
 }));
 
 let closeHandler: ((event: { preventDefault: () => void }) => void | Promise<void>) | null = null;
@@ -51,20 +53,22 @@ vi.mock("../lib/native-window", () => ({
 }));
 
 vi.mock("../lib/debug-log", () => ({
-  logDebug: vi.fn(),
+  logDebug,
 }));
 
 function Harness({
   onReady,
+  onRequestClose = () => undefined,
   onVisibilityChange,
 }: {
   onReady?: (controls: ReturnType<typeof useNativeWindowState>) => void;
+  onRequestClose?: () => void | Promise<void>;
   onVisibilityChange: (visible: boolean) => void;
 }) {
   const controls = useNativeWindowState({
     filePath: null,
     isDirty: false,
-    onRequestClose: () => undefined,
+    onRequestClose,
     onVisibilityChange,
     windowTitle: "ClipMark",
   });
@@ -99,6 +103,7 @@ describe("useNativeWindowState", () => {
     });
     setFocus.mockClear();
     showNativeWindow.mockClear();
+    logDebug.mockClear();
   });
 
   afterEach(async () => {
@@ -160,5 +165,61 @@ describe("useNativeWindowState", () => {
 
     expect(closeCurrentDocumentWindow).toHaveBeenCalledTimes(1);
     expect(onVisibilityChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("allows a programmatic native close request to continue without preventing it", async () => {
+    const onVisibilityChange = vi.fn();
+    const preventDefault = vi.fn();
+    let controls!: ReturnType<typeof useNativeWindowState>;
+
+    closeCurrentDocumentWindow.mockImplementation(async () => {
+      closeHandler?.({ preventDefault });
+    });
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      await controls.closeWindow();
+    });
+
+    expect(closeCurrentDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("restores close request state and logs when the close request handler rejects", async () => {
+    const closeError = new Error("close failed");
+    const onRequestClose = vi.fn()
+      .mockRejectedValueOnce(closeError)
+      .mockResolvedValueOnce(undefined);
+    const onVisibilityChange = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onRequestClose,
+        onVisibilityChange,
+      }));
+    });
+
+    await act(async () => {
+      closeHandler?.({ preventDefault: vi.fn() });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      closeHandler?.({ preventDefault: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(onRequestClose).toHaveBeenCalledTimes(2);
+    expect(logDebug).toHaveBeenCalledWith(
+      `window:closeRequested failed ${String(closeError)}`,
+    );
   });
 });

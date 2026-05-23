@@ -29,6 +29,7 @@ export function useNativeWindowState({
 }: UseNativeWindowStateOptions) {
   const dirtyRef = useRef(isDirty);
   const closeRequestInFlightRef = useRef(false);
+  const isProgrammaticCloseRef = useRef(false);
 
   useEffect(() => {
     dirtyRef.current = isDirty;
@@ -52,7 +53,13 @@ export function useNativeWindowState({
       return;
     }
 
-    await closeCurrentDocumentWindow();
+    isProgrammaticCloseRef.current = true;
+    try {
+      await closeCurrentDocumentWindow();
+    } catch (error) {
+      isProgrammaticCloseRef.current = false;
+      throw error;
+    }
   });
 
   const ensureWindowVisible = useEffectEvent(async () => {
@@ -100,6 +107,12 @@ export function useNativeWindowState({
       currentWindow.isVisible(),
       currentWindow.onCloseRequested((event) => {
         logDebug(`window:closeRequested dirty=${dirtyRef.current}`);
+        if (isProgrammaticCloseRef.current) {
+          isProgrammaticCloseRef.current = false;
+          logDebug("window:closeRequested programmatic");
+          return;
+        }
+
         event.preventDefault();
         if (closeRequestInFlightRef.current) {
           logDebug("window:closeRequested ignored in-flight");
@@ -108,9 +121,13 @@ export function useNativeWindowState({
 
         logDebug("window:closeRequested prevented");
         closeRequestInFlightRef.current = true;
-        void Promise.resolve(onRequestClose()).finally(() => {
-          closeRequestInFlightRef.current = false;
-        });
+        void Promise.resolve(onRequestClose())
+          .catch((error) => {
+            logDebug(`window:closeRequested failed ${String(error)}`);
+          })
+          .finally(() => {
+            closeRequestInFlightRef.current = false;
+          });
       }),
       currentWindow.onFocusChanged(({ payload: focused }) => {
         if (focused) {
