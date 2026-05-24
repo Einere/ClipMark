@@ -32,6 +32,22 @@ export async function registerWindowDocumentPath(
   await invoke("register_window_document_path", { path });
 }
 
+export async function registerWindowUntitledDocument(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+
+  await invoke("register_window_untitled_document");
+}
+
+export async function registerWindowWelcome(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+
+  await invoke("register_window_welcome");
+}
+
 export async function isDocumentPathOpenElsewhere(
   path: string,
 ): Promise<boolean> {

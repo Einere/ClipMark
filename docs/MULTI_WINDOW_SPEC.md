@@ -45,7 +45,7 @@ MVP의 안전 원칙은 "같은 파일은 동시에 하나의 창에서만 편�
 
 `WindowRegistry`는 다음 상태를 관리한다.
 
-- `window_label -> path | null`
+- `window_label -> welcome | untitled | path`
 - `path -> window_label`
 - 다음 document window label id
 
@@ -54,7 +54,10 @@ MVP의 안전 원칙은 "같은 파일은 동시에 하나의 창에서만 편�
 - 하나의 path는 최대 하나의 window label에만 매핑된다.
 - 창이 문서 path를 바꾸면 이전 path 매핑은 제거된다.
 - 창이 닫히면 해당 창 label과 path 매핑은 제거된다.
-- 다른 창이 이미 가진 path를 현재 창에 등록하면 이전 창의 path는 `null`로 정리된다.
+- 다른 창이 이미 가진 path를 현재 창에 등록하면 이전 창은 `welcome` 상태로 정리된다.
+- path 없는 자동 생성 `main` 창은 `welcome`으로 등록된다.
+- `create_document_window`으로 만든 path 없는 `document-*` 창은 `untitled`로 등록된다.
+- Finder/Open With 경로를 처리할 때 재사용 가능한 `welcome` 창이 있으면 새 창을 만들지 않고 그 창을 path 문서 창으로 전환할 수 있다.
 
 ### Commands
 
@@ -67,10 +70,16 @@ MVP의 안전 원칙은 "같은 파일은 동시에 하나의 창에서만 편�
   - path가 이미 registry에 있고 실제 창이 존재하면 그 창을 show/focus한다.
   - path가 registry에 있지만 창 객체가 아직 생성 중이면 중복 생성을 하지 않는다.
   - path가 registry에 없으면 path를 예약한 뒤 새 문서 창을 만든다.
+  - 문서 편집 창의 Open/Open Recent가 사용하는 명령이므로 재사용 가능한 welcome 창이 있어도 현재 정책에서는 그 창을 덮지 않는다.
   - 새 창 URL은 `index.html?path=<encoded path>`다.
 - `register_window_document_path(path | null)`
   - command 호출 창의 label을 registry에 등록하고 path 매핑을 갱신한다.
+  - path가 `null`이면 현재 창을 `untitled` 문서 창으로 등록한다.
   - 문서가 저장/열림/초기화될 때 프론트엔드가 호출한다.
+- `register_window_untitled_document`
+  - command 호출 창을 path 없는 `untitled` 문서 창으로 등록한다.
+- `register_window_welcome`
+  - command 호출 창을 문서가 없는 `welcome` 창으로 등록한다.
 - `is_document_path_open_elsewhere(path)`
   - Save As 충돌 검사용이다.
   - 같은 창의 현재 path는 충돌이 아니다.
@@ -96,6 +105,8 @@ Tauri/Tao 기본 `application:openURLs:` 핸들러는 Rust panic이 Objective-C 
 - Tauri `setup`은 event loop `Ready` 시점에 실행되므로 Finder cold start의 첫 openURLs 이벤트보다 늦을 수 있다.
 - 앱 state가 준비되기 전에 openURLs가 들어오면 path를 pending queue에 저장한다.
 - `setup`에서 `WindowRegistryState`를 등록한 뒤 pending path를 drain해 문서 창을 연다.
+- Finder/Open With path가 registry에 없고 재사용 가능한 welcome 창이 있으면 새 창을 만들지 않고 해당 welcome 창을 path 문서 창으로 전환한다.
+- 이미 열린 path가 있으면 welcome 창 재사용보다 기존 문서 창 focus가 우선이다.
 
 이 규칙을 어기면 Finder에서 `.md` 파일을 바로 열 때 앱이 Dock에도 뜨지 않고 crash report만 남는 회귀가 발생할 수 있다.
 
@@ -117,9 +128,12 @@ Tauri/Tao 기본 `application:openURLs:` 핸들러는 Rust panic이 Objective-C 
 
 `src/hooks/useDocumentFileActions.ts`의 New/Open/Open Recent는 현재 문서를 교체하지 않는다.
 
-- New: `createDocumentWindow()`를 호출한다.
-- Open...: native picker로 path만 고르고 `openDocumentWindow(path)`를 호출한다.
-- Open Recent: `openDocumentWindow(path)`를 호출한다.
+- 웰컴 창의 New: 현재 창을 untitled 문서 편집 창으로 전환한다.
+- 웰컴 창의 Open...: native picker로 path를 고른 뒤, 해당 path가 이미 다른 창에서 열려 있으면 기존 창을 focus하고, 아니면 현재 웰컴 창에 문서를 로드한다.
+- 웰컴 창의 Open Recent: Open...과 같은 current-window reuse 정책을 따른다.
+- 문서 편집 창의 New: `createDocumentWindow()`를 호출해 새 untitled 창을 만든다.
+- 문서 편집 창의 Open...: native picker로 path만 고르고 `openDocumentWindow(path)`를 호출한다.
+- 문서 편집 창의 Open Recent: `openDocumentWindow(path)`를 호출한다.
 - 브라우저 fallback 파일 input은 Tauri 런타임이 아닐 때만 현재 창에 파일 내용을 적용하는 호환 경로다.
 
 dirty 문서에서 New/Open/Open Recent를 실행해도 현재 창의 dirty 문서를 건드리지 않으므로 unsaved 확인을 띄우지 않는다.
@@ -143,6 +157,8 @@ dirty 문서에서 New/Open/Open Recent를 실행해도 현재 창의 dirty 문�
 - workspace document metadata 갱신
 - recent files 갱신
 - `registerWindowDocumentPath(path)` 호출
+
+현재 창이 path 없는 편집 문서가 되면 `registerWindowUntitledDocument()`를 호출한다. 현재 창이 문서 없는 웰컴 화면으로 돌아가면 `registerWindowWelcome()`을 호출한다.
 
 registry 등록 실패는 사용자 작업을 막지 않는다. debug log에 남기고 문서 적용은 계속한다.
 
@@ -189,25 +205,30 @@ macOS 앱 메뉴는 전역이지만 동작 대상은 현재 포커스된 ClipMar
 
 ### New
 
-- 새 untitled 창이 열린다.
-- 현재 창의 문서와 dirty 상태는 유지된다.
+- 웰컴 창에서는 같은 창이 untitled 편집 창으로 전환된다.
+- 문서 편집 창에서는 새 untitled 창이 열린다.
+- 문서 편집 창에서 실행하면 현재 창의 문서와 dirty 상태는 유지된다.
 - 여러 untitled 창을 동시에 열 수 있다.
 
 ### Open...
 
-- 파일을 선택하면 해당 파일이 새 창에서 열린다.
+- 웰컴 창에서 파일을 선택하면 해당 파일이 같은 창에서 열린다.
+- 문서 편집 창에서 파일을 선택하면 해당 파일이 새 창에서 열린다.
 - 이미 열린 파일을 선택하면 새 창을 만들지 않고 기존 창이 앞으로 온다.
-- 현재 창의 dirty 문서는 교체되지 않는다.
+- 문서 편집 창의 dirty 문서는 교체되지 않는다.
 
 ### Open Recent
 
 - Open...과 같은 existing-window 정책을 따른다.
+- 웰컴 창에서는 아직 열리지 않은 recent file을 같은 창에 로드한다.
+- 문서 편집 창에서는 recent file을 새 창에서 열거나 기존 창을 focus한다.
 - recent file이 사라졌으면 recent 목록에서 제거하고 오류를 표시한다.
 
 ### Finder/Open With
 
 - 앱이 꺼져 있어도 `.md` 파일을 열면 ClipMark가 실행되고 해당 문서 창이 열린다.
-- 앱이 이미 실행 중이면 해당 문서 창을 만들거나 기존 창을 focus한다.
+- 앱이 이미 실행 중이고 재사용 가능한 웰컴 창이 있으면 그 창이 해당 문서 편집 창으로 전환된다.
+- 재사용 가능한 웰컴 창이 없으면 해당 문서 창을 만들거나 기존 창을 focus한다.
 - 이미 열린 파일을 다시 열면 기존 창이 앞으로 온다.
 - 이 흐름에서 crash report가 새로 생기면 회귀다.
 
@@ -282,4 +303,3 @@ macOS 앱 메뉴는 전역이지만 동작 대상은 현재 포커스된 ClipMar
 - `npm run tauri:build`는 `.app` 생성 후 DMG bundling 단계에서 실패할 수 있다. 멀티 윈도우 정책 검증은 `.app`로 가능하지만 배포 패키징은 별도 점검이 필요하다.
 - LaunchServices의 기본 앱 캐시는 사용자의 macOS 상태에 영향을 받을 수 있다. Finder 재현이 이상하면 `osascript -e 'POSIX path of (path to application "ClipMark")'`로 실제 선택된 앱 번들을 확인한다.
 - `/Applications/ClipMark.app`와 개발 산출물 `.app`가 공존할 수 있다. crash log의 binary UUID와 실제 앱 binary UUID를 비교하면 어느 번들이 실행됐는지 확인할 수 있다.
-

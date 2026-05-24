@@ -1,6 +1,10 @@
 import { useEffectEvent } from "react";
 import type { OpenedDocument, SavedDocument } from "../lib/file-system";
-import { registerWindowDocumentPath } from "../lib/document-window";
+import {
+  registerWindowDocumentPath,
+  registerWindowUntitledDocument,
+  registerWindowWelcome,
+} from "../lib/document-window";
 import { logDebug } from "../lib/debug-log";
 
 type WorkspaceDocument = OpenedDocument | {
@@ -26,6 +30,18 @@ function registerWindowDocumentPathQuietly(path: string | null) {
   });
 }
 
+function registerWindowUntitledDocumentQuietly() {
+  void registerWindowUntitledDocument().catch((error) => {
+    logDebug(`window:registerUntitledDocument failed error=${String(error)}`);
+  });
+}
+
+function registerWindowWelcomeQuietly() {
+  void registerWindowWelcome().catch((error) => {
+    logDebug(`window:registerWelcome failed error=${String(error)}`);
+  });
+}
+
 export function useDocumentSessionFileEffects({
   applySavedDocumentToWorkspace,
   applyWorkspaceDocument,
@@ -46,8 +62,12 @@ export function useDocumentSessionFileEffects({
     registerWindowDocumentPathQuietly(saved.path);
   });
 
-  const clearRegisteredWindowDocumentPath = useEffectEvent(() => {
-    registerWindowDocumentPathQuietly(null);
+  const registerCurrentWindowAsUntitledDocument = useEffectEvent(() => {
+    registerWindowUntitledDocumentQuietly();
+  });
+
+  const registerCurrentWindowAsWelcome = useEffectEvent(() => {
+    registerWindowWelcomeQuietly();
   });
 
   const handleMissingRecentFile = useEffectEvent((path: string) => {
@@ -62,8 +82,9 @@ export function useDocumentSessionFileEffects({
   return {
     applyOpenedDocument,
     applySavedDocument,
-    clearRegisteredWindowDocumentPath,
     handleMissingRecentFile,
     handleUnavailableRecentFile,
+    registerCurrentWindowAsUntitledDocument,
+    registerCurrentWindowAsWelcome,
   };
 }
