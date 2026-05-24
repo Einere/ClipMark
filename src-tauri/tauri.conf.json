@@ -44,7 +44,8 @@
       }
     ],
     "icon": [
-      "icons/icon.png"
+      "icons/icon.png",
+      "icons/icon.ico"
     ],
     "targets": "all",
     "macOS": {
