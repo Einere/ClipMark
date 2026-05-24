@@ -58,6 +58,7 @@ MVP의 안전 원칙은 "같은 파일은 동시에 하나의 창에서만 편�
 - path 없는 자동 생성 `main` 창은 `welcome`으로 등록된다.
 - `create_document_window`으로 만든 path 없는 `document-*` 창은 `untitled`로 등록된다.
 - Finder/Open With 경로를 처리할 때 재사용 가능한 `welcome` 창이 있으면 새 창을 만들지 않고 그 창을 path 문서 창으로 전환할 수 있다.
+- `welcome` 창을 path 문서 창으로 전환할 때는 실제 창 전환이 성공한 뒤 registry를 `path` 상태로 확정해야 한다. 창이 없거나 전환이 실패하면 stale registry를 남기지 않고 새 문서 창 생성으로 fallback한다.
 
 ### Commands
 
@@ -72,6 +73,10 @@ MVP의 안전 원칙은 "같은 파일은 동시에 하나의 창에서만 편�
   - path가 registry에 없으면 path를 예약한 뒤 새 문서 창을 만든다.
   - 문서 편집 창의 Open/Open Recent가 사용하는 명령이므로 재사용 가능한 welcome 창이 있어도 현재 정책에서는 그 창을 덮지 않는다.
   - 새 창 URL은 `index.html?path=<encoded path>`다.
+- Finder/Open With 내부 경로 처리
+  - `open_document_window(path)`와 같은 중복 path focus 정책을 따른다.
+  - 차이점은 path가 열려 있지 않고 재사용 가능한 `welcome` 창이 있을 때, 새 창 생성보다 welcome 창 전환을 우선한다는 점이다.
+  - welcome 창 전환 실패 시에는 registry path 매핑을 확정하지 않고 새 문서 창 생성으로 fallback한다.
 - `register_window_document_path(path | null)`
   - command 호출 창의 label을 registry에 등록하고 path 매핑을 갱신한다.
   - path가 `null`이면 현재 창을 `untitled` 문서 창으로 등록한다.
@@ -107,6 +112,7 @@ Tauri/Tao 기본 `application:openURLs:` 핸들러는 Rust panic이 Objective-C 
 - `setup`에서 `WindowRegistryState`를 등록한 뒤 pending path를 drain해 문서 창을 연다.
 - Finder/Open With path가 registry에 없고 재사용 가능한 welcome 창이 있으면 새 창을 만들지 않고 해당 welcome 창을 path 문서 창으로 전환한다.
 - 이미 열린 path가 있으면 welcome 창 재사용보다 기존 문서 창 focus가 우선이다.
+- welcome 창 전환이 실패하면 해당 path를 stale welcome label에 묶어 두지 않고 새 문서 창 생성으로 fallback해야 한다.
 
 이 규칙을 어기면 Finder에서 `.md` 파일을 바로 열 때 앱이 Dock에도 뜨지 않고 crash report만 남는 회귀가 발생할 수 있다.
 
@@ -256,6 +262,9 @@ macOS 앱 메뉴는 전역이지만 동작 대상은 현재 포커스된 ClipMar
 
 - registry path 중복 방지
 - 창 생성 실패 시 registry 예약 rollback
+- Finder/Open With welcome 창 재사용과 실패 시 fallback
+- 웰컴 창 New/Open/Open Recent current-window reuse
+- 웰컴 창에서 이미 열린 path를 열 때 기존 창 focus 우선
 - 초기 문서 창 state가 welcome 대신 path/new 요청을 반환
 - New/Open/Open Recent가 현재 문서를 교체하지 않음
 - Save As target 충돌 차단
@@ -291,9 +300,11 @@ macOS 앱 메뉴는 전역이지만 동작 대상은 현재 포커스된 ClipMar
 멀티 윈도우 관련 변경은 다음 규칙을 지켜야 한다.
 
 - 현재 창의 문서를 암묵적으로 교체하는 New/Open/Open Recent 흐름을 다시 만들지 않는다.
+- 문서가 없는 `welcome` 창 재사용은 명시적으로 `welcome` 상태인 창에만 허용한다. path 없는 `untitled` 문서 창을 welcome처럼 재사용하지 않는다.
 - path 중복 방지 정책을 우회하지 않는다.
 - registry 갱신과 macOS title/dirty/represented file 동기화를 혼동하지 않는다.
 - Finder/Open With cold start를 수정할 때는 `setup` 타이밍을 신뢰하지 않는다.
+- Finder/Open With welcome 창 전환 시 registry path 매핑을 실제 창 전환보다 먼저 확정하지 않는다.
 - 저장 성공 전에는 registry path를 최종 path로 확정하지 않는다.
 - 창 close는 hide/reset으로 되돌리지 않는다.
 - 메뉴 sync는 포커스 소유권을 기준으로 한다.
