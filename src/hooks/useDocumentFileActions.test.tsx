@@ -10,6 +10,7 @@ const pickMarkdownDocumentPath = vi.fn();
 const saveMarkdownDocument = vi.fn();
 const openRecentFile = vi.fn();
 const createDocumentWindow = vi.fn();
+const isDocumentPathOpenElsewhere = vi.fn();
 const openDocumentWindow = vi.fn();
 
 vi.mock("../lib/file-system", () => ({
@@ -24,6 +25,8 @@ vi.mock("../lib/recent-files", () => ({
 
 vi.mock("../lib/document-window", () => ({
   createDocumentWindow: () => createDocumentWindow(),
+  isDocumentPathOpenElsewhere: (path: string) =>
+    isDocumentPathOpenElsewhere(path),
   openDocumentWindow: (path: string) => openDocumentWindow(path),
 }));
 
@@ -66,6 +69,8 @@ describe("useDocumentFileActions", () => {
     saveMarkdownDocument.mockReset();
     openRecentFile.mockReset();
     createDocumentWindow.mockReset();
+    isDocumentPathOpenElsewhere.mockReset();
+    isDocumentPathOpenElsewhere.mockResolvedValue(false);
     openDocumentWindow.mockReset();
   });
 
@@ -124,6 +129,29 @@ describe("useDocumentFileActions", () => {
     expect(createNewDocument).not.toHaveBeenCalled();
   });
 
+  it("creates a new document in the current window when the welcome screen is visible", async () => {
+    const createNewDocument = vi.fn();
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          createNewDocument,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.createNewDocumentWindow();
+    });
+
+    expect(createNewDocument).toHaveBeenCalledTimes(1);
+    expect(createDocumentWindow).not.toHaveBeenCalled();
+  });
+
   it("opens picker results through native document windows", async () => {
     const applyOpenedDocument = vi.fn();
     pickMarkdownDocumentPath.mockResolvedValue("/tmp/open.md");
@@ -147,6 +175,63 @@ describe("useDocumentFileActions", () => {
     expect(applyOpenedDocument).not.toHaveBeenCalled();
   });
 
+  it("opens picker results in the current window when the welcome screen is visible", async () => {
+    const document: OpenedDocument = {
+      filename: "open.md",
+      markdown: "# Open",
+      path: "/tmp/open.md",
+    };
+    const applyOpenedDocument = vi.fn();
+    pickMarkdownDocumentPath.mockResolvedValue("/tmp/open.md");
+    openRecentFile.mockResolvedValue(document);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          applyOpenedDocument,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openWithPicker();
+    });
+
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/open.md");
+    expect(applyOpenedDocument).toHaveBeenCalledWith(document);
+    expect(openDocumentWindow).not.toHaveBeenCalled();
+  });
+
+  it("focuses an existing document window instead of reusing welcome for an already-open picker path", async () => {
+    const applyOpenedDocument = vi.fn();
+    pickMarkdownDocumentPath.mockResolvedValue("/tmp/open.md");
+    isDocumentPathOpenElsewhere.mockResolvedValue(true);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          applyOpenedDocument,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openWithPicker();
+    });
+
+    expect(openDocumentWindow).toHaveBeenCalledWith("/tmp/open.md");
+    expect(openRecentFile).not.toHaveBeenCalled();
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
+  });
+
   it("opens recent files through native document windows", async () => {
     await act(async () => {
       root.render(createElement(Harness, {
@@ -162,6 +247,61 @@ describe("useDocumentFileActions", () => {
 
     expect(openDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
     expect(openRecentFile).not.toHaveBeenCalled();
+  });
+
+  it("opens recent files in the current window when the welcome screen is visible", async () => {
+    const document: OpenedDocument = {
+      filename: "recent.md",
+      markdown: "# Recent",
+      path: "/tmp/recent.md",
+    };
+    const applyOpenedDocument = vi.fn();
+    openRecentFile.mockResolvedValue(document);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          applyOpenedDocument,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openRecentDocumentWindow("/tmp/recent.md");
+    });
+
+    expect(openRecentFile).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(applyOpenedDocument).toHaveBeenCalledWith(document);
+    expect(openDocumentWindow).not.toHaveBeenCalled();
+  });
+
+  it("focuses an existing document window instead of reusing welcome for an already-open recent path", async () => {
+    const applyOpenedDocument = vi.fn();
+    isDocumentPathOpenElsewhere.mockResolvedValue(true);
+
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+        overrides: {
+          applyOpenedDocument,
+          isWelcomeVisible: true,
+        },
+      }));
+    });
+
+    await act(async () => {
+      await controls.openRecentDocumentWindow("/tmp/recent.md");
+    });
+
+    expect(openDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
+    expect(openRecentFile).not.toHaveBeenCalled();
+    expect(applyOpenedDocument).not.toHaveBeenCalled();
   });
 
   it("reports unavailable recent files through the provided callbacks", async () => {

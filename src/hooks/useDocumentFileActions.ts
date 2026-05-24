@@ -7,6 +7,7 @@ import {
 } from "../lib/file-system";
 import {
   createDocumentWindow,
+  isDocumentPathOpenElsewhere,
   openDocumentWindow,
 } from "../lib/document-window";
 import { openRecentFile } from "../lib/recent-files";
@@ -39,20 +40,12 @@ export function useDocumentFileActions({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createNewDocumentWindow = useEffectEvent(async () => {
-    await createDocumentWindow();
-  });
-
-  const openWithPicker = useEffectEvent(async (fallbackToFileInput = true) => {
-    const path = await pickMarkdownDocumentPath();
-    if (!path) {
-      if (fallbackToFileInput) {
-        fileInputRef.current?.click();
-      }
-      return null;
+    if (isWelcomeVisible) {
+      createNewDocument();
+      return;
     }
 
-    await openDocumentWindow(path);
-    return null;
+    await createDocumentWindow();
   });
 
   const loadRecentDocument = useEffectEvent(async (path: string) => {
@@ -70,7 +63,44 @@ export function useDocumentFileActions({
     }
   });
 
+  async function applyDocumentFromPath(path: string) {
+    if (await isDocumentPathOpenElsewhere(path)) {
+      await openDocumentWindow(path);
+      return null;
+    }
+
+    const document = await loadRecentDocument(path);
+    if (!document) {
+      return null;
+    }
+
+    applyOpenedDocument(document);
+    return document;
+  }
+
+  const openWithPicker = useEffectEvent(async (fallbackToFileInput = true) => {
+    const path = await pickMarkdownDocumentPath();
+    if (!path) {
+      if (fallbackToFileInput) {
+        fileInputRef.current?.click();
+      }
+      return null;
+    }
+
+    if (isWelcomeVisible) {
+      return applyDocumentFromPath(path);
+    }
+
+    await openDocumentWindow(path);
+    return null;
+  });
+
   const openRecentDocumentWindow = useEffectEvent(async (path: string) => {
+    if (isWelcomeVisible) {
+      await applyDocumentFromPath(path);
+      return;
+    }
+
     await openDocumentWindow(path);
   });
 

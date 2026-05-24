@@ -110,7 +110,9 @@ export default function App({ initialPreferences }: AppProps) {
   const actions = useAppShellActions({
     activeFilename: viewState.activeFilename,
     canSaveDocument: viewState.canSaveDocument,
+    createNewDocumentWindow: session.createNewDocumentWindow,
     filePath: session.filePath,
+    openRecentDocumentWindow: session.openRecentDocumentWindow,
     openWithPicker: session.openWithPicker,
     saveDocument: session.saveDocument,
     setIsExternalMediaAutoLoadEnabled,

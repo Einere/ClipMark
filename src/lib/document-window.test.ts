@@ -5,7 +5,9 @@ import {
   getInitialDocumentWindowState,
   isDocumentPathOpenElsewhere,
   openDocumentWindow,
+  registerWindowUntitledDocument,
   registerWindowDocumentPath,
+  registerWindowWelcome,
 } from "./document-window";
 
 const invoke = vi.fn();
@@ -41,6 +43,16 @@ describe("document-window", () => {
     expect(invoke).toHaveBeenCalledWith("register_window_document_path", {
       path: "/tmp/a.md",
     });
+  });
+
+  it("registers the current window as an untitled document", async () => {
+    await registerWindowUntitledDocument();
+    expect(invoke).toHaveBeenCalledWith("register_window_untitled_document");
+  });
+
+  it("registers the current window as welcome", async () => {
+    await registerWindowWelcome();
+    expect(invoke).toHaveBeenCalledWith("register_window_welcome");
   });
 
   it("checks whether a Save As target is open in another window", async () => {

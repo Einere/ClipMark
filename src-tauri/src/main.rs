@@ -98,17 +98,33 @@ struct PreferencesState {
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum WindowDocumentState {
+    Welcome,
+    Untitled,
+    Path(String),
+}
+
+#[allow(dead_code)]
 #[derive(Default)]
 struct WindowRegistry {
     next_window_id: u64,
-    window_paths: HashMap<String, Option<String>>,
+    window_states: HashMap<String, WindowDocumentState>,
     path_windows: HashMap<String, String>,
 }
 
 #[allow(dead_code)]
 impl WindowRegistry {
-    fn register_window(&mut self, label: String) {
-        self.window_paths.entry(label).or_insert(None);
+    fn register_welcome_window(&mut self, label: String) {
+        self.unregister_window(&label);
+        self.window_states
+            .insert(label, WindowDocumentState::Welcome);
+    }
+
+    fn register_untitled_document_window(&mut self, label: String) {
+        self.unregister_window(&label);
+        self.window_states
+            .insert(label, WindowDocumentState::Untitled);
     }
 
     fn next_document_label(&mut self) -> String {
@@ -116,28 +132,30 @@ impl WindowRegistry {
         format!("document-{}", self.next_window_id)
     }
 
-    fn register_document_path(&mut self, label: &str, path: Option<String>) {
-        if let Some(Some(previous_path)) = self.window_paths.get(label) {
-            self.path_windows.remove(previous_path);
+    fn register_document_path(&mut self, label: &str, path: String) {
+        self.clear_window_path(label);
+
+        if let Some(previous_label) = self.path_windows.get(&path) {
+            if previous_label != label {
+                self.window_states
+                    .insert(previous_label.clone(), WindowDocumentState::Welcome);
+            }
         }
 
-        self.window_paths.insert(label.to_string(), path.clone());
+        self.window_states
+            .insert(label.to_string(), WindowDocumentState::Path(path.clone()));
+        self.path_windows.insert(path, label.to_string());
+    }
 
-        if let Some(next_path) = path {
-            if let Some(previous_label) = self.path_windows.get(&next_path) {
-                if previous_label != label {
-                    self.window_paths.insert(previous_label.clone(), None);
-                }
-            }
-
-            self.path_windows.insert(next_path, label.to_string());
+    fn clear_window_path(&mut self, label: &str) {
+        if let Some(WindowDocumentState::Path(previous_path)) = self.window_states.get(label) {
+            self.path_windows.remove(previous_path);
         }
     }
 
     fn unregister_window(&mut self, label: &str) {
-        if let Some(Some(path)) = self.window_paths.remove(label) {
-            self.path_windows.remove(&path);
-        }
+        self.clear_window_path(label);
+        self.window_states.remove(label);
     }
 
     fn window_for_path(&self, path: &str) -> Option<String> {
@@ -148,6 +166,16 @@ impl WindowRegistry {
         self.path_windows
             .get(path)
             .is_some_and(|window_label| window_label != label)
+    }
+
+    fn reusable_welcome_window(&self) -> Option<String> {
+        self.window_states.iter().find_map(|(label, state)| {
+            if matches!(state, WindowDocumentState::Welcome) {
+                Some(label.clone())
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -189,11 +217,13 @@ fn reserve_document_window_in_registry(
     path: Option<&str>,
 ) -> String {
     let label = registry.next_document_label();
-    registry.register_window(label.clone());
 
-    if let Some(path) = path {
-        let normalized_path = normalize_document_path_for_registry(path);
-        registry.register_document_path(&label, Some(normalized_path));
+    match path {
+        Some(path) => {
+            let normalized_path = normalize_document_path_for_registry(path);
+            registry.register_document_path(&label, normalized_path);
+        }
+        None => registry.register_untitled_document_window(label.clone()),
     }
 
     label
@@ -206,6 +236,7 @@ fn rollback_reserved_document_window_in_registry(registry: &mut WindowRegistry, 
 #[derive(Debug, PartialEq, Eq)]
 enum DocumentWindowOpenDecision {
     Focus(String),
+    ReuseWelcome(String),
     AlreadyOpening,
     Create,
 }
@@ -213,12 +244,52 @@ enum DocumentWindowOpenDecision {
 fn document_window_open_decision(
     existing_label: Option<String>,
     window_exists: bool,
+    reusable_welcome_label: Option<String>,
 ) -> DocumentWindowOpenDecision {
-    match (existing_label, window_exists) {
-        (Some(label), true) => DocumentWindowOpenDecision::Focus(label),
-        (Some(_), false) => DocumentWindowOpenDecision::AlreadyOpening,
-        (None, _) => DocumentWindowOpenDecision::Create,
+    match (existing_label, window_exists, reusable_welcome_label) {
+        (Some(label), true, _) => DocumentWindowOpenDecision::Focus(label),
+        (Some(_), false, _) => DocumentWindowOpenDecision::AlreadyOpening,
+        (None, _, Some(label)) => DocumentWindowOpenDecision::ReuseWelcome(label),
+        (None, _, None) => DocumentWindowOpenDecision::Create,
     }
+}
+
+fn assign_path_to_existing_window(
+    app_handle: &AppHandle,
+    registry_state: &State<'_, WindowRegistryState>,
+    label: &str,
+    path: String,
+) -> Result<(), String> {
+    let Some(window) = app_handle.get_webview_window(label) else {
+        let mut registry = registry_state
+            .registry
+            .lock()
+            .map_err(|error| error.to_string())?;
+        registry.unregister_window(label);
+        drop(registry);
+
+        return create_document_window_with_path(app_handle, registry_state, Some(path));
+    };
+
+    let next_url = format!("index.html?path={}", urlencoding::encode(&path));
+    let next_url = serde_json::to_string(&next_url).map_err(|error| error.to_string())?;
+    if let Err(error) = window.eval(format!("window.location.replace({next_url});")) {
+        return create_document_window_with_path(app_handle, registry_state, Some(path))
+            .map_err(|fallback_error| format!("{error}; fallback failed: {fallback_error}"));
+    }
+
+    let normalized_path = normalize_document_path_for_registry(&path);
+    {
+        let mut registry = registry_state
+            .registry
+            .lock()
+            .map_err(|error| error.to_string())?;
+        registry.register_document_path(label, normalized_path);
+    }
+
+    focus_window(&window)?;
+
+    Ok(())
 }
 
 fn create_document_window_with_path(
@@ -260,24 +331,39 @@ fn open_document_window_with_path(
     app_handle: &AppHandle,
     registry_state: &State<'_, WindowRegistryState>,
     path: String,
+    reuse_welcome_window: bool,
 ) -> Result<(), String> {
     let normalized_path = normalize_document_path_for_registry(&path);
-    let existing_label = {
+    let (existing_label, reusable_welcome_label) = {
         let registry = registry_state
             .registry
             .lock()
             .map_err(|error| error.to_string())?;
-        registry.window_for_path(&normalized_path)
+        let existing = registry.window_for_path(&normalized_path);
+        let reusable = if reuse_welcome_window && existing.is_none() {
+            registry.reusable_welcome_window()
+        } else {
+            None
+        };
+
+        (existing, reusable)
     };
 
     let existing_window = existing_label
         .as_deref()
         .and_then(|label| app_handle.get_webview_window(label));
 
-    match document_window_open_decision(existing_label, existing_window.is_some()) {
+    match document_window_open_decision(
+        existing_label,
+        existing_window.is_some(),
+        reusable_welcome_label,
+    ) {
         DocumentWindowOpenDecision::Focus(_) => {
             let window = existing_window.expect("window should exist for focus decision");
             focus_window(&window)
+        }
+        DocumentWindowOpenDecision::ReuseWelcome(label) => {
+            assign_path_to_existing_window(app_handle, registry_state, &label, path)
         }
         DocumentWindowOpenDecision::AlreadyOpening => Ok(()),
         DocumentWindowOpenDecision::Create => {
@@ -315,7 +401,7 @@ fn open_document_paths(
     paths: impl IntoIterator<Item = String>,
 ) {
     for path in paths {
-        let _ = open_document_window_with_path(app_handle, registry_state, path);
+        let _ = open_document_window_with_path(app_handle, registry_state, path, true);
     }
 }
 
@@ -381,11 +467,19 @@ fn initial_document_window_state_for_label(
     registry: &WindowRegistry,
     label: &str,
 ) -> InitialDocumentWindowState {
-    let path = registry.window_paths.get(label).cloned().flatten();
-
-    InitialDocumentWindowState {
-        is_new_document: label.starts_with("document-") && path.is_none(),
-        path,
+    match registry.window_states.get(label) {
+        Some(WindowDocumentState::Path(path)) => InitialDocumentWindowState {
+            is_new_document: false,
+            path: Some(path.clone()),
+        },
+        Some(WindowDocumentState::Untitled) => InitialDocumentWindowState {
+            is_new_document: true,
+            path: None,
+        },
+        _ => InitialDocumentWindowState {
+            is_new_document: false,
+            path: None,
+        },
     }
 }
 
@@ -467,7 +561,7 @@ fn open_document_window(
     registry_state: State<'_, WindowRegistryState>,
     path: String,
 ) -> Result<(), String> {
-    open_document_window_with_path(&app_handle, &registry_state, path)
+    open_document_window_with_path(&app_handle, &registry_state, path, false)
 }
 
 #[tauri::command]
@@ -477,14 +571,48 @@ fn register_window_document_path(
     path: Option<String>,
 ) -> Result<(), String> {
     let label = window.label().to_string();
-    let normalized_path = path.map(|path| normalize_document_path_for_registry(&path));
     let mut registry = registry_state
         .registry
         .lock()
         .map_err(|error| error.to_string())?;
 
-    registry.register_window(label.clone());
-    registry.register_document_path(&label, normalized_path);
+    match path {
+        Some(path) => {
+            let normalized_path = normalize_document_path_for_registry(&path);
+            registry.register_document_path(&label, normalized_path);
+        }
+        None => registry.register_untitled_document_window(label),
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn register_window_untitled_document(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+) -> Result<(), String> {
+    let mut registry = registry_state
+        .registry
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    registry.register_untitled_document_window(window.label().to_string());
+
+    Ok(())
+}
+
+#[tauri::command]
+fn register_window_welcome(
+    window: tauri::Window,
+    registry_state: State<'_, WindowRegistryState>,
+) -> Result<(), String> {
+    let mut registry = registry_state
+        .registry
+        .lock()
+        .map_err(|error| error.to_string())?;
+
+    registry.register_welcome_window(window.label().to_string());
 
     Ok(())
 }
@@ -820,7 +948,7 @@ fn main() {
                     .registry
                     .lock()
                     .map_err(|error| error.to_string())?;
-                registry.register_window(window.label().to_string());
+                registry.register_welcome_window(window.label().to_string());
             }
 
             let pending_paths = take_pending_open_document_paths();
@@ -847,6 +975,8 @@ fn main() {
             pick_markdown_file,
             read_markdown_file,
             register_window_document_path,
+            register_window_untitled_document,
+            register_window_welcome,
             save_app_preferences,
             show_window,
             show_unsaved_changes_sheet,
@@ -902,7 +1032,8 @@ mod tests {
         queue_pending_open_document_paths, reserve_document_window_in_registry,
         rollback_reserved_document_window_in_registry, save_preferences_to_disk,
         take_pending_open_document_paths, validate_external_url, AppPreferences,
-        DocumentWindowOpenDecision, InitialDocumentWindowState, ThemeMode, WindowRegistry,
+        DocumentWindowOpenDecision, InitialDocumentWindowState, ThemeMode, WindowDocumentState,
+        WindowRegistry,
     };
     use serde_json::Value;
     use std::fs;
@@ -1030,8 +1161,8 @@ mod tests {
         let mut registry = WindowRegistry::default();
         let path = normalize_document_path_for_registry("/tmp/clipmark-a.md");
 
-        registry.register_window("main".to_string());
-        registry.register_document_path("main", Some(path.clone()));
+        registry.register_welcome_window("main".to_string());
+        registry.register_document_path("main", path.clone());
 
         assert_eq!(registry.window_for_path(&path), Some("main".to_string()));
     }
@@ -1042,9 +1173,9 @@ mod tests {
         let old_path = normalize_document_path_for_registry("/tmp/old.md");
         let new_path = normalize_document_path_for_registry("/tmp/new.md");
 
-        registry.register_window("document-1".to_string());
-        registry.register_document_path("document-1", Some(old_path.clone()));
-        registry.register_document_path("document-1", Some(new_path.clone()));
+        registry.register_untitled_document_window("document-1".to_string());
+        registry.register_document_path("document-1", old_path.clone());
+        registry.register_document_path("document-1", new_path.clone());
 
         assert_eq!(registry.window_for_path(&old_path), None);
         assert_eq!(
@@ -1058,9 +1189,9 @@ mod tests {
         let mut registry = WindowRegistry::default();
         let path = normalize_document_path_for_registry("/tmp/shared.md");
 
-        registry.register_window("main".to_string());
-        registry.register_window("document-1".to_string());
-        registry.register_document_path("document-1", Some(path.clone()));
+        registry.register_welcome_window("main".to_string());
+        registry.register_untitled_document_window("document-1".to_string());
+        registry.register_document_path("document-1", path.clone());
 
         assert!(registry.is_path_open_elsewhere("main", &path));
         assert!(!registry.is_path_open_elsewhere("document-1", &path));
@@ -1071,8 +1202,8 @@ mod tests {
         let mut registry = WindowRegistry::default();
         let path = normalize_document_path_for_registry("/tmp/closing.md");
 
-        registry.register_window("document-2".to_string());
-        registry.register_document_path("document-2", Some(path.clone()));
+        registry.register_untitled_document_window("document-2".to_string());
+        registry.register_document_path("document-2", path.clone());
         registry.unregister_window("document-2");
 
         assert_eq!(registry.window_for_path(&path), None);
@@ -1083,15 +1214,18 @@ mod tests {
         let mut registry = WindowRegistry::default();
         let path = normalize_document_path_for_registry("/tmp/moved-owner.md");
 
-        registry.register_window("main".to_string());
-        registry.register_window("document-1".to_string());
-        registry.register_document_path("main", Some(path.clone()));
-        registry.register_document_path("document-1", Some(path.clone()));
+        registry.register_welcome_window("main".to_string());
+        registry.register_untitled_document_window("document-1".to_string());
+        registry.register_document_path("main", path.clone());
+        registry.register_document_path("document-1", path.clone());
 
-        assert_eq!(registry.window_paths.get("main"), Some(&None));
         assert_eq!(
-            registry.window_paths.get("document-1"),
-            Some(&Some(path.clone()))
+            registry.window_states.get("main"),
+            Some(&WindowDocumentState::Welcome)
+        );
+        assert_eq!(
+            registry.window_states.get("document-1"),
+            Some(&WindowDocumentState::Path(path.clone()))
         );
         assert_eq!(
             registry.window_for_path(&path),
@@ -1105,13 +1239,30 @@ mod tests {
     }
 
     #[test]
+    fn window_registry_returns_first_reusable_welcome_window() {
+        let mut registry = WindowRegistry::default();
+        registry.register_welcome_window("main".to_string());
+        registry.register_untitled_document_window("document-1".to_string());
+
+        assert_eq!(registry.reusable_welcome_window(), Some("main".to_string()));
+    }
+
+    #[test]
+    fn window_registry_does_not_reuse_untitled_documents_as_welcome_windows() {
+        let mut registry = WindowRegistry::default();
+        registry.register_untitled_document_window("main".to_string());
+
+        assert_eq!(registry.reusable_welcome_window(), None);
+    }
+
+    #[test]
     fn document_path_open_elsewhere_helper_uses_registry() {
         let mut registry = WindowRegistry::default();
         let path = normalize_document_path_for_registry("/tmp/shared-save-as.md");
 
-        registry.register_window("main".to_string());
-        registry.register_window("document-1".to_string());
-        registry.register_document_path("document-1", Some(path.clone()));
+        registry.register_welcome_window("main".to_string());
+        registry.register_untitled_document_window("document-1".to_string());
+        registry.register_document_path("document-1", path.clone());
 
         assert!(is_document_path_open_elsewhere_in_registry(
             &registry,
@@ -1152,13 +1303,13 @@ mod tests {
         rollback_reserved_document_window_in_registry(&mut registry, &label);
 
         assert_eq!(registry.window_for_path(&path), None);
-        assert_eq!(registry.window_paths.get(&label), None);
+        assert_eq!(registry.window_states.get(&label), None);
     }
 
     #[test]
     fn document_window_open_decision_treats_reserved_path_as_already_opening() {
         assert_eq!(
-            document_window_open_decision(Some("document-1".to_string()), false),
+            document_window_open_decision(Some("document-1".to_string()), false, None),
             DocumentWindowOpenDecision::AlreadyOpening,
         );
     }
@@ -1166,7 +1317,7 @@ mod tests {
     #[test]
     fn document_window_open_decision_focuses_existing_window() {
         assert_eq!(
-            document_window_open_decision(Some("document-1".to_string()), true),
+            document_window_open_decision(Some("document-1".to_string()), true, None),
             DocumentWindowOpenDecision::Focus("document-1".to_string()),
         );
     }
@@ -1174,8 +1325,28 @@ mod tests {
     #[test]
     fn document_window_open_decision_creates_when_path_is_not_registered() {
         assert_eq!(
-            document_window_open_decision(None, false),
+            document_window_open_decision(None, false, None),
             DocumentWindowOpenDecision::Create,
+        );
+    }
+
+    #[test]
+    fn document_window_open_decision_reuses_welcome_when_path_is_not_open() {
+        assert_eq!(
+            document_window_open_decision(None, false, Some("main".to_string())),
+            DocumentWindowOpenDecision::ReuseWelcome("main".to_string()),
+        );
+    }
+
+    #[test]
+    fn document_window_open_decision_focuses_existing_path_before_reusing_welcome() {
+        assert_eq!(
+            document_window_open_decision(
+                Some("document-1".to_string()),
+                true,
+                Some("main".to_string()),
+            ),
+            DocumentWindowOpenDecision::Focus("document-1".to_string()),
         );
     }
 
@@ -1221,8 +1392,8 @@ mod tests {
     #[test]
     fn initial_document_window_state_returns_reserved_path_for_document_window() {
         let mut registry = WindowRegistry::default();
-        registry.register_window("document-1".to_string());
-        registry.register_document_path("document-1", Some("/tmp/open.md".to_string()));
+        registry.register_untitled_document_window("document-1".to_string());
+        registry.register_document_path("document-1", "/tmp/open.md".to_string());
 
         assert_eq!(
             initial_document_window_state_for_label(&registry, "document-1"),
@@ -1236,7 +1407,7 @@ mod tests {
     #[test]
     fn initial_document_window_state_marks_pathless_document_window_as_new() {
         let mut registry = WindowRegistry::default();
-        registry.register_window("document-1".to_string());
+        registry.register_untitled_document_window("document-1".to_string());
 
         assert_eq!(
             initial_document_window_state_for_label(&registry, "document-1"),
@@ -1250,7 +1421,7 @@ mod tests {
     #[test]
     fn initial_document_window_state_keeps_main_window_as_welcome() {
         let mut registry = WindowRegistry::default();
-        registry.register_window("main".to_string());
+        registry.register_welcome_window("main".to_string());
 
         assert_eq!(
             initial_document_window_state_for_label(&registry, "main"),

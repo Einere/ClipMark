@@ -4,14 +4,23 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useDocumentSessionFileEffects } from "./useDocumentSessionFileEffects";
 
-const { logDebug, registerWindowDocumentPath } = vi.hoisted(() => ({
+const {
+  logDebug,
+  registerWindowDocumentPath,
+  registerWindowUntitledDocument,
+  registerWindowWelcome,
+} = vi.hoisted(() => ({
   logDebug: vi.fn(),
   registerWindowDocumentPath: vi.fn(),
+  registerWindowUntitledDocument: vi.fn(),
+  registerWindowWelcome: vi.fn(),
 }));
 
 vi.mock("../lib/document-window", () => ({
   registerWindowDocumentPath: (path: string | null) =>
     registerWindowDocumentPath(path),
+  registerWindowUntitledDocument: () => registerWindowUntitledDocument(),
+  registerWindowWelcome: () => registerWindowWelcome(),
 }));
 
 vi.mock("../lib/debug-log", () => ({
@@ -50,6 +59,10 @@ describe("useDocumentSessionFileEffects", () => {
     logDebug.mockReset();
     registerWindowDocumentPath.mockReset();
     registerWindowDocumentPath.mockResolvedValue(undefined);
+    registerWindowUntitledDocument.mockReset();
+    registerWindowUntitledDocument.mockResolvedValue(undefined);
+    registerWindowWelcome.mockReset();
+    registerWindowWelcome.mockResolvedValue(undefined);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -123,7 +136,7 @@ describe("useDocumentSessionFileEffects", () => {
     expect(registerWindowDocumentPath).toHaveBeenCalledWith("/tmp/saved.md");
   });
 
-  it("clears the registered window document path when the current document closes", async () => {
+  it("registers the current window as an untitled document", async () => {
     await act(async () => {
       root.render(createElement(Harness, {
         onReady: (nextControls) => {
@@ -133,13 +146,29 @@ describe("useDocumentSessionFileEffects", () => {
     });
 
     await act(async () => {
-      controls.clearRegisteredWindowDocumentPath();
+      controls.registerCurrentWindowAsUntitledDocument();
     });
 
-    expect(registerWindowDocumentPath).toHaveBeenCalledWith(null);
+    expect(registerWindowUntitledDocument).toHaveBeenCalledTimes(1);
   });
 
-  it("logs and consumes window path registration failures for opened, saved, and clear flows", async () => {
+  it("registers the current window as welcome", async () => {
+    await act(async () => {
+      root.render(createElement(Harness, {
+        onReady: (nextControls) => {
+          controls = nextControls;
+        },
+      }));
+    });
+
+    await act(async () => {
+      controls.registerCurrentWindowAsWelcome();
+    });
+
+    expect(registerWindowWelcome).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs and consumes window registration failures", async () => {
     const applySavedDocumentToWorkspace = vi.fn();
     const applyWorkspaceDocument = vi.fn();
 
@@ -156,6 +185,8 @@ describe("useDocumentSessionFileEffects", () => {
     });
 
     registerWindowDocumentPath.mockRejectedValue(new Error("registry offline"));
+    registerWindowUntitledDocument.mockRejectedValue(new Error("registry offline"));
+    registerWindowWelcome.mockRejectedValue(new Error("registry offline"));
 
     const openedDocument = {
       filename: "draft.md",
@@ -179,7 +210,8 @@ describe("useDocumentSessionFileEffects", () => {
     });
 
     await act(async () => {
-      controls.clearRegisteredWindowDocumentPath();
+      controls.registerCurrentWindowAsUntitledDocument();
+      controls.registerCurrentWindowAsWelcome();
       await Promise.resolve();
     });
 
@@ -187,8 +219,9 @@ describe("useDocumentSessionFileEffects", () => {
     expect(applySavedDocumentToWorkspace).toHaveBeenCalledWith(savedDocument);
     expect(registerWindowDocumentPath).toHaveBeenCalledWith("/tmp/draft.md");
     expect(registerWindowDocumentPath).toHaveBeenCalledWith("/tmp/saved.md");
-    expect(registerWindowDocumentPath).toHaveBeenCalledWith(null);
-    expect(logDebug).toHaveBeenCalledTimes(3);
+    expect(registerWindowUntitledDocument).toHaveBeenCalledTimes(1);
+    expect(registerWindowWelcome).toHaveBeenCalledTimes(1);
+    expect(logDebug).toHaveBeenCalledTimes(4);
     expect(logDebug).toHaveBeenNthCalledWith(
       1,
       "window:registerDocumentPath failed path=/tmp/draft.md error=Error: registry offline",
@@ -199,7 +232,11 @@ describe("useDocumentSessionFileEffects", () => {
     );
     expect(logDebug).toHaveBeenNthCalledWith(
       3,
-      "window:registerDocumentPath failed path=null error=Error: registry offline",
+      "window:registerUntitledDocument failed error=Error: registry offline",
+    );
+    expect(logDebug).toHaveBeenNthCalledWith(
+      4,
+      "window:registerWelcome failed error=Error: registry offline",
     );
   });
 

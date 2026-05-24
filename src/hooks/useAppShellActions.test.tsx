@@ -134,7 +134,7 @@ describe("useAppShellActions", () => {
     expect(openWithPicker).toHaveBeenCalledTimes(1);
   });
 
-  it("routes welcome new and open recent actions through native document windows", async () => {
+  it("routes welcome actions through the provided document session actions", async () => {
     const createNewDocumentWindow = vi.fn().mockResolvedValue(undefined);
     const openRecentDocumentWindow = vi.fn().mockResolvedValue(undefined);
     const openWithPicker = vi.fn().mockResolvedValue(null);
@@ -154,12 +154,13 @@ describe("useAppShellActions", () => {
 
     await act(async () => {
       controls.handleWelcomeNew();
+      controls.handleWelcomeOpen();
       controls.handleWelcomeOpenRecent("/tmp/recent.md");
     });
 
     expect(createNewDocumentWindow).toHaveBeenCalledTimes(1);
+    expect(openWithPicker).toHaveBeenCalledTimes(1);
     expect(openRecentDocumentWindow).toHaveBeenCalledWith("/tmp/recent.md");
-    expect(openWithPicker).not.toHaveBeenCalled();
   });
 
   it("routes welcome open through the document window picker", async () => {
