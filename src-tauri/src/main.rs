@@ -1098,6 +1098,16 @@ mod tests {
             .expect("markdown association should declare content types")
             .iter()
             .any(|content_type| content_type == "net.daringfireball.markdown"));
+        assert_eq!(markdown["mimeType"], "text/markdown");
+        assert_eq!(
+            markdown["exportedType"]["identifier"],
+            "net.daringfireball.markdown"
+        );
+        assert!(markdown["exportedType"]["conformsTo"]
+            .as_array()
+            .expect("markdown exported type should declare parent types")
+            .iter()
+            .any(|content_type| content_type == "public.plain-text"));
     }
 
     #[test]

@@ -35,10 +35,15 @@
         "name": "Markdown Document",
         "description": "Markdown document",
         "contentTypes": [
-          "net.daringfireball.markdown",
-          "public.plain-text"
+          "net.daringfireball.markdown"
         ],
         "mimeType": "text/markdown",
+        "exportedType": {
+          "identifier": "net.daringfireball.markdown",
+          "conformsTo": [
+            "public.plain-text"
+          ]
+        },
         "role": "Editor",
         "rank": "Owner"
       }
