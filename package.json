@@ -13,7 +13,8 @@
     "icon:gen": "npm run tauri icon",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:build:macos:universal": "tauri build --target universal-apple-darwin"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.3.3",
