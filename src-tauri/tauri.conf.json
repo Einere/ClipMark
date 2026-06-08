@@ -54,6 +54,7 @@
     ],
     "targets": "all",
     "macOS": {
+      "hardenedRuntime": true,
       "minimumSystemVersion": "13.0"
     }
   }
