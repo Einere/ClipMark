@@ -31,7 +31,7 @@ node -p "require('./package.json').version"
 node -p "require('./src-tauri/tauri.conf.json').version"
 ```
 
-현재 확인 시점에는 ClipMark의 `package.json`은 `0.1.1`, `src-tauri/tauri.conf.json`은 `0.1.0`이다. 릴리스 workflow는 태그 또는 수동 입력값에서 `v` 접두사를 제거한 버전을 빌드 작업공간의 `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`에 주입한다.
+현재 확인 시점에는 ClipMark의 `package.json`은 `0.1.1`, `src-tauri/tauri.conf.json`은 `0.1.0`이다. 릴리스 태그를 만들기 전에 `npm run release:prepare -- <version>`으로 버전 bump 커밋과 태그를 먼저 만든다.
 
 ```json
 {
@@ -39,7 +39,7 @@ node -p "require('./src-tauri/tauri.conf.json').version"
 }
 ```
 
-로컬 파일의 버전을 미리 맞춰 두는 것이 가장 명확하지만, CI 릴리스 산출물의 버전은 workflow의 `Sync release version` 단계가 최종 기준이다.
+CI는 버전 파일을 자동 수정하지 않는다. 대신 태그 버전과 `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json` 버전이 다르면 release workflow를 실패시킨다.
 
 ## 2. ClipMark용 릴리스 기준 정하기
 
@@ -123,14 +123,37 @@ GitHub 저장소에서 `Settings > Secrets and variables > Actions > New reposit
 
 `APPLE_TEAM_ID`는 Apple Developer 멤버십 페이지에서 확인할 수 있다.
 
-## 8. release.yml에 버전 동기화 단계 추가
+## 8. 릴리스 버전 준비 스크립트 사용
 
-`.github/workflows/release.yml`에서 `Install frontend dependencies` 다음, 인증서 import 이전에 릴리스 버전을 동기화한다.
+릴리스 전에는 로컬에서 버전 bump 커밋과 태그를 먼저 만든다.
 
-태그 기반 실행이면 `github.ref_name`을 사용하고, 수동 실행이면 `inputs.tag_name`을 사용한다. 파일에는 `v` 접두사를 제거한 SemVer 값을 기록한다.
+```sh
+npm run release:prepare -- 0.1.2
+```
+
+이 스크립트는 다음을 수행한다.
+
+- 작업 트리가 깨끗한지 확인한다.
+- `0.1.2` 또는 `v0.1.2` 같은 SemVer 입력을 검증한다.
+- `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`의 `version`을 같은 값으로 갱신한다.
+- `chore(release): v0.1.2` 커밋을 만든다.
+- `v0.1.2` 태그를 만든다.
+- push 명령을 출력한다.
+
+스크립트가 끝나면 출력된 명령으로 브랜치와 태그를 함께 푸시한다.
+
+```sh
+git push origin HEAD v0.1.2
+```
+
+## 9. release.yml에 버전 검증 단계 추가
+
+`.github/workflows/release.yml`에서 `Install frontend dependencies` 다음, 인증서 import 이전에 릴리스 버전을 검증한다.
+
+태그 기반 실행이면 `github.ref_name`을 사용하고, 수동 실행이면 `inputs.tag_name`을 사용한다. CI는 파일을 수정하지 않고, 태그 버전과 파일 버전이 다르면 실패한다.
 
 ```yaml
-      - name: Sync release version
+      - name: Verify release version
         env:
           TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
         run: |
@@ -141,37 +164,32 @@ GitHub 저장소에서 `Settings > Secrets and variables > Actions > New reposit
           fi
 
           node - "$VERSION" <<'NODE'
-          const fs = require("fs");
-          const version = process.argv[2];
+          const expectedVersion = process.argv[2];
+          const pkg = require("./package.json");
+          const lock = require("./package-lock.json");
+          const tauri = require("./src-tauri/tauri.conf.json");
+          const actual = {
+            "package.json": pkg.version,
+            "package-lock.json": lock.version,
+            "package-lock.json packages[\"\"]": lock.packages?.[""]?.version,
+            "src-tauri/tauri.conf.json": tauri.version,
+          };
+          const mismatches = Object.entries(actual).filter(([, version]) => version !== expectedVersion);
 
-          function updateJson(path, updater) {
-            const data = JSON.parse(fs.readFileSync(path, "utf8"));
-            updater(data);
-            fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+          if (mismatches.length > 0) {
+            console.error(`Release tag version is ${expectedVersion}, but version files do not match:`);
+            for (const [path, version] of mismatches) {
+              console.error(`- ${path}: ${version ?? "(missing)"}`);
+            }
+            console.error("Run `npm run release:prepare -- " + expectedVersion + "` before creating the release tag.");
+            process.exit(1);
           }
 
-          updateJson("package.json", data => {
-            data.version = version;
-          });
-
-          updateJson("package-lock.json", data => {
-            data.version = version;
-            if (data.packages && data.packages[""]) {
-              data.packages[""].version = version;
-            }
-          });
-
-          updateJson("src-tauri/tauri.conf.json", data => {
-            data.version = version;
-          });
+          console.log(`Release version verified: ${expectedVersion}`);
           NODE
-
-          node -e 'const pkg=require("./package.json"); const lock=require("./package-lock.json"); const tauri=require("./src-tauri/tauri.conf.json"); if (pkg.version !== lock.version || pkg.version !== lock.packages[""].version || pkg.version !== tauri.version) { console.error({ package: pkg.version, lock: lock.version, lockPackage: lock.packages[""].version, tauri: tauri.version }); process.exit(1); } console.log(`Release version synced: ${pkg.version}`);'
 ```
 
-이 단계는 CI 작업공간의 파일만 수정하고 저장소에 커밋하지 않는다. 결과적으로 `v0.1.2` 태그로 실행하면 빌드 산출물의 앱 버전과 DMG 파일명이 `0.1.2` 기준으로 나온다.
-
-## 9. release.yml에 인증서 import 단계 추가
+## 10. release.yml에 인증서 import 단계 추가
 
 `.github/workflows/release.yml`에서 `Install frontend dependencies` 다음, `Build and upload release assets` 이전에 아래 단계를 추가한다.
 
@@ -206,7 +224,7 @@ GitHub 저장소에서 `Settings > Secrets and variables > Actions > New reposit
           echo "Imported signing identity: $CERT_ID"
 ```
 
-## 10. tauri-action에 서명/공증 환경 변수 추가
+## 11. tauri-action에 서명/공증 환경 변수 추가
 
 기존 `Build and upload release assets` 단계는 모든 matrix platform에서 실행된다. Apple secret을 Linux/Windows job에 넘기지 않도록 macOS용 action과 비-macOS용 action을 분리한다.
 
@@ -248,7 +266,7 @@ GitHub 저장소에서 `Settings > Secrets and variables > Actions > New reposit
 
 Tauri는 `APPLE_SIGNING_IDENTITY`로 code signing identity를 받고, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`로 Apple notarization을 수행한다.
 
-## 11. DMG를 별도로 공증하고 Release asset 교체
+## 12. DMG를 별도로 공증하고 Release asset 교체
 
 로컬 검증 결과 Tauri build는 `.app` bundle을 공증하고 stapling하지만, 생성된 `.dmg` 컨테이너 자체는 별도 공증 전까지 `spctl --type open`에서 `source=Unnotarized Developer ID`로 거절될 수 있다.
 
@@ -280,7 +298,7 @@ GitHub Release에서 사용자가 직접 내려받는 파일은 `.dmg`이므로,
 
 `tauri-action`이 먼저 GitHub Release에 DMG를 올릴 수 있으므로, 이 단계는 공증/stapling된 DMG를 `gh release upload --clobber`로 다시 업로드한다.
 
-## 12. keychain cleanup 단계 추가
+## 13. keychain cleanup 단계 추가
 
 같은 job의 마지막에 cleanup 단계를 추가한다.
 
@@ -291,7 +309,7 @@ GitHub Release에서 사용자가 직접 내려받는 파일은 `.dmg`이므로,
           security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
 ```
 
-## 13. 전체 위치 예시
+## 14. 전체 위치 예시
 
 최종 흐름은 아래 순서가 되어야 한다.
 
@@ -299,11 +317,11 @@ GitHub Release에서 사용자가 직접 내려받는 파일은 `.dmg`이므로,
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Sync release version
+      - name: Verify release version
         env:
           TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
         run: |
-          # write TAG_NAME without the leading v into package.json,
+          # verify TAG_NAME without the leading v matches package.json,
           # package-lock.json, and src-tauri/tauri.conf.json
 
       - name: Install Apple certificate
@@ -351,13 +369,13 @@ GitHub Release에서 사용자가 직접 내려받는 파일은 `.dmg`이므로,
           security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
 ```
 
-## 14. 릴리스 실행
+## 15. 릴리스 실행
 
 태그 기반 릴리스:
 
 ```sh
-git tag v0.1.1
-git push origin v0.1.1
+npm run release:prepare -- 0.1.2
+git push origin HEAD v0.1.2
 ```
 
 수동 실행:
@@ -365,10 +383,10 @@ git push origin v0.1.1
 1. GitHub 저장소의 `Actions` 탭으로 이동한다.
 2. `Release` workflow를 선택한다.
 3. `Run workflow`를 누른다.
-4. `tag_name`에 `v0.1.1`처럼 입력한다.
+4. `tag_name`에 이미 버전 파일과 일치하는 `v0.1.2`처럼 입력한다.
 5. 필요하면 `prerelease`를 선택한다.
 
-## 15. GitHub Actions 로그에서 확인할 것
+## 16. GitHub Actions 로그에서 확인할 것
 
 macOS Apple Silicon과 macOS Intel job에서 다음을 확인한다.
 
@@ -379,7 +397,7 @@ macOS Apple Silicon과 macOS Intel job에서 다음을 확인한다.
 - `spctl --assess --type open` 결과가 `accepted`로 끝난다.
 - GitHub Release에 공증/stapling된 macOS `.dmg`가 attached 된다.
 
-## 16. 다운로드한 산출물 검증
+## 17. 다운로드한 산출물 검증
 
 릴리스 draft에서 macOS 산출물을 내려받은 뒤 Mac에서 검증한다.
 
@@ -411,7 +429,7 @@ xcrun stapler validate path/to/ClipMark.dmg
 
 로컬 keychain에 signing certificate가 없으면 `.app` 검증에서 `Authority=(unavailable)` 또는 `invalid signature`처럼 보일 수 있다. 이 경우 `.env`의 `APPLE_CERTIFICATE`를 임시 keychain에 import한 상태에서 다시 검증하거나, CI의 `Install Apple certificate` 단계 안에서 검증한다.
 
-## 17. 자주 나는 오류
+## 18. 자주 나는 오류
 
 ### Developer ID Application certificate was not found
 
@@ -437,7 +455,7 @@ Apple Developer 계정의 계약이나 멤버십 상태가 완료되지 않은 �
 
 `.app` 공증은 성공했지만 `.dmg` 컨테이너가 별도로 공증되지 않은 상태다. `xcrun notarytool submit path/to/ClipMark.dmg --wait`, `xcrun stapler staple path/to/ClipMark.dmg`, `spctl --assess --type open ...` 순서로 DMG 자체를 공증한다.
 
-## 18. 로컬에서 서명 identity만 테스트
+## 19. 로컬에서 서명 identity만 테스트
 
 CI 전에 로컬 Mac에서 signing identity가 제대로 잡히는지 확인할 수 있다.
 
@@ -458,11 +476,12 @@ npm run tauri:build
 
 민감 정보는 shell history나 공유 로그에 남기지 않는다. 로컬에서는 임시 `.env` 파일을 쓰더라도 커밋하지 않는다.
 
-## 19. 완료 기준
+## 20. 완료 기준
 
 아래가 모두 만족되면 Gatekeeper 차단 방지용 릴리스 파이프라인이 준비된 것이다.
 
-- `package.json`과 `src-tauri/tauri.conf.json`의 릴리스 버전이 일치한다.
+- `npm run release:prepare -- <version>`으로 버전 bump 커밋과 태그를 만들었다.
+- `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`의 릴리스 버전이 태그와 일치한다.
 - GitHub secrets 5개가 모두 등록되어 있다.
 - macOS job이 `Developer ID Application` identity를 찾는다.
 - Tauri release action에 `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`가 전달된다.

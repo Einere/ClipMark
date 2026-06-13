@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "icon:convert": "node scripts/render-app-icon.mjs",
     "icon:gen": "npm run tauri icon",
+    "release:prepare": "node scripts/prepare-release.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
