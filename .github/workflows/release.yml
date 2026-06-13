@@ -74,7 +74,116 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build and upload release assets
+      - name: Sync release version
+        env:
+          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+        run: |
+          VERSION="${TAG_NAME#v}"
+          if ! node -e "process.exit(/^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(process.argv[1]) ? 0 : 1)" "$VERSION"; then
+            echo "::error::Release tag must look like v1.2.3, v1.2.3-beta.1, or v1.2.3+build.1. Received: $TAG_NAME"
+            exit 1
+          fi
+
+          node - "$VERSION" <<'NODE'
+          const fs = require("fs");
+          const version = process.argv[2];
+
+          function updateJson(path, updater) {
+            const data = JSON.parse(fs.readFileSync(path, "utf8"));
+            updater(data);
+            fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+          }
+
+          updateJson("package.json", data => {
+            data.version = version;
+          });
+
+          updateJson("package-lock.json", data => {
+            data.version = version;
+            if (data.packages && data.packages[""]) {
+              data.packages[""].version = version;
+            }
+          });
+
+          updateJson("src-tauri/tauri.conf.json", data => {
+            data.version = version;
+          });
+          NODE
+
+          node -e 'const pkg=require("./package.json"); const lock=require("./package-lock.json"); const tauri=require("./src-tauri/tauri.conf.json"); if (pkg.version !== lock.version || pkg.version !== lock.packages[""].version || pkg.version !== tauri.version) { console.error({ package: pkg.version, lock: lock.version, lockPackage: lock.packages[""].version, tauri: tauri.version }); process.exit(1); } console.log(`Release version synced: ${pkg.version}`);'
+
+      - name: Install Apple certificate
+        if: startsWith(matrix.platform, 'macos')
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          CERT_ID=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          if [ -z "$CERT_ID" ]; then
+            echo "::error::Developer ID Application certificate was not found in the temporary keychain."
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$CERT_ID" >> "$GITHUB_ENV"
+          echo "Imported signing identity: $CERT_ID"
+
+      - name: Build and upload macOS release assets
+        if: startsWith(matrix.platform, 'macos')
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          releaseName: ClipMark ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          releaseBody: "Installers and bundles are attached to this release."
+          releaseDraft: true
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          generateReleaseNotes: true
+          tauriScript: npm run tauri
+          args: ${{ matrix.args }}
+
+      - name: Notarize and replace macOS DMG release asset
+        if: startsWith(matrix.platform, 'macos')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+        run: |
+          DMG_PATH=$(find src-tauri/target -path '*/release/bundle/dmg/*.dmg' -type f | head -1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "::error::No macOS DMG artifact was found under src-tauri/target."
+            find src-tauri/target -maxdepth 8 -path '*/release/bundle/*' -print || true
+            exit 1
+          fi
+
+          xcrun notarytool submit "$DMG_PATH" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+          spctl --assess --type open --context context:primary-signature --verbose "$DMG_PATH"
+          gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
+
+      - name: Build and upload non-macOS release assets
+        if: ${{ !startsWith(matrix.platform, 'macos') }}
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,3 +196,8 @@ jobs:
           generateReleaseNotes: true
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
+
+      - name: Cleanup Apple certificate
+        if: startsWith(matrix.platform, 'macos') && always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
