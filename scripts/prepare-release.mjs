@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,6 +39,28 @@ function run(command, args, options = {}) {
     encoding: "utf8",
     stdio: options.stdio ?? ["ignore", "pipe", "pipe"],
   });
+}
+
+function createVersionFileBackup() {
+  return new Map(
+    VERSION_FILES.map(path => [
+      path,
+      existsSync(path) ? readFileSync(path, "utf8") : undefined,
+    ]),
+  );
+}
+
+function restoreVersionFileBackup(backup) {
+  for (const [path, content] of backup) {
+    if (content !== undefined) {
+      writeFileSync(path, content);
+    }
+  }
+  try {
+    run("git", ["reset", "--", ...VERSION_FILES]);
+  } catch {
+    // Best effort cleanup; the original error should remain the visible failure.
+  }
 }
 
 function assertCleanWorkingTree() {
@@ -86,8 +108,8 @@ async function updateVersionFiles(version) {
 }
 
 function commitAndTag({ tagName, version }) {
-  run("git", ["diff", "--check"], { stdio: "inherit" });
-  run("git", ["add", ...VERSION_FILES], { stdio: "inherit" });
+  run("git", ["diff", "--check"]);
+  run("git", ["add", ...VERSION_FILES]);
 
   const messagePath = join(mkdtempSync(join(tmpdir(), "clipmark-release-")), "commit-message.txt");
   writeFileSync(
@@ -100,8 +122,8 @@ function commitAndTag({ tagName, version }) {
     ].join("\n"),
   );
 
-  run("git", ["commit", "--file", messagePath], { stdio: "inherit" });
-  run("git", ["tag", tagName], { stdio: "inherit" });
+  run("git", ["commit", "--quiet", "--file", messagePath]);
+  run("git", ["tag", tagName]);
 }
 
 async function main() {
@@ -114,10 +136,31 @@ async function main() {
   const release = normalizeReleaseVersion(versionArg);
   assertCleanWorkingTree();
   assertTagDoesNotExist(release.tagName);
-  await updateVersionFiles(release.version);
-  commitAndTag(release);
 
-  console.log("");
+  const backup = createVersionFileBackup();
+  let committed = false;
+  const restoreOnInterrupt = () => {
+    if (!committed) {
+      restoreVersionFileBackup(backup);
+    }
+    process.exit(130);
+  };
+
+  process.once("SIGINT", restoreOnInterrupt);
+  process.once("SIGTERM", restoreOnInterrupt);
+
+  try {
+    await updateVersionFiles(release.version);
+    commitAndTag(release);
+    committed = true;
+  } catch (error) {
+    restoreVersionFileBackup(backup);
+    throw error;
+  } finally {
+    process.removeListener("SIGINT", restoreOnInterrupt);
+    process.removeListener("SIGTERM", restoreOnInterrupt);
+  }
+
   console.log(`Prepared release ${release.tagName}.`);
   console.log(`Push with: git push origin HEAD ${release.tagName}`);
 }
