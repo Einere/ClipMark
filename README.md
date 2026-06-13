@@ -71,8 +71,9 @@ npm run dev
 GitHub Actions로 CI와 GitHub Release 배포를 구성합니다.
 
 - Pull request와 `main` 브랜치 push에서는 프론트엔드 테스트, 프론트엔드 빌드, Rust 체크를 실행합니다.
-- `v*` 형식의 태그를 push하면 macOS, Linux, Windows용 Tauri 번들을 빌드하고 GitHub Release draft에 업로드합니다.
+- `v*` 형식의 태그를 push하면 macOS, Linux, Windows용 Tauri 번들을 빌드하고 단일 GitHub Release draft에 업로드합니다.
 - macOS 번들은 Developer ID로 서명하고, `.app`과 `.dmg`를 공증한 뒤 stapling합니다.
+- 공개 Release asset은 macOS `.dmg`, Windows `setup.exe`, Linux `.AppImage`/`.deb`/`.rpm`만 업로드합니다.
 - GitHub Actions의 `Release` 워크플로를 수동 실행해 특정 태그로 릴리스를 만들 수도 있습니다.
 
 릴리스 전 GitHub 저장소 secrets에 아래 값이 있어야 합니다.

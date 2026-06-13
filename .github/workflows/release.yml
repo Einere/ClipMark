@@ -138,31 +138,19 @@ jobs:
 
       - name: Build and upload macOS release assets
         if: startsWith(matrix.platform, 'macos')
-        uses: tauri-apps/tauri-action@v0.6.2
+        run: npm run tauri:build -- ${{ matrix.args }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
-        with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
-          releaseName: ClipMark ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
-          releaseBody: "Installers and bundles are attached to this release."
-          releaseDraft: true
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          generateReleaseNotes: true
-          tauriScript: npm run tauri
-          args: ${{ matrix.args }}
 
-      - name: Notarize and replace macOS DMG release asset
+      - name: Notarize macOS DMG
         if: startsWith(matrix.platform, 'macos')
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
         run: |
           DMG_PATH=$(find src-tauri/target -path '*/release/bundle/dmg/*.dmg' -type f | head -1)
           if [ -z "$DMG_PATH" ]; then
@@ -175,24 +163,83 @@ jobs:
           xcrun stapler staple "$DMG_PATH"
           xcrun stapler validate "$DMG_PATH"
           spctl --assess --type open --context context:primary-signature --verbose "$DMG_PATH"
-          gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
 
-      - name: Build and upload non-macOS release assets
-        if: ${{ !startsWith(matrix.platform, 'macos') }}
-        uses: tauri-apps/tauri-action@v0.6.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload macOS artifact
+        if: startsWith(matrix.platform, 'macos')
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
-          releaseName: ClipMark ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
-          releaseBody: "Installers and bundles are attached to this release."
-          releaseDraft: true
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          generateReleaseNotes: true
-          tauriScript: npm run tauri
-          args: ${{ matrix.args }}
+          name: macos-dmg
+          path: src-tauri/target/**/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Build non-macOS release assets
+        if: ${{ !startsWith(matrix.platform, 'macos') }}
+        run: npm run tauri:build -- ${{ matrix.args }}
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installers
+          path: |
+            src-tauri/target/**/release/bundle/appimage/*.AppImage
+            src-tauri/target/**/release/bundle/deb/*.deb
+            src-tauri/target/**/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+
+      - name: Upload Windows artifact
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: src-tauri/target/**/release/bundle/nsis/*setup.exe
+          if-no-files-found: error
 
       - name: Cleanup Apple certificate
         if: startsWith(matrix.platform, 'macos') && always()
         run: |
           security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag_name }}
+          PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+        run: |
+          mkdir -p upload
+          find release-artifacts -type f \( \
+            -name '*.dmg' -o \
+            -name '*setup.exe' -o \
+            -name '*.AppImage' -o \
+            -name '*.deb' -o \
+            -name '*.rpm' \
+          \) -exec cp {} upload/ \;
+
+          if [ -z "$(find upload -type f -print -quit)" ]; then
+            echo "::error::No release assets were downloaded."
+            find release-artifacts -type f -print
+            exit 1
+          fi
+
+          find upload -maxdepth 1 -type f -print | sort
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" upload/* --clobber
+          else
+            args=(release create "$TAG_NAME" upload/* --title "ClipMark $TAG_NAME" --notes "Installers are attached to this release." --draft)
+            if [ "$PRERELEASE" = "true" ]; then
+              args+=(--prerelease)
+            fi
+            gh "${args[@]}"
+          fi
