@@ -72,14 +72,25 @@ GitHub Actions로 CI와 GitHub Release 배포를 구성합니다.
 
 - Pull request와 `main` 브랜치 push에서는 프론트엔드 테스트, 프론트엔드 빌드, Rust 체크를 실행합니다.
 - `v*` 형식의 태그를 push하면 macOS, Linux, Windows용 Tauri 번들을 빌드하고 GitHub Release draft에 업로드합니다.
+- macOS 번들은 Developer ID로 서명하고, `.app`과 `.dmg`를 공증한 뒤 stapling합니다.
 - GitHub Actions의 `Release` 워크플로를 수동 실행해 특정 태그로 릴리스를 만들 수도 있습니다.
 
-새 버전을 배포하려면 `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`의 버전을 맞춘 뒤 태그를 push합니다.
+릴리스 전 GitHub 저장소 secrets에 아래 값이 있어야 합니다.
+
+- `APPLE_CERTIFICATE`
+- `APPLE_CERTIFICATE_PASSWORD`
+- `APPLE_ID`
+- `APPLE_PASSWORD`
+- `APPLE_TEAM_ID`
+
+새 버전을 배포할 때는 버전 bump 커밋과 태그를 먼저 만듭니다. 이 스크립트는 `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`의 버전을 같은 값으로 맞추고 `chore(release): vX.Y.Z` 커밋과 `vX.Y.Z` 태그를 생성합니다.
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+npm run release:prepare -- 0.1.2
+git push origin HEAD v0.1.2
 ```
+
+릴리스 워크플로는 태그 버전과 세 버전 파일이 일치하지 않으면 실패합니다. 따라서 태그를 직접 만들기보다 `npm run release:prepare -- <version>`을 사용하는 것을 권장합니다.
 
 워크플로가 끝나면 GitHub Releases에서 draft를 확인하고 릴리스 노트와 첨부 파일을 검토한 뒤 게시합니다.
 
