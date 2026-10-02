@@ -84,7 +84,7 @@ export const MarkdownEditor = forwardRef<
         extensions: [
           minimalSetup,
           markdown(),
-          search(),
+          search({ top: true }),
           lineNumbers(),
           foldGutter(),
           highlightActiveLineGutter(),
