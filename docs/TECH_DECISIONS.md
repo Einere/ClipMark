@@ -67,7 +67,7 @@ Keep preview generation behind a single function boundary:
 - 미리보기는 별도 보조 WebviewWindow이며 문서 registry의 독립 편집 세션으로 등록하지 않는다. 닫으면 파괴하고 열 때 최신 전체 상태를 전달한다.
 - 창 사이 초기 연결에는 준비 완료 후 전체 상태 전달이 필요하다. 이후 변경은 문서·창 식별자와 증가 순서로 구분해 오래된 상태와 다른 문서의 이벤트를 버린다.
 - 기존 lazy markdown serialization을 유지한다. 미리보기가 닫혀 있으면 이를 위한 문자열 직렬화·전송·렌더링을 하지 않는다.
-- 파일명 변경은 Save As와 구분한다. 본문과 savedRevision, editorDocumentKey를 변경하지 않고 파일 시스템 이름과 metadata·registry를 갱신한다.
+- 인라인 파일명 변경은 제공하지 않는다. 기존 Save As로 새 경로에 저장하며 원본 파일은 유지한다.
 - 미리보기 추적 재개는 편집 동작을 기준으로 한다. 수동 스크롤 중단에 시간 만료를 사용하지 않는다.
 - 기존 색상 토큰 계층은 [COLOR_TOKEN_SPEC.md](./COLOR_TOKEN_SPEC.md)를 따른다.
 

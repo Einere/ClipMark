@@ -6,7 +6,6 @@ import {
   getNewDocumentWorkspaceState,
   getOpenedDocumentWorkspaceState,
   getSavedDocumentWorkspaceState,
-  getRenamedDocumentWorkspaceState,
   INITIAL_DOCUMENT_WORKSPACE_STATE,
   type WorkspaceDocument,
 } from "../lib/document-workspace-state";
@@ -20,9 +19,6 @@ export function useDocumentWorkspaceState(documentStore: DocumentStore) {
   }
 
   return {
-    applyRenamedDocument(renamed: SavedDocument) {
-      setWorkspaceState((previous) => getRenamedDocumentWorkspaceState(previous, renamed));
-    },
     applyOpenedDocument(document: WorkspaceDocument) {
       const savedRevision = replaceMarkdownAndReadRevision(document.markdown);
       setWorkspaceState((previousState) => getOpenedDocumentWorkspaceState(

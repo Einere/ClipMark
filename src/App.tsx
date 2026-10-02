@@ -226,8 +226,6 @@ export default function App({ initialPreferences }: AppProps) {
       ) : (
         <Suspense fallback={<AppShellFallback />}>
           <EditorWorkspace
-            filename={session.filename ?? "Untitled.md"}
-            onRenameDocument={session.renameDocument}
             onEditorActivity={preview.onEditorActivity}
             documentKey={session.editorDocumentKey}
             documentStatus={viewState.visibleDocumentStatus}

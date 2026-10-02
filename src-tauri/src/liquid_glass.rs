@@ -3,11 +3,25 @@ use std::collections::HashMap;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2::rc::Retained;
 use objc2::runtime::NSObject;
-use objc2_app_kit::{NSButton, NSGlassEffectView, NSView, NSWindow};
+use objc2_app_kit::{NSButton, NSCursor, NSGlassEffectView, NSView, NSWindow};
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 use tauri::{Emitter, Manager, WebviewWindow};
 
 struct TargetState { window: WebviewWindow }
+
+define_class!(
+    #[unsafe(super(NSButton))]
+    #[thread_kind = MainThreadOnly]
+    struct FloatingButton;
+    impl FloatingButton {
+        #[unsafe(method(resetCursorRects))]
+        fn reset_cursor_rects(&self) {
+            unsafe { let _: () = msg_send![super(self), resetCursorRects]; }
+            let cursor = if self.isEnabled() { NSCursor::pointingHandCursor() } else { NSCursor::arrowCursor() };
+            self.addCursorRect_cursor(self.bounds(), &cursor);
+        }
+    }
+);
 
 define_class!(
     #[unsafe(super(NSObject))]
@@ -43,7 +57,9 @@ fn rect(x: f64, y: f64, w: f64, h: f64) -> NSRect {
 fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::runtime::Sel) -> (Retained<NSGlassEffectView>, Retained<NSButton>) {
     let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
     glass.setCornerRadius(22.0);
-    let button = NSButton::initWithFrame(NSButton::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
+    let button = FloatingButton::alloc(mtm).set_ivars(());
+    let button: Retained<FloatingButton> = unsafe { msg_send![super(button), initWithFrame: rect(0.0, 0.0, 100.0, 44.0)] };
+    let button = button.into_super();
     button.setBordered(false);
     unsafe {
         button.setTarget(Some(target));
@@ -116,6 +132,8 @@ pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, p
             });
             controls.path_button.setTitle(&NSString::from_str(path.as_deref().unwrap_or("Unsaved document")));
             controls.path_button.setEnabled(path.is_some());
+            native.invalidateCursorRectsForView(&controls.path_button);
+            native.invalidateCursorRectsForView(&controls.preview_button);
             controls.preview_button.setTitle(&NSString::from_str(if preview_open { "Hide preview" } else { "Preview" }));
             unsafe {
                 let _: () = msg_send![&*controls.path_button, setAccessibilityLabel: &*NSString::from_str("Copy file path")];

@@ -59,7 +59,7 @@ Existing Markdown editors are often optimized for people who already write Markd
 - Open an existing `.md` file
 - Save and Save As
 - 파일 하나에 편집창 하나, 선택적인 별도 미리보기 보조 창
-- 상단 파일명 직접 수정, 저장 전 내용과 실행 취소 이력 유지
+- 별도 제목 편집 영역 없음, 파일명은 창 제목으로 확인하고 ⇧⌘S로 다른 이름으로 저장
 - 커서·입력에 따른 미리보기 추적, 수동 스크롤 시 중단, 편집 재개 시 추적 재개
 - 편집창 내부의 접이식 목차, 은은한 줄 번호
 - 편집·미리보기 본문 최대 폭 제한 없음

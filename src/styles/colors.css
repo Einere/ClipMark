@@ -29,14 +29,14 @@
   --red-600: oklch(0.55 0.13 28);
 
   /* Semantic tokens: background */
-  --color-bg-canvas: var(--slate-50);
+  --color-bg-canvas: var(--slate-0);
   --color-bg-subtle: var(--slate-100);
   --color-bg-elevated: var(--slate-0);
 
   /* Semantic tokens: text */
   --color-text-strong: var(--slate-900);
   --color-text-muted: var(--slate-700);
-  --color-text-soft: var(--slate-500);
+  --color-text-soft: var(--slate-600);
 
   /* Semantic tokens: border */
   --color-border-subtle: var(--slate-200);

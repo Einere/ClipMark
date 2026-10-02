@@ -51,10 +51,6 @@ export function getSavedDocumentWorkspaceState(
   };
 }
 
-export function getRenamedDocumentWorkspaceState(previousState: DocumentWorkspaceState, renamed: SavedDocument): DocumentWorkspaceState {
-  return { ...previousState, filename: renamed.filename, filePath: renamed.path };
-}
-
 export function getClosedDocumentWorkspaceState(
   previousState: DocumentWorkspaceState,
   savedRevision: number,

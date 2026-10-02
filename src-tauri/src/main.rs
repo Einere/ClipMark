@@ -531,53 +531,6 @@ fn write_markdown_file(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| error.to_string())
 }
 
-#[derive(Serialize)]
-struct RenamedDocument { filename: String, path: String }
-
-#[tauri::command]
-fn rename_markdown_document(window: tauri::Window, registry_state: State<'_, WindowRegistryState>, filename: String) -> Result<RenamedDocument, String> {
-    let mut registry = registry_state.registry.lock().map_err(|e| e.to_string())?;
-    rename_registered_document(&mut registry, window.label(), &filename)
-}
-
-fn rename_registered_document(registry: &mut WindowRegistry, label: &str, filename: &str) -> Result<RenamedDocument, String> {
-    let filename = filename.trim();
-    if filename.is_empty() || filename == "." || filename == ".." || filename.contains(['/', '\\', '\0', ':']) || !filename.to_lowercase().ends_with(".md") {
-        return Err("Enter a valid Markdown file name.".into());
-    }
-    let old = match registry.window_states.get(label) {
-        Some(WindowDocumentState::Path(path)) => registry.opened_paths.get(label).unwrap_or(path).clone(),
-        _ => return Err("This document has no saved file.".into()),
-    };
-    let target = Path::new(&old).parent().ok_or("Missing parent folder")?.join(filename);
-    let new_path = target.to_string_lossy().into_owned();
-    if old != new_path {
-        if registry.is_path_open_elsewhere(label, &normalize_document_path_for_registry(&new_path)) {
-            return Err("That file is already open in another window.".into());
-        }
-        rename_without_overwrite(Path::new(&old), &target)?;
-        registry.register_opened_document_path(label, new_path.clone());
-    }
-    Ok(RenamedDocument { filename: filename.into(), path: new_path })
-}
-
-fn rename_without_overwrite(old: &Path, target: &Path) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        use std::os::unix::ffi::OsStrExt;
-        use std::ffi::CString;
-        unsafe extern "C" { fn renamex_np(from: *const std::ffi::c_char, to: *const std::ffi::c_char, flags: u32) -> i32; }
-        let old = CString::new(old.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
-        let target = CString::new(target.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
-        // RENAME_EXCL is atomic: another process creating the target cannot be overwritten.
-        let result = unsafe { renamex_np(old.as_ptr(), target.as_ptr(), 0x4) };
-        if result != 0 { return Err(std::io::Error::last_os_error().to_string()); }
-        Ok(())
-    }
-    #[cfg(not(target_os = "macos"))]
-    { let _ = (old, target); Err("File renaming requires macOS.".into()) }
-}
-
 #[tauri::command]
 fn load_app_preferences(
     preferences_state: State<'_, PreferencesState>,
@@ -1052,7 +1005,6 @@ fn main() {
             open_external_url,
             pick_markdown_file,
             read_markdown_file,
-            rename_markdown_document,
             register_window_document_path,
             register_window_untitled_document,
             register_window_welcome,
@@ -1121,44 +1073,22 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn rename_symlink_keeps_original_target_and_preserves_opened_path() {
+    fn symlink_preserves_opened_path_and_canonical_document_identity() {
         let folder = std::env::temp_dir().join(format!("clipmark-symlink-{}", std::process::id()));
         fs::create_dir_all(folder.join("clips")).unwrap();
         let original = folder.join("original.md");
         let link = folder.join("clips/article.md");
-        let renamed = folder.join("clips/renamed.md");
         fs::write(&original, "original").unwrap();
         std::os::unix::fs::symlink(&original, &link).unwrap();
         let mut registry = WindowRegistry::default();
         registry.register_opened_document_path("document-1", link.to_string_lossy().into_owned());
         assert_eq!(initial_document_window_state_for_label(&registry, "document-1").path, Some(link.to_string_lossy().into_owned()));
-        super::rename_registered_document(&mut registry, "document-1", "renamed.md").unwrap();
         assert!(original.exists());
-        assert!(!link.exists());
-        assert!(fs::symlink_metadata(&renamed).unwrap().file_type().is_symlink());
-        assert_eq!(fs::read_to_string(&renamed).unwrap(), "original");
+        assert!(fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+        assert_eq!(fs::read_to_string(&link).unwrap(), "original");
         assert_eq!(registry.window_for_path(&normalize_document_path_for_registry(&original.to_string_lossy())), Some("document-1".into()));
         registry.unregister_window("document-1");
         assert!(registry.opened_paths.is_empty());
-        let _ = fs::remove_dir_all(folder);
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn rename_keeps_contents_and_never_overwrites_an_existing_target() {
-        let folder = std::env::temp_dir().join(format!("clipmark-rename-{}", std::process::id()));
-        fs::create_dir_all(&folder).unwrap();
-        let old = folder.join("old.md");
-        let target = folder.join("target.md");
-        fs::write(&old, "original on disk").unwrap();
-        fs::write(&target, "other document").unwrap();
-        assert!(super::rename_without_overwrite(&old, &target).is_err());
-        assert_eq!(fs::read_to_string(&old).unwrap(), "original on disk");
-        assert_eq!(fs::read_to_string(&target).unwrap(), "other document");
-        fs::remove_file(&target).unwrap();
-        super::rename_without_overwrite(&old, &target).unwrap();
-        assert!(!old.exists());
-        assert_eq!(fs::read_to_string(&target).unwrap(), "original on disk");
         let _ = fs::remove_dir_all(folder);
     }
 
