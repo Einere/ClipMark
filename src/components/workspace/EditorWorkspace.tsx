@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useDeferredValue, useMemo, useRef } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -30,6 +30,7 @@ const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
 
 type EditorWorkspaceProps = {
+  onEditorActivity?: (line: number | null, editSequence: number) => void;
   documentKey: number;
   documentStore: DocumentStore;
   documentStatus: DocumentStatus | null;
@@ -46,6 +47,12 @@ type EditorWorkspaceProps = {
   }) => void;
   onEditorFocusChange: (focused: boolean) => void;
 };
+
+function EditorActivity({ onActivity }: { onActivity?: EditorWorkspaceProps["onEditorActivity"] }) {
+  const { activeLine, editSequence } = useEditorViewState();
+  useEffect(() => { onActivity?.(activeLine, editSequence); }, [activeLine, editSequence, onActivity]);
+  return null;
+}
 
 function DocumentPreviewPane({
   markdown,
@@ -114,6 +121,7 @@ function DocumentTocPane({
 }
 
 export function EditorWorkspace({
+  onEditorActivity,
   documentKey,
   documentStore,
   documentStatus,
@@ -192,6 +200,7 @@ export function EditorWorkspace({
 
   return (
     <EditorViewStateProvider documentKey={documentKey}>
+      <EditorActivity onActivity={onEditorActivity} />
       <div className="editor-workspace">
         <WorkspaceLayout
           editorContent={(
@@ -200,11 +209,6 @@ export function EditorWorkspace({
               data-panel="editor"
               id="editor-workspace-editor-panel"
             >
-              <div className="editor-workspace__panel-header">
-                <div className="editor-workspace__panel-heading">
-                  <span className="editor-workspace__panel-kicker">Writing</span>
-                </div>
-              </div>
               <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">
                 <div className="editor-workspace__editor-surface">
                   <MarkdownEditor

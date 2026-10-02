@@ -13,13 +13,8 @@ export function TocPanel({
   onSelectHeading,
 }: TocPanelProps) {
   return (
-    <aside className="toc-panel">
-      <div className="toc-panel__header">
-        <div className="toc-panel__heading">
-          <span className="toc-panel__kicker">Contents</span>
-        </div>
-      </div>
-      <nav className="toc-panel__nav">
+    <aside aria-label="Table of contents" className="toc-panel">
+      <nav aria-label="Document headings" className="toc-panel__nav">
         {headings.length === 0 ? (
           <p className="toc-panel__empty">Add headings to build a table of contents.</p>
         ) : (

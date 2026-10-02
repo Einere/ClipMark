@@ -3,9 +3,13 @@
 ## Product
 
 - Product name: `ClipMark`
-- One-line definition: A lightweight Markdown editor optimized for archiving web content into local `.md` files.
-- Platform: macOS first
-- Technical direction: `Tauri + React + CodeMirror 6 + remark/rehype + Turndown`
+- One-line definition: 가장 간편하고 우아한 Markdown 파일 편집기. 클리핑에서 편집으로 이어지는 연속성을 유지한다.
+- Platform: Tauri 재단장은 macOS 13 이상 및 Windows/Linux 지원 유지. macOS 26 제한은 후속 Apple 네이티브 전환에서 검토
+- Technical direction: `Tauri + React + CodeMirror 6 + markdown-it + Turndown`, 조작부에 실제 AppKit Liquid Glass 적용
+
+## 재단장 기준
+
+[CLIPMARK_REDESIGN.md](./CLIPMARK_REDESIGN.md)는 합의된 재단장 기준이다. 첫 구현과 검증 범위는 [구현 기록](./superpowers/plans/2026-10-02-clipmark-redesign-ledger.md)을 참조한다. HTML 허용 목록 확장은 후속 범위다.
 
 ## Problem
 
@@ -19,8 +23,8 @@ Existing Markdown editors are often optimized for people who already write Markd
 
 ## Core Value
 
-- Fast startup and responsive editing
-- Clear split between text editing and rendered preview
+- 조용하고 우아한 화면을 최우선으로 하고 빠르고 안정적인 편집을 다음 우선순위로 둔다.
+- 안정적인 원문 편집과 필요할 때 여는 별도 미리보기 창
 - High-quality paste conversion from web content into Markdown
 - File-first workflow with minimal UI overhead
 
@@ -54,7 +58,12 @@ Existing Markdown editors are often optimized for people who already write Markd
 - Create a new Markdown document
 - Open an existing `.md` file
 - Save and Save As
-- Split layout with editor and preview
+- 파일 하나에 편집창 하나, 선택적인 별도 미리보기 보조 창
+- 별도 제목 편집 영역 없음, 파일명은 창 제목으로 확인하고 ⇧⌘S로 다른 이름으로 저장
+- 커서·입력에 따른 미리보기 추적, 수동 스크롤 시 중단, 편집 재개 시 추적 재개
+- 편집창 내부의 접이식 목차, 은은한 줄 번호
+- 편집·미리보기 본문 최대 폭 제한 없음
+- 좌하단 경로 복사와 우하단 미리보기 토글에 실제 Apple Liquid Glass 적용
 - Table of contents panel based on headings
 - GitHub Flavored Markdown rendering
 - `details/summary` rendering support
@@ -67,13 +76,13 @@ Existing Markdown editors are often optimized for people who already write Markd
 
 - In-document search
 - Code block syntax highlighting in preview
-- Toggle controls for TOC and preview panels
+- 목차 패널과 별도 미리보기 창을 단축키로 토글
 - HTML export
 - PDF export
 
 ### Later
 
-- Multi-tab editing
+- 젠 모드, 탭, 라이브러리는 첫 재단장 범위에서 제외
 - Folder library or workspace browser
 - Tags and metadata management
 - Image asset management
@@ -90,10 +99,11 @@ Existing Markdown editors are often optimized for people who already write Markd
 
 - Paste conversion quality may define product perception more than the editor itself
 - Complex tables and interactive web layouts may degrade poorly if conversion rules are too aggressive
-- Overbuilding general editor features could dilute the archive-first value proposition
+- 기능 확대가 간편한 파일 편집과 클리핑 연속성을 해칠 수 있다.
+- 네이티브 조작부의 창별 이벤트·접근성과 별도 미리보기 연결을 실제 macOS에서 검증해야 한다.
 
 ## Open Decisions
 
-- Final product name
 - Whether HTML export ships in MVP or immediately after
 - Whether image binary paste is supported in MVP or postponed
+- 의미 보존용 제한 HTML의 구체적인 허용 목록은 클리핑 후속 작업에서 확정한다. 원본 CSS와 실행 가능한 콘텐츠는 제외한다.

@@ -2,7 +2,6 @@ export const PANEL_RESIZE_HANDLE_WIDTH_PX = 12;
 export const DEFAULT_TOC_PANEL_WIDTH_PX = 256;
 export const DEFAULT_PREVIEW_PANEL_WIDTH_PX = 440;
 export const MIN_TOC_PANEL_WIDTH_PX = 176;
-export const MAX_TOC_PANEL_WIDTH_PX = 384;
 export const MIN_PREVIEW_PANEL_WIDTH_PX = 280;
 export const MAX_PREVIEW_PANEL_WIDTH_PX = 720;
 export const MIN_EDITOR_PANEL_WIDTH_PX = 420;
@@ -38,7 +37,7 @@ function getResolvedPanelWidth(kind: PanelKind, width: number | null) {
 function getPanelBounds(kind: PanelKind) {
   if (kind === "toc") {
     return {
-      max: MAX_TOC_PANEL_WIDTH_PX,
+      max: Number.MAX_SAFE_INTEGER,
       min: MIN_TOC_PANEL_WIDTH_PX,
     };
   }

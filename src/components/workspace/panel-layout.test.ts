@@ -11,6 +11,14 @@ import {
 } from "./panel-layout";
 
 describe("panel-layout", () => {
+  it("lets the toc exceed the old cap while preserving editor space", () => {
+    expect(clampPanelWidth("toc", 900, {
+      containerWidth: 1600, hasPreview: false, hasToc: true, siblingWidth: null,
+    })).toBe(900);
+    expect(getMaxAllowedPanelWidth({
+      containerWidth: 1600, hasPreview: false, hasToc: true, siblingWidth: null, kind: "toc",
+    })).toBe(1168);
+  });
   it("uses defaults when a panel width preference is missing", () => {
     expect(
       clampPanelWidth("toc", null, {

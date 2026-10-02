@@ -2,6 +2,10 @@
 
 Product: `ClipMark`
 
+제품 방향은 [CLIPMARK_REDESIGN.md](./CLIPMARK_REDESIGN.md)를 따른다.
+
+재단장에서도 클리핑 → 편집의 의미적 연속성을 유지한다. 원본 스타일은 제외하며 Markdown으로 보존할 수 없는 의미에만 제한 HTML을 사용한다. 아래 HTML 보존 규칙은 허용 목록과 렌더링 안전 정책 안에서만 적용한다. 구체적인 목록 확장은 시각 재단장과 별도 후속 작업이다.
+
 ## Goal
 
 Transform externally copied content into a clean Markdown draft that preserves useful structure while discarding irrelevant styling.
@@ -63,7 +67,7 @@ Transform externally copied content into a clean Markdown draft that preserves u
 ## Table Policy
 
 - Convert simple tables to Markdown tables
-- Preserve complex tables as HTML if `rowspan` or `colspan` makes Markdown unsafe
+- Preserve complex tables as limited HTML only if supported by the allowlist and renderer; otherwise preserve readable contents and order
 - Prefer safe preservation over broken conversion
 
 ## Image Policy
@@ -82,7 +86,9 @@ Transform externally copied content into a clean Markdown draft that preserves u
 
 - If semantic structure is clear, convert to Markdown
 - If structure is unclear but text is valuable, preserve readable text
-- If a fragment is structurally rich and conversion is unsafe, preserve as HTML
+- If Markdown would lose meaning, preserve only allowed semantic HTML (superscript/subscript are candidates)
+- Never preserve arbitrary source HTML, original CSS, scripts, event handlers, or executable URLs
+- If unsupported, preserve readable text and order instead
 
 ## Post-Processing Rules
 

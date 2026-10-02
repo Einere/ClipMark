@@ -17,7 +17,7 @@ describe("panel-resize-handle", () => {
       "aria-controls": "editor-workspace-editor-panel",
       "aria-label": "Resize table of contents panel",
       "aria-orientation": "vertical",
-      "aria-valuemax": 384,
+      "aria-valuemax": 476,
       "aria-valuemin": 176,
       "aria-valuenow": 260,
       "data-active": false,

@@ -621,8 +621,7 @@
   box-shadow: none;
 }
 
-.editor-workspace__panel-header,
-.toc-panel__header {
+.editor-workspace__panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -633,15 +632,13 @@
     linear-gradient(180deg, var(--color-bg-header-start), var(--color-bg-header-end));
 }
 
-.editor-workspace__panel-heading,
-.toc-panel__heading {
+.editor-workspace__panel-heading {
   min-width: 0;
   display: grid;
   gap: 0.28rem;
 }
 
-.editor-workspace__panel-kicker,
-.toc-panel__kicker {
+.editor-workspace__panel-kicker {
   color: var(--color-text-soft);
   font-size: var(--font-size--1);
   font-weight: var(--font-weight-semibold);
@@ -813,7 +810,7 @@
 /* NOTE: 에디터 본문 스타일 (좌측 줄 라인 영역 제외) */
 .markdown-editor .cm-content {
   caret-color: var(--color-editor-caret);
-  max-width: 76ch;
+  max-width: none;
   padding-bottom: 30vh;
 }
 
@@ -891,7 +888,7 @@
 }
 
 .markdown-preview__content {
-  max-width: var(--container-reading);
+  max-width: none;
   padding: 1.35rem 1.45rem 4.4rem;
   margin: 0 auto;
   color: var(--color-text-strong);
@@ -1016,6 +1013,7 @@
 }
 
 .toc-panel__nav {
+  min-height: 0;
   display: grid;
   align-content: start;
   gap: 0.2rem;
@@ -1026,7 +1024,7 @@
 .toc-panel__empty {
   margin: 0;
   padding: 0.45rem;
-  color: var(--color-text-soft);
+  color: var(--color-text-muted);
   line-height: 1.55;
 }
 
@@ -1098,8 +1096,7 @@
     align-items: stretch;
   }
 
-  .editor-workspace__panel-header,
-  .toc-panel__header {
+  .editor-workspace__panel-header {
     flex-direction: column;
     align-items: stretch;
   }

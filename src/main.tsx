@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { PreviewWindow } from "./components/preview/PreviewWindow";
 import { ToastProvider } from "./components/toast/ToastProvider";
 import { loadAppPreferences } from "./lib/preview-preferences";
 import { applyTheme } from "./lib/theme";
@@ -13,7 +14,8 @@ async function main() {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <ToastProvider>
-        <App initialPreferences={initialPreferences} />
+        {new URLSearchParams(window.location.search).has("preview")
+          ? <PreviewWindow /> : <App initialPreferences={initialPreferences} />}
       </ToastProvider>
     </React.StrictMode>,
   );

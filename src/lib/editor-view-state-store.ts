@@ -1,4 +1,5 @@
 type EditorViewState = {
+  editSequence: number;
   activeLine: number | null;
   isFocused: boolean;
 };
@@ -14,6 +15,7 @@ export type EditorViewStateStore = {
 };
 
 const DEFAULT_EDITOR_VIEW_STATE: EditorViewState = {
+  editSequence: 0,
   activeLine: 1,
   isFocused: false,
 };
@@ -34,6 +36,7 @@ export function createEditorViewStateStore(
   function updateState(nextState: EditorViewState) {
     if (
       state.activeLine === nextState.activeLine &&
+      state.editSequence === nextState.editSequence &&
       state.isFocused === nextState.isFocused
     ) {
       return;
@@ -54,6 +57,7 @@ export function createEditorViewStateStore(
       updateState({
         ...state,
         activeLine,
+        editSequence: state.editSequence + 1,
       });
     },
     setFocused(isFocused) {

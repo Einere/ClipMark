@@ -330,7 +330,7 @@ describe("MarkdownPreview", () => {
     expect(scrollTo.mock.calls.length).toBeGreaterThan(callCountBeforeLineChange);
   });
 
-  it("resumes auto-scroll after the manual scroll suspension expires", () => {
+  it("keeps manual scroll after time passes and resumes on another editor action", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-22T00:00:00.000Z"));
     cleanupHandlers.push(() => {
@@ -420,6 +420,13 @@ describe("MarkdownPreview", () => {
       vi.advanceTimersByTime(16);
     });
 
+    expect(scrollTo.mock.calls.length).toBe(callCountBeforeResume);
+    renderer.render({
+      activeLine: 7,
+      editSequence: 1,
+      markdown: "# Heading\n\nFirst paragraph\n\n## Section\n\nSecond paragraph",
+    });
+    act(() => { vi.advanceTimersByTime(16); });
     expect(scrollTo.mock.calls.length).toBeGreaterThan(callCountBeforeResume);
   });
 
