@@ -979,12 +979,13 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .on_window_event(|window, event| {
-            #[cfg(target_os = "macos")]
             match event {
+                #[cfg(target_os = "macos")]
                 tauri::WindowEvent::Resized(_) => {
                     if let Some(webview) = window.app_handle().get_webview_window(window.label()) { liquid_glass::resize(&webview); }
                 }
                 tauri::WindowEvent::Destroyed => {
+                    #[cfg(target_os = "macos")]
                     liquid_glass::remove(window.label().to_string(), window.app_handle());
                     preview_window::destroyed(window.app_handle(), window.label());
                 }
