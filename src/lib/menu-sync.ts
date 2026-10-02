@@ -147,7 +147,6 @@ async function syncRecentFilesMenu({
     await recentSubmenu.append(
       await createMenuItem({
         enabled: false,
-        id: "file-open-recent-empty",
         text: "No Recent Files",
       }),
     );
@@ -158,7 +157,6 @@ async function syncRecentFilesMenu({
   for (const file of recentFiles) {
     recentItems.push(await createMenuItem({
       action: () => handlers.onOpenRecent(file.path),
-      id: `recent-${file.path}`,
       text: file.filename,
     }));
   }
@@ -168,7 +166,6 @@ async function syncRecentFilesMenu({
   await recentSubmenu.append(
     await createMenuItem({
       action: () => handlers.onClearRecentFiles(),
-      id: "file-open-recent-clear",
       text: "Clear Recent Files",
     }),
   );

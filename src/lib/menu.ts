@@ -45,8 +45,9 @@ export async function setupAppMenu(
   const { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } =
     await import("@tauri-apps/api/menu");
 
+  // Let Tauri allocate process-wide unique IDs: callbacks are keyed by ID across windows.
+
   const recentSubmenu = await Submenu.new({
-    id: "file-open-recent",
     items: [],
     text: "Open Recent",
   });
@@ -54,59 +55,50 @@ export async function setupAppMenu(
   const saveItem = await MenuItem.new({
     accelerator: "CmdOrCtrl+S",
     action: () => handlers.onSave(),
-    id: "file-save",
     text: "Save",
   });
 
   const saveAsItem = await MenuItem.new({
     accelerator: "CmdOrCtrl+Shift+S",
     action: () => handlers.onSaveAs(),
-    id: "file-save-as",
     text: "Save As...",
   });
 
   const copyPathItem = await MenuItem.new({
     accelerator: "Alt+CmdOrCtrl+C",
     action: () => handlers.onCopyFilePath(),
-    id: "file-copy-path",
     text: "Copy File Path",
   });
 
   const previewItem = await CheckMenuItem.new({
     accelerator: "Alt+CmdOrCtrl+P",
     action: () => handlers.onTogglePreview(),
-    id: "view-toggle-preview",
     text: "Preview",
   });
 
   const tocItem = await CheckMenuItem.new({
     accelerator: "Alt+CmdOrCtrl+T",
     action: () => handlers.onToggleToc(),
-    id: "view-toggle-toc",
     text: "Table of Contents",
   });
 
   const externalMediaItem = await CheckMenuItem.new({
     action: () => handlers.onToggleExternalMedia(),
-    id: "view-toggle-external-media",
     text: "Load External Media",
   });
 
   const themeSystemItem = await CheckMenuItem.new({
     action: () => handlers.onSetThemeMode("system"),
-    id: "app-theme-system",
     text: "System",
   });
 
   const themeLightItem = await CheckMenuItem.new({
     action: () => handlers.onSetThemeMode("light"),
-    id: "app-theme-light",
     text: "Light",
   });
 
   const themeDarkItem = await CheckMenuItem.new({
     action: () => handlers.onSetThemeMode("dark"),
-    id: "app-theme-dark",
     text: "Dark",
   });
 
@@ -138,13 +130,11 @@ export async function setupAppMenu(
       await MenuItem.new({
         accelerator: "CmdOrCtrl+N",
         action: () => handlers.onNew(),
-        id: "file-new",
         text: "New",
       }),
       await MenuItem.new({
         accelerator: "CmdOrCtrl+O",
         action: () => handlers.onOpen(),
-        id: "file-open",
         text: "Open...",
       }),
       await PredefinedMenuItem.new({ item: "Separator" }),

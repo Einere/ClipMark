@@ -31,7 +31,7 @@ export function usePreviewWindow(options: {
       sequence: ++sequence.current, documentRevision: revision, markdown: content.current.markdown,
       filePath: options.filePath, filename: options.filename, themeMode: options.themeMode,
       autoLoadExternalMedia: options.autoLoadExternalMedia,
-      menuState: { canUseEditMenu: false, canUseViewMenu: true, canCopyFilePath: !!options.filePath,
+      menuState: { canUseEditMenu: true, canUseViewMenu: true, canCopyFilePath: !!options.filePath,
         canSave: options.canSave, canTogglePanels: true, isExternalMediaAutoLoadEnabled: options.autoLoadExternalMedia,
         isPreviewVisible: true, isTocVisible: options.isTocVisible, themeMode: options.themeMode, recentFiles: options.recentFiles },
     }).catch(() => {

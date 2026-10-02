@@ -10,6 +10,9 @@ const createdSubmenusByText = new Map<string, ReturnType<typeof createSubmenu>>(
 function createMenuItem(options: Record<string, unknown>) {
   return {
     ...options,
+    id: options.id as string,
+    text: options.text as string,
+    action: options.action as (() => void) | undefined,
     setChecked: vi.fn().mockResolvedValue(undefined),
     setEnabled: vi.fn().mockResolvedValue(undefined),
     setText: vi.fn().mockResolvedValue(undefined),
@@ -40,11 +43,14 @@ function createSubmenu(options: { items: unknown[]; text: string; id?: string })
 }
 
 function trackCreatedItem(options: Record<string, unknown>) {
-  const item = createMenuItem(options);
-  if (typeof options.id === "string") {
-    createdMenuItems.set(options.id, item);
-  }
+  const id = typeof options.id === "string" ? options.id : `generated-${createdMenuItems.size}`;
+  const item = createMenuItem({ ...options, id });
+  createdMenuItems.set(id, item);
   return item;
+}
+
+function getCreatedItem(text: string) {
+  return [...createdMenuItems.values()].find((item) => item.text === text)!;
 }
 
 function trackCreatedSubmenu(options: { items: unknown[]; text: string; id?: string }) {
@@ -147,20 +153,20 @@ describe("setupAppMenu", () => {
       }),
     );
 
-    const saveItem = createdMenuItems.get("file-save") as {
+    const saveItem = getCreatedItem("Save") as {
       setEnabled: ReturnType<typeof vi.fn>;
     };
-    const previewItem = createdMenuItems.get("view-toggle-preview") as {
+    const previewItem = getCreatedItem("Preview") as {
       setChecked: ReturnType<typeof vi.fn>;
       setEnabled: ReturnType<typeof vi.fn>;
     };
-    const externalMediaItem = createdMenuItems.get("view-toggle-external-media") as {
+    const externalMediaItem = getCreatedItem("Load External Media") as {
       setChecked: ReturnType<typeof vi.fn>;
     };
-    const themeDarkItem = createdMenuItems.get("app-theme-dark") as {
+    const themeDarkItem = getCreatedItem("Dark") as {
       setChecked: ReturnType<typeof vi.fn>;
     };
-    const themeSystemItem = createdMenuItems.get("app-theme-system") as {
+    const themeSystemItem = getCreatedItem("System") as {
       setChecked: ReturnType<typeof vi.fn>;
     };
 
@@ -203,14 +209,14 @@ describe("setupAppMenu", () => {
       recentFiles: [],
     });
 
-    const copyPathItem = createdMenuItems.get("file-copy-path") as {
+    const copyPathItem = getCreatedItem("Copy File Path") as {
       setEnabled: ReturnType<typeof vi.fn>;
     };
-    const tocItem = createdMenuItems.get("view-toggle-toc") as {
+    const tocItem = getCreatedItem("Table of Contents") as {
       setChecked: ReturnType<typeof vi.fn>;
       setEnabled: ReturnType<typeof vi.fn>;
     };
-    const recentSubmenu = createdSubmenus.get("file-open-recent") as {
+    const recentSubmenu = createdSubmenusByText.get("Open Recent") as {
       setEnabled: ReturnType<typeof vi.fn>;
     };
     const editSubmenu = createdSubmenusByText.get("Edit") as {
@@ -243,7 +249,7 @@ describe("setupAppMenu", () => {
       onToggleToc: vi.fn(),
     });
 
-    const recentSubmenu = createdSubmenus.get("file-open-recent") as {
+    const recentSubmenu = createdSubmenusByText.get("Open Recent") as {
       append: ReturnType<typeof vi.fn>;
       remove: ReturnType<typeof vi.fn>;
     };
@@ -301,12 +307,52 @@ describe("setupAppMenu", () => {
       onToggleToc: vi.fn(),
     });
 
-    const themeLightItem = createdMenuItems.get("app-theme-light") as unknown as {
+    const themeLightItem = getCreatedItem("Light") as unknown as {
       action: () => void;
     };
 
     themeLightItem.action();
 
     expect(onSetThemeMode).toHaveBeenCalledWith("light");
+  });
+
+  it("keeps editor callbacks alive after another window creates and closes its menu", async () => {
+    const createHandlers = () => ({
+      onClearRecentFiles: vi.fn(), onCopyFilePath: vi.fn(), onNew: vi.fn(),
+      onOpen: vi.fn(), onOpenRecent: vi.fn(), onSave: vi.fn(), onSaveAs: vi.fn(),
+      onSetThemeMode: vi.fn(), onToggleExternalMedia: vi.fn(),
+      onTogglePreview: vi.fn(), onToggleToc: vi.fn(),
+    });
+    const state = {
+      canUseEditMenu: true, canUseViewMenu: true, canCopyFilePath: true,
+      canSave: true, canTogglePanels: true, isExternalMediaAutoLoadEnabled: false,
+      isPreviewVisible: true, isTocVisible: true, themeMode: "system" as const,
+      recentFiles: [{ filename: "note.md", path: "/tmp/note.md" }],
+    };
+    const editorHandlers = createHandlers();
+    const previewHandlers = createHandlers();
+    const editor = await setupAppMenu(editorHandlers);
+    await editor?.sync(state);
+    const editorItems = [...createdMenuItems.entries()];
+
+    const preview = await setupAppMenu(previewHandlers);
+    await preview?.sync(state);
+    await preview?.dispose();
+    await editor?.sync(state);
+
+    for (const [id, item] of editorItems) {
+      // Model Tauri's process-wide ID → callback map, rather than calling stale item references.
+      expect(createdMenuItems.get(id)).toBe(item);
+    }
+    for (const text of ["Save", "Table of Contents", "note.md", "Clear Recent Files"]) {
+      const [, item] = editorItems.find(([, value]) => value.text === text)!;
+      (createdMenuItems.get(item.id as string)!.action as () => void)();
+    }
+    expect(editorHandlers.onSave).toHaveBeenCalledOnce();
+    expect(editorHandlers.onToggleToc).toHaveBeenCalledOnce();
+    expect(editorHandlers.onOpenRecent).toHaveBeenCalledWith("/tmp/note.md");
+    expect(editorHandlers.onClearRecentFiles).toHaveBeenCalledOnce();
+    expect(previewHandlers.onSave).not.toHaveBeenCalled();
+    expect(previewHandlers.onOpenRecent).not.toHaveBeenCalled();
   });
 });
