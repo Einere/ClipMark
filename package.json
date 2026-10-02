@@ -1,7 +1,7 @@
 {
   "name": "clipmark",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "icon:convert": "node scripts/render-app-icon.mjs",
     "icon:gen": "npm run tauri icon",
+    "release:prepare": "node scripts/prepare-release.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
@@ -41,7 +42,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.2",
-    "vite": "^7.3.2",
+    "vite": "^8.0.16",
     "vitest": "^4.1.0"
   }
 }

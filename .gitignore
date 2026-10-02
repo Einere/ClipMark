@@ -4,4 +4,6 @@ coverage
 .DS_Store
 .idea
 *.log
+.env
+.env.*
 src-tauri/target
