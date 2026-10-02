@@ -14,7 +14,7 @@
 
 ## Global Constraints
 
-- macOS 26 이상만 지원한다. 이전 macOS용 대체 조작부는 구현하지 않는다.
+- 현재 Tauri 앱의 macOS 13 이상 및 Windows/Linux 지원을 유지한다. macOS 26 이상에서는 Liquid Glass, 이전 macOS는 일반 버튼을 사용한다. 26 이상 지원 제한은 후속 Apple 네이티브 전환에서 검토한다.
 - 실제 Apple Liquid Glass를 본문 위의 독립된 네이티브 조작 계층에 사용한다. 본문은 안정적인 배경을 유지한다.
 - 파일 하나에 편집창 하나를 유지한다. 미리보기는 같은 문서에 연결된 보조 창이다.
 - 편집·미리보기 본문 최대 폭을 제한하지 않는다. 줄 번호와 내부 접이식 목차를 유지한다.
@@ -57,7 +57,7 @@
 
 - [ ] 기존 objc2/AppKit 의존성과 격리 실행 검증을 확인하고 public NSGlassEffectView로 두 조작부를 붙인다. 검증 플러그인을 그대로 도입하지 않는다.
 - [ ] bridge 테스트에 invoke payload, 실패 전달, listener 해제 검증을 먼저 추가한다. `npm run test -- src/lib/native-controls.test.ts`에서 구현 전 실패를 확인한다.
-- [ ] 최소 OS를 `26.0`으로 변경하고 Rust 모듈을 연결한다. 본문 WKWebView는 불투명하게 유지한다. main 전용 lookup 대신 호출 창의 native handle을 사용한다.
+- [ ] 최소 OS `13.0`을 유지하고 런타임 클래스 가용성을 확인해 Rust 모듈을 연결한다. 본문 WKWebView는 불투명하게 유지한다. main 전용 lookup 대신 호출 창의 native handle을 사용한다.
 - [ ] 좌하단 경로 복사와 우하단 미리보기 버튼을 만들고 resize 시 배치한다. 시스템 재질·키보드 접근·접근성 이름과 포커스 복귀를 적용한다. 파괴 시 native callback과 observer를 해제한다.
 - [ ] `npm run build`, bridge 테스트, `cargo test --manifest-path src-tauri/Cargo.toml`을 실행한다. `npm run tauri:dev`로 두 문서 창에서 각 버튼의 대상과 실제 재질을 확인한다. 창 resize·닫기 뒤 stale callback이 없음을 확인한다.
 - [ ] `feat(macos): 문서 창별 Liquid Glass 조작부를 추가한다`로 관련 변경을 커밋한다.

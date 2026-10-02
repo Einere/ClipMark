@@ -33,6 +33,12 @@ jobs:
           - name: macOS Universal
             platform: macos-26
             args: --target universal-apple-darwin
+          - name: Linux
+            platform: ubuntu-22.04
+            args: ""
+          - name: Windows
+            platform: windows-latest
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -55,6 +61,12 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install frontend dependencies
         run: npm ci
@@ -158,6 +170,29 @@ jobs:
         with:
           name: macos-dmg
           path: src-tauri/target/**/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Build non-macOS release assets
+        if: ${{ !startsWith(matrix.platform, 'macos') }}
+        run: npm run tauri:build -- ${{ matrix.args }}
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installers
+          path: |
+            src-tauri/target/**/release/bundle/appimage/*.AppImage
+            src-tauri/target/**/release/bundle/deb/*.deb
+            src-tauri/target/**/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+
+      - name: Upload Windows artifact
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: src-tauri/target/**/release/bundle/nsis/*setup.exe
           if-no-files-found: error
 
       - name: Cleanup Apple certificate

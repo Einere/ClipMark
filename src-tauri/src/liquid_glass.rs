@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2::rc::Retained;
-use objc2::runtime::NSObject;
+use objc2::runtime::{AnyClass, NSObject};
 use objc2_app_kit::{NSButton, NSCursor, NSGlassEffectView, NSView, NSWindow};
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 use tauri::{Emitter, Manager, WebviewWindow};
@@ -41,8 +41,8 @@ define_class!(
 );
 
 struct Controls {
-    path_glass: Retained<NSGlassEffectView>,
-    preview_glass: Retained<NSGlassEffectView>,
+    path_glass: Retained<NSView>,
+    preview_glass: Retained<NSView>,
     path_button: Retained<NSButton>,
     preview_button: Retained<NSButton>,
     _target: Retained<ControlTarget>,
@@ -54,13 +54,13 @@ fn rect(x: f64, y: f64, w: f64, h: f64) -> NSRect {
     NSRect::new(NSPoint::new(x, y), NSSize::new(w, h))
 }
 
-fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::runtime::Sel) -> (Retained<NSGlassEffectView>, Retained<NSButton>) {
-    let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
-    glass.setCornerRadius(22.0);
+fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::runtime::Sel) -> (Retained<NSView>, Retained<NSButton>) {
+    // Never request the macOS 26 class on systems that do not provide it.
+    let has_liquid_glass = AnyClass::get(c"NSGlassEffectView").is_some();
     let button = FloatingButton::alloc(mtm).set_ivars(());
     let button: Retained<FloatingButton> = unsafe { msg_send![super(button), initWithFrame: rect(0.0, 0.0, 100.0, 44.0)] };
     let button = button.into_super();
-    button.setBordered(false);
+    button.setBordered(!has_liquid_glass);
     unsafe {
         button.setTarget(Some(target));
         button.setAction(Some(action));
@@ -69,7 +69,16 @@ fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::ru
         let cell: Retained<objc2::runtime::AnyObject> = msg_send![&*button, cell];
         let _: () = msg_send![&*cell, setLineBreakMode: 5isize];
     }
-    glass.setContentView(Some(&button));
+    let glass = if has_liquid_glass {
+        let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
+        glass.setCornerRadius(22.0);
+        glass.setContentView(Some(&button));
+        glass.into_super()
+    } else {
+        let view = NSView::initWithFrame(NSView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
+        view.addSubview(&button);
+        view
+    };
     (glass, button)
 }
 
@@ -110,7 +119,7 @@ pub fn remove(label: String, app: &tauri::AppHandle) {
 }
 
 #[tauri::command]
-pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool) -> Result<(), String> {
+pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool) -> Result<bool, String> {
     let label = window.label().to_string();
     let app = window.app_handle().clone();
     window.run_on_main_thread(move || {
@@ -141,5 +150,5 @@ pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, p
             }
             layout(controls, &content);
         });
-    }).map_err(|e| e.to_string())
+    }).map(|_| true).map_err(|e| e.to_string())
 }

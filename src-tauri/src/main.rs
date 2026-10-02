@@ -4,6 +4,11 @@
 mod liquid_glass;
 #[cfg(target_os = "macos")]
 use liquid_glass::sync_native_controls;
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn sync_native_controls() -> Result<bool, String> {
+    Ok(false)
+}
 mod preview_window;
 use preview_window::{toggle_preview_window, get_preview_connection, preview_ready, publish_preview_snapshot, preview_document_action};
 

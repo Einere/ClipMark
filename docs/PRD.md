@@ -4,7 +4,7 @@
 
 - Product name: `ClipMark`
 - One-line definition: 가장 간편하고 우아한 Markdown 파일 편집기. 클리핑에서 편집으로 이어지는 연속성을 유지한다.
-- Platform: 재단장 버전은 macOS 26 이상만 지원
+- Platform: Tauri 재단장은 macOS 13 이상 및 Windows/Linux 지원 유지. macOS 26 제한은 후속 Apple 네이티브 전환에서 검토
 - Technical direction: `Tauri + React + CodeMirror 6 + markdown-it + Turndown`, 조작부에 실제 AppKit Liquid Glass 적용
 
 ## 재단장 기준

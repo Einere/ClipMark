@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useRef,
+  useState,
 } from "react";
 import { AppShellFallback } from "./components/app/AppShellFallback";
 import { UnsavedChangesDialog } from "./components/dialog/UnsavedChangesDialog";
@@ -42,6 +43,7 @@ type AppProps = {
 
 export default function App({ initialPreferences }: AppProps) {
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
+  const [hasNativeControls, setHasNativeControls] = useState(false);
   const { showToast } = useToast();
 
   const handlePreferencesSaveError = useEffectEvent(() => {
@@ -179,6 +181,7 @@ export default function App({ initialPreferences }: AppProps) {
   useEffect(() => {
     if (!session.isWelcomeVisible) {
       void syncNativeControls({ path: session.filePath, previewOpen: isPreviewVisible })
+        .then(setHasNativeControls)
         .catch(() => showToast("Could not update document controls.", "error"));
     }
   }, [session.filePath, session.isWelcomeVisible, isPreviewVisible]);
@@ -215,7 +218,7 @@ export default function App({ initialPreferences }: AppProps) {
   useAppMenuController(menuHandlers, menuState, lifecycle.isWindowFocused);
 
   return (
-    <div className={`app-shell${isTauriRuntime() ? " app-shell--native" : ""}`}>
+    <div className={`app-shell${hasNativeControls ? " app-shell--native" : ""}`}>
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={actions.handleWelcomeNew}

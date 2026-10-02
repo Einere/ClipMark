@@ -26,4 +26,12 @@ describe("native document controls", () => {
     expect(action.mock.calls).toEqual([["copy-path"]]);
     expect(typeof cleanup).toBe("function");
   });
+
+  it("preserves web controls when the platform has no native controls", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValueOnce(false);
+    expect(await syncNativeControls({ path: null, previewOpen: false })).toBe(false);
+    vi.mocked(invoke).mockResolvedValueOnce(true);
+    expect(await syncNativeControls({ path: null, previewOpen: false })).toBe(true);
+  });
 });

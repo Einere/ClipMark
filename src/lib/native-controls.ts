@@ -5,7 +5,8 @@ import { isTauriRuntime } from "./file-system";
 export type NativeControlAction = "copy-path" | "toggle-preview";
 
 export async function syncNativeControls(state: { path: string | null; previewOpen: boolean }) {
-  if (isTauriRuntime()) await invoke("sync_native_controls", state);
+  if (!isTauriRuntime()) return false;
+  return invoke<boolean>("sync_native_controls", state);
 }
 
 export async function listenNativeControlAction(handler: (action: NativeControlAction) => void) {

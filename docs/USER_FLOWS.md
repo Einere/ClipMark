@@ -2,7 +2,7 @@
 
 Product: `ClipMark`
 
-macOS 앱의 재단장 흐름이다. 지원 OS는 macOS 26 이상이며 상세 기준은 [CLIPMARK_REDESIGN.md](./CLIPMARK_REDESIGN.md)를 따른다. 웹 개발 환경에는 기존 분할 미리보기를 유지한다.
+Tauri 앱의 재단장 흐름이다. macOS 13 이상 및 Windows/Linux 지원을 유지하며 상세 기준은 [CLIPMARK_REDESIGN.md](./CLIPMARK_REDESIGN.md)를 따른다. 웹 개발 환경에는 기존 분할 미리보기를 유지한다.
 
 ## Primary Flow: Archive Web Content
 

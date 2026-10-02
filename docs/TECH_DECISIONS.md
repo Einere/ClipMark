@@ -59,7 +59,7 @@ Keep preview generation behind a single function boundary:
 
 ## 재단장 결정 — 2026-10-02
 
-- macOS 26 이상만 지원한다. 현재 설정의 최소 OS 13.0은 구현 단계에서 26.0으로 변경한다. 이전 OS 대체 재질은 이번 범위에서 제외한다.
+- 현재 Tauri 앱은 macOS 13 이상 및 Windows/Linux 지원을 유지한다. macOS 26에서만 NSGlassEffectView를 사용하며 이전 macOS는 일반 네이티브 버튼으로 대체한다. 26 이상 제한은 후속 Apple 네이티브 전환에서 검토한다.
 - Tauri·React·CodeMirror를 유지한다. 전체 네이티브 전환이나 렌더러 교체는 선행 조건이 아니다.
 - 하단 조작부는 실제 AppKit Liquid Glass로 만든다. CSS 유사 재질과 전체 웹뷰 투명화로 대체하지 않는다. 기존 objc2/AppKit 통합을 우선 재사용한다.
 - 격리 실행 검증은 가능성의 근거다. 검증 플러그인의 기본 main 창 대상 동작을 제품에 그대로 적용하지 않는다. 문서 창별 대상과 이벤트를 명시한다.
