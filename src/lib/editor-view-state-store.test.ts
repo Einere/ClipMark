@@ -9,12 +9,13 @@ describe("editor-view-state-store", () => {
     store.setFocused(true);
 
     expect(store.getSnapshot()).toEqual({
+      editSequence: 1,
       activeLine: 18,
       isFocused: true,
     });
   });
 
-  it("notifies subscribers only when the snapshot changes", () => {
+  it("counts cursor actions even on the same line without counting focus changes twice", () => {
     const store = createEditorViewStateStore();
     const listener = vi.fn();
 
@@ -26,6 +27,6 @@ describe("editor-view-state-store", () => {
     unsubscribe();
     store.reset();
 
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 });

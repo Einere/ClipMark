@@ -194,7 +194,6 @@ export async function setupAppMenu(
     items: [appSubmenu, fileSubmenu, editSubmenu, viewSubmenu, windowSubmenu],
   });
 
-  await menu.setAsAppMenu();
 
   let lastState: MenuState | null = null;
 
@@ -203,6 +202,7 @@ export async function setupAppMenu(
       await menu.close();
     },
     async sync(state) {
+      await menu.setAsAppMenu();
       lastState = await syncAppMenuState({
         context: {
           copyPathItem,

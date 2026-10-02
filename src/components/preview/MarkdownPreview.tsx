@@ -8,6 +8,7 @@ import {
 } from "../../lib/preview-scroll";
 
 type MarkdownPreviewProps = {
+  editSequence?: number;
   markdown: string;
   activeLine: number | null;
   filePath: string | null;
@@ -23,7 +24,6 @@ type PreviewAnchorElement = PreviewScrollAnchor & {
 
 type PreviewScrollBehavior = ScrollBehavior;
 
-const MANUAL_SCROLL_SUSPEND_MS = 900;
 const PROGRAMMATIC_SCROLL_FALLBACK_MS = 250;
 
 function scrollPreviewTo(
@@ -45,6 +45,7 @@ function scrollPreviewTo(
 }
 
 export function MarkdownPreview({
+  editSequence = 0,
   activeLine,
   markdown,
   filePath,
@@ -58,7 +59,8 @@ export function MarkdownPreview({
   const pendingScrollFrameRef = useRef<number | null>(null);
   const pendingProgrammaticScrollRef = useRef(0);
   const programmaticScrollFallbackTimeoutRef = useRef<number | null>(null);
-  const manualScrollSuspendUntilRef = useRef(0);
+  const manualScrollSuspendedRef = useRef(false);
+  const previousEditSequenceRef = useRef(editSequence);
   const previewHtml = useMemo(() => {
     return renderPreviewHtml({
       filePath,
@@ -67,7 +69,7 @@ export function MarkdownPreview({
     });
   }, [filePath, isExternalMediaAutoLoadEnabled, markdown]);
   const isManualScrollSuspended = useEffectEvent(() => {
-    return Date.now() < manualScrollSuspendUntilRef.current;
+    return manualScrollSuspendedRef.current;
   });
   const clearProgrammaticScrollFallback = useEffectEvent(() => {
     if (programmaticScrollFallbackTimeoutRef.current === null) {
@@ -100,7 +102,7 @@ export function MarkdownPreview({
   const suspendAutoScrollForManualIntent = useEffectEvent(() => {
     pendingProgrammaticScrollRef.current = 0;
     clearProgrammaticScrollFallback();
-    manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+    manualScrollSuspendedRef.current = true;
   });
   const syncPreviewScroll = useEffectEvent(() => {
     if (!isAutoScrollEnabled || activeLine === null || isLayoutTransitioning) {
@@ -199,8 +201,13 @@ export function MarkdownPreview({
   }, [previewHtml, schedulePreviewScroll]);
 
   useEffect(() => {
+    if (editSequence > previousEditSequenceRef.current) {
+      manualScrollSuspendedRef.current = false;
+      lastSyncedAnchorKeyRef.current = null;
+    }
+    previousEditSequenceRef.current = editSequence;
     schedulePreviewScroll();
-  }, [activeLine, isAutoScrollEnabled, isLayoutTransitioning, schedulePreviewScroll]);
+  }, [activeLine, editSequence, isAutoScrollEnabled, isLayoutTransitioning, schedulePreviewScroll]);
 
   useEffect(() => {
     return () => {
@@ -252,7 +259,7 @@ export function MarkdownPreview({
         void openExternalUri(previewUri);
       }}
       onWheel={() => {
-        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+        suspendAutoScrollForManualIntent();
       }}
       onPointerDown={suspendAutoScrollForManualIntent}
       onTouchStart={suspendAutoScrollForManualIntent}
@@ -261,7 +268,7 @@ export function MarkdownPreview({
           return;
         }
 
-        manualScrollSuspendUntilRef.current = Date.now() + MANUAL_SCROLL_SUSPEND_MS;
+        manualScrollSuspendedRef.current = true;
       }}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") {

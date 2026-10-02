@@ -813,7 +813,7 @@
 /* NOTE: 에디터 본문 스타일 (좌측 줄 라인 영역 제외) */
 .markdown-editor .cm-content {
   caret-color: var(--color-editor-caret);
-  max-width: 76ch;
+  max-width: none;
   padding-bottom: 30vh;
 }
 
@@ -891,7 +891,7 @@
 }
 
 .markdown-preview__content {
-  max-width: var(--container-reading);
+  max-width: none;
   padding: 1.35rem 1.45rem 4.4rem;
   margin: 0 auto;
   color: var(--color-text-strong);

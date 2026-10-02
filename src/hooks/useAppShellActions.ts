@@ -20,6 +20,7 @@ type UseAppShellActionsOptions = {
   }) => Promise<boolean>;
   setIsExternalMediaAutoLoadEnabled: Dispatch<SetStateAction<boolean>>;
   setIsPreviewVisible: Dispatch<SetStateAction<boolean>>;
+  onTogglePreview?: () => Promise<void>;
   setIsTocVisible: Dispatch<SetStateAction<boolean>>;
   setThemeMode: (themeMode: ThemeMode) => void;
   showToast: ShowToast;
@@ -35,6 +36,7 @@ export function useAppShellActions({
   saveDocument,
   setIsExternalMediaAutoLoadEnabled,
   setIsPreviewVisible,
+  onTogglePreview,
   setIsTocVisible,
   setThemeMode,
   showToast,
@@ -64,6 +66,7 @@ export function useAppShellActions({
   });
 
   const handleMenuTogglePreview = useEffectEvent(() => {
+    if (onTogglePreview) { void onTogglePreview(); return; }
     setIsPreviewVisible((value) => !value);
   });
 

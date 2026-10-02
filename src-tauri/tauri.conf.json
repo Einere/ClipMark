@@ -14,10 +14,10 @@
     "windows": [
       {
         "title": "ClipMark",
-        "width": 1440,
-        "height": 920,
-        "minWidth": 1100,
-        "minHeight": 720
+        "width": 960,
+        "height": 720,
+        "minWidth": 480,
+        "minHeight": 360
       }
     ],
     "security": {
@@ -54,7 +54,7 @@
     ],
     "targets": "all",
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "26.0"
     }
   }
 }

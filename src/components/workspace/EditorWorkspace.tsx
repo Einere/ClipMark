@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useDeferredValue, useMemo, useRef } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { MarkdownEditorHandle } from "../editor/MarkdownEditor";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../preview/MarkdownPreview";
@@ -30,6 +30,9 @@ const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
 
 type EditorWorkspaceProps = {
+  filename?: string;
+  onRenameDocument?: (filename: string) => Promise<boolean>;
+  onEditorActivity?: (line: number | null, editSequence: number) => void;
   documentKey: number;
   documentStore: DocumentStore;
   documentStatus: DocumentStatus | null;
@@ -46,6 +49,38 @@ type EditorWorkspaceProps = {
   }) => void;
   onEditorFocusChange: (focused: boolean) => void;
 };
+
+function EditorActivity({ onActivity }: { onActivity?: EditorWorkspaceProps["onEditorActivity"] }) {
+  const { activeLine, editSequence } = useEditorViewState();
+  useEffect(() => { onActivity?.(activeLine, editSequence); }, [activeLine, editSequence, onActivity]);
+  return null;
+}
+
+function DocumentTitle({ filename, status, onRename }: { filename: string; status: DocumentStatus | null; onRename?: EditorWorkspaceProps["onRenameDocument"] }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(filename);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  async function submit() {
+    if (busy || !onRename) return;
+    setBusy(true);
+    const success = await onRename(name);
+    setBusy(false);
+    if (success) setEditing(false); else setError(true);
+  }
+  return <div className="document-title">
+    {editing ? <input autoFocus aria-label="File name" aria-invalid={error} value={name} disabled={busy}
+      onChange={(event) => { setName(event.target.value); setError(false); }}
+      onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) return;
+        if (event.key === "Enter") { event.preventDefault(); void submit(); }
+        if (event.key === "Escape") { event.preventDefault(); setEditing(false); }
+      }} />
+      : <button type="button" className="document-title__name" disabled={!onRename} onClick={() => { setName(filename); setError(false); setEditing(true); }}>{filename}</button>}
+    <span className="document-title__status">{status === "edited" ? "Unsaved" : status === "saved" ? "Saved" : "Draft"}</span>
+    {error ? <span role="alert">Could not rename file.</span> : null}
+  </div>;
+}
 
 function DocumentPreviewPane({
   markdown,
@@ -114,6 +149,9 @@ function DocumentTocPane({
 }
 
 export function EditorWorkspace({
+  filename = "Untitled.md",
+  onRenameDocument,
+  onEditorActivity,
   documentKey,
   documentStore,
   documentStatus,
@@ -192,6 +230,7 @@ export function EditorWorkspace({
 
   return (
     <EditorViewStateProvider documentKey={documentKey}>
+      <EditorActivity onActivity={onEditorActivity} />
       <div className="editor-workspace">
         <WorkspaceLayout
           editorContent={(
@@ -202,7 +241,7 @@ export function EditorWorkspace({
             >
               <div className="editor-workspace__panel-header">
                 <div className="editor-workspace__panel-heading">
-                  <span className="editor-workspace__panel-kicker">Writing</span>
+                  <DocumentTitle filename={filename} status={documentStatus} onRename={onRenameDocument} />
                 </div>
               </div>
               <div className="editor-workspace__panel-body editor-workspace__panel-body--editor">

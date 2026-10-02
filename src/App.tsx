@@ -21,6 +21,10 @@ import { useAppMenuBindings } from "./hooks/useAppMenuBindings";
 import { useWindowShortcuts } from "./hooks/useWindowShortcuts";
 import { useDocumentDirty } from "./lib/document-store";
 import { clearDebugLog } from "./lib/debug-log";
+import { syncNativeControls, listenNativeControlAction } from "./lib/native-controls";
+import { isTauriRuntime } from "./lib/file-system";
+import { usePreviewWindow } from "./hooks/usePreviewWindow";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   DEFAULT_APP_PREFERENCES,
   type AppPreferences,
@@ -55,11 +59,11 @@ export default function App({ initialPreferences }: AppProps) {
   });
   const {
     autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
-    isPreviewVisible,
+    isPreviewVisible: legacyPreviewVisible,
     isTocVisible,
     previewPanelWidth,
     setIsExternalMediaAutoLoadEnabled,
-    setIsPreviewVisible,
+    setIsPreviewVisible: setLegacyPreviewVisible,
     setIsTocVisible,
     setPreviewPanelWidth,
     setThemeMode,
@@ -107,6 +111,14 @@ export default function App({ initialPreferences }: AppProps) {
     isWindowVisible: lifecycle.isWindowVisible,
     pendingAction: lifecycle.pendingAction,
   });
+  const preview = usePreviewWindow({
+    documentStore: session.documentStore, filePath: session.filePath,
+    filename: session.filename ?? "Untitled.md", themeMode,
+    autoLoadExternalMedia: isExternalMediaAutoLoadEnabled,
+    isTocVisible, recentFiles: session.recentFiles, canSave: viewState.canSaveDocument,
+    onError: (message) => showToast(message, "error"),
+  });
+  const isPreviewVisible = isTauriRuntime() ? preview.isOpen : legacyPreviewVisible;
   const actions = useAppShellActions({
     activeFilename: viewState.activeFilename,
     canSaveDocument: viewState.canSaveDocument,
@@ -116,11 +128,60 @@ export default function App({ initialPreferences }: AppProps) {
     openWithPicker: session.openWithPicker,
     saveDocument: session.saveDocument,
     setIsExternalMediaAutoLoadEnabled,
-    setIsPreviewVisible,
+    setIsPreviewVisible: setLegacyPreviewVisible,
+    onTogglePreview: isTauriRuntime() ? preview.toggle : undefined,
     setIsTocVisible,
     setThemeMode,
     showToast,
   });
+  const handlePreviewAction = useEffectEvent(({ action, value }: { action: string; value?: string }) => {
+    switch (action) {
+      case "save": actions.handleMenuSave(); break;
+      case "save-as": actions.handleMenuSave(true); break;
+      case "new": actions.handleMenuNew(); break;
+      case "open": actions.handleMenuOpen(); break;
+      case "open-recent": if (value) actions.handleMenuOpenRecent(value); break;
+      case "clear-recent": session.clearRecentFilesList(); break;
+      case "toggle-external-media": actions.handleMenuToggleExternalMedia(); break;
+      case "set-theme-mode": if (value === "light" || value === "dark" || value === "system") actions.handleMenuSetThemeMode(value); break;
+      case "copy-path": actions.handleMenuCopyFilePath(); break;
+      case "toggle-preview": actions.handleMenuTogglePreview(); break;
+      case "toggle-toc": actions.handleMenuToggleToc(); break;
+      case "focus-editor": editorRef.current?.focus(); break;
+    }
+  });
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    void getCurrentWindow().listen<{ action: string; value?: string }>("preview-document-action", ({ payload }) => handlePreviewAction(payload))
+      .then((unlisten) => { if (disposed) unlisten(); else cleanup = unlisten; })
+      .catch(() => { if (!disposed) showToast("Could not connect preview actions.", "error"); });
+    return () => { disposed = true; cleanup?.(); };
+  }, []);
+
+  const handleNativeAction = useEffectEvent((action: "copy-path" | "toggle-preview") => {
+    if (action === "copy-path") actions.handleMenuCopyFilePath();
+    else actions.handleMenuTogglePreview();
+    editorRef.current?.focus();
+  });
+
+  useEffect(() => {
+    if (session.isWelcomeVisible) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listenNativeControlAction(handleNativeAction).then((cleanup) => {
+      if (disposed) cleanup(); else unlisten = cleanup;
+    }).catch(() => showToast("Could not connect document controls.", "error"));
+    return () => { disposed = true; unlisten?.(); };
+  }, [session.isWelcomeVisible]);
+
+  useEffect(() => {
+    if (!session.isWelcomeVisible) {
+      void syncNativeControls({ path: session.filePath, previewOpen: isPreviewVisible })
+        .catch(() => showToast("Could not update document controls.", "error"));
+    }
+  }, [session.filePath, session.isWelcomeVisible, isPreviewVisible]);
 
   useWindowShortcuts({
     onNew: actions.handleWelcomeNew,
@@ -154,7 +215,7 @@ export default function App({ initialPreferences }: AppProps) {
   useAppMenuController(menuHandlers, menuState, lifecycle.isWindowFocused);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isTauriRuntime() ? " app-shell--native" : ""}`}>
       {session.isWelcomeVisible ? (
         <WelcomeScreen
           onNew={actions.handleWelcomeNew}
@@ -165,6 +226,9 @@ export default function App({ initialPreferences }: AppProps) {
       ) : (
         <Suspense fallback={<AppShellFallback />}>
           <EditorWorkspace
+            filename={session.filename ?? "Untitled.md"}
+            onRenameDocument={session.renameDocument}
+            onEditorActivity={preview.onEditorActivity}
             documentKey={session.editorDocumentKey}
             documentStatus={viewState.visibleDocumentStatus}
             documentStore={session.documentStore}
@@ -173,7 +237,7 @@ export default function App({ initialPreferences }: AppProps) {
             initialPreviewPanelWidth={previewPanelWidth}
             initialTocPanelWidth={tocPanelWidth}
             isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}
-            isPreviewVisible={isPreviewVisible}
+            isPreviewVisible={isTauriRuntime() ? false : isPreviewVisible}
             isTocVisible={isTocVisible}
             onEditorFocusChange={lifecycle.handleEditorFocusChange}
             onPanelWidthsChange={handlePanelWidthsChange}

@@ -133,7 +133,8 @@ describe("EditorWorkspace", () => {
       renderer.container.querySelectorAll(".editor-workspace__panel-kicker, .toc-panel__kicker"),
     ).map((element) => element.textContent);
 
-    expect(headings).toEqual(["Writing", "Reading"]);
+    expect(headings).toEqual(["Reading"]);
+    expect(renderer.container.querySelector(".document-title__name")?.textContent).toBe("Untitled.md");
     expect(editorPanel?.hasAttribute("data-focused")).toBe(false);
     expect(renderer.container.textContent).not.toContain("Rendered preview");
     expect(footerPath?.textContent).toContain("/Users/einere/notes/research.md");

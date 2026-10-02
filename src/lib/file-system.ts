@@ -39,6 +39,28 @@ export function ensureMarkdownExtension(filename: string): string {
   return /\.(md|markdown|txt)$/i.test(trimmed) ? trimmed : `${trimmed}.md`;
 }
 
+export function normalizeDocumentFilename(input: string): string {
+  const name = input.trim();
+  if (!name || name === "." || name === ".." || /[/\\\0:]/.test(name)) {
+    throw new Error("Enter a valid file name without path separators.");
+  }
+  return /\.md$/i.test(name) ? name : `${name}.md`;
+}
+
+export async function renameMarkdownDocument(input: { path: string; filename: string }): Promise<SavedDocument> {
+  const filename = normalizeDocumentFilename(input.filename);
+  try {
+    return await invoke("rename_markdown_document", { filename });
+  } catch (error) {
+    // A completed disk rename must not leave the next Save pointing at the old path if its reply was lost.
+    const state = await invoke<{ path: string | null }>("get_initial_document_window_state").catch(() => null);
+    if (state?.path && state.path !== input.path && getFilenameFromPath(state.path) === filename) {
+      return { filename, path: state.path };
+    }
+    throw error;
+  }
+}
+
 function downloadMarkdown(filename: string, markdown: string) {
   const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
   const url = URL.createObjectURL(blob);

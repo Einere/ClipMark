@@ -1,5 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "macos")]
+mod liquid_glass;
+#[cfg(target_os = "macos")]
+use liquid_glass::sync_native_controls;
+mod preview_window;
+use preview_window::{toggle_preview_window, get_preview_connection, preview_ready, publish_preview_snapshot, preview_document_action};
+
 use std::collections::HashMap;
 #[cfg(target_os = "macos")]
 use std::ffi::CStr;
@@ -31,10 +38,10 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
-const DEFAULT_WINDOW_WIDTH: f64 = 1440.0;
-const DEFAULT_WINDOW_HEIGHT: f64 = 920.0;
-const DEFAULT_WINDOW_MIN_WIDTH: f64 = 1100.0;
-const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 720.0;
+const DEFAULT_WINDOW_WIDTH: f64 = 960.0;
+const DEFAULT_WINDOW_HEIGHT: f64 = 720.0;
+const DEFAULT_WINDOW_MIN_WIDTH: f64 = 480.0;
+const DEFAULT_WINDOW_MIN_HEIGHT: f64 = 360.0;
 
 #[cfg(target_os = "macos")]
 static OPEN_URL_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -111,10 +118,15 @@ struct WindowRegistry {
     next_window_id: u64,
     window_states: HashMap<String, WindowDocumentState>,
     path_windows: HashMap<String, String>,
+    opened_paths: HashMap<String, String>,
 }
 
 #[allow(dead_code)]
 impl WindowRegistry {
+    fn register_opened_document_path(&mut self, label: &str, path: String) {
+        self.register_document_path(label, normalize_document_path_for_registry(&path));
+        self.opened_paths.insert(label.to_string(), path);
+    }
     fn register_welcome_window(&mut self, label: String) {
         self.unregister_window(&label);
         self.window_states
@@ -137,6 +149,7 @@ impl WindowRegistry {
 
         if let Some(previous_label) = self.path_windows.get(&path) {
             if previous_label != label {
+                self.opened_paths.remove(previous_label);
                 self.window_states
                     .insert(previous_label.clone(), WindowDocumentState::Welcome);
             }
@@ -148,6 +161,7 @@ impl WindowRegistry {
     }
 
     fn clear_window_path(&mut self, label: &str) {
+        self.opened_paths.remove(label);
         if let Some(WindowDocumentState::Path(previous_path)) = self.window_states.get(label) {
             self.path_windows.remove(previous_path);
         }
@@ -220,8 +234,7 @@ fn reserve_document_window_in_registry(
 
     match path {
         Some(path) => {
-            let normalized_path = normalize_document_path_for_registry(path);
-            registry.register_document_path(&label, normalized_path);
+            registry.register_opened_document_path(&label, path.to_string());
         }
         None => registry.register_untitled_document_window(label.clone()),
     }
@@ -278,13 +291,12 @@ fn assign_path_to_existing_window(
             .map_err(|fallback_error| format!("{error}; fallback failed: {fallback_error}"));
     }
 
-    let normalized_path = normalize_document_path_for_registry(&path);
     {
         let mut registry = registry_state
             .registry
             .lock()
             .map_err(|error| error.to_string())?;
-        registry.register_document_path(label, normalized_path);
+        registry.register_opened_document_path(label, path);
     }
 
     focus_window(&window)?;
@@ -470,7 +482,7 @@ fn initial_document_window_state_for_label(
     match registry.window_states.get(label) {
         Some(WindowDocumentState::Path(path)) => InitialDocumentWindowState {
             is_new_document: false,
-            path: Some(path.clone()),
+            path: Some(registry.opened_paths.get(label).unwrap_or(path).clone()),
         },
         Some(WindowDocumentState::Untitled) => InitialDocumentWindowState {
             is_new_document: true,
@@ -517,6 +529,53 @@ fn read_markdown_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_markdown_file(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| error.to_string())
+}
+
+#[derive(Serialize)]
+struct RenamedDocument { filename: String, path: String }
+
+#[tauri::command]
+fn rename_markdown_document(window: tauri::Window, registry_state: State<'_, WindowRegistryState>, filename: String) -> Result<RenamedDocument, String> {
+    let mut registry = registry_state.registry.lock().map_err(|e| e.to_string())?;
+    rename_registered_document(&mut registry, window.label(), &filename)
+}
+
+fn rename_registered_document(registry: &mut WindowRegistry, label: &str, filename: &str) -> Result<RenamedDocument, String> {
+    let filename = filename.trim();
+    if filename.is_empty() || filename == "." || filename == ".." || filename.contains(['/', '\\', '\0', ':']) || !filename.to_lowercase().ends_with(".md") {
+        return Err("Enter a valid Markdown file name.".into());
+    }
+    let old = match registry.window_states.get(label) {
+        Some(WindowDocumentState::Path(path)) => registry.opened_paths.get(label).unwrap_or(path).clone(),
+        _ => return Err("This document has no saved file.".into()),
+    };
+    let target = Path::new(&old).parent().ok_or("Missing parent folder")?.join(filename);
+    let new_path = target.to_string_lossy().into_owned();
+    if old != new_path {
+        if registry.is_path_open_elsewhere(label, &normalize_document_path_for_registry(&new_path)) {
+            return Err("That file is already open in another window.".into());
+        }
+        rename_without_overwrite(Path::new(&old), &target)?;
+        registry.register_opened_document_path(label, new_path.clone());
+    }
+    Ok(RenamedDocument { filename: filename.into(), path: new_path })
+}
+
+fn rename_without_overwrite(old: &Path, target: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        use std::ffi::CString;
+        unsafe extern "C" { fn renamex_np(from: *const std::ffi::c_char, to: *const std::ffi::c_char, flags: u32) -> i32; }
+        let old = CString::new(old.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
+        let target = CString::new(target.as_os_str().as_bytes()).map_err(|e| e.to_string())?;
+        // RENAME_EXCL is atomic: another process creating the target cannot be overwritten.
+        let result = unsafe { renamex_np(old.as_ptr(), target.as_ptr(), 0x4) };
+        if result != 0 { return Err(std::io::Error::last_os_error().to_string()); }
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    { let _ = (old, target); Err("File renaming requires macOS.".into()) }
 }
 
 #[tauri::command]
@@ -578,8 +637,7 @@ fn register_window_document_path(
 
     match path {
         Some(path) => {
-            let normalized_path = normalize_document_path_for_registry(&path);
-            registry.register_document_path(&label, normalized_path);
+            registry.register_opened_document_path(&label, path);
         }
         None => registry.register_untitled_document_window(label),
     }
@@ -929,6 +987,7 @@ fn pick_markdown_file() -> Result<Option<String>, String> {
 
 fn main() {
     let app = tauri::Builder::default()
+        .manage(preview_window::PreviewWindows::default())
         .setup(|app| {
             let preferences_path = preferences_file_path(app.handle())?;
             let preferences = load_preferences_from_disk(&preferences_path);
@@ -961,7 +1020,26 @@ fn main() {
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .on_window_event(|window, event| {
+            #[cfg(target_os = "macos")]
+            match event {
+                tauri::WindowEvent::Resized(_) => {
+                    if let Some(webview) = window.app_handle().get_webview_window(window.label()) { liquid_glass::resize(&webview); }
+                }
+                tauri::WindowEvent::Destroyed => {
+                    liquid_glass::remove(window.label().to_string(), window.app_handle());
+                    preview_window::destroyed(window.app_handle(), window.label());
+                }
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            sync_native_controls,
+            toggle_preview_window,
+            get_preview_connection,
+            preview_ready,
+            publish_preview_snapshot,
+            preview_document_action,
             append_debug_log,
             clear_debug_log,
             close_document_window,
@@ -974,6 +1052,7 @@ fn main() {
             open_external_url,
             pick_markdown_file,
             read_markdown_file,
+            rename_markdown_document,
             register_window_document_path,
             register_window_untitled_document,
             register_window_welcome,
@@ -1039,6 +1118,49 @@ mod tests {
     use std::fs;
     use tauri::WebviewUrl;
     use url::Url;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn rename_symlink_keeps_original_target_and_preserves_opened_path() {
+        let folder = std::env::temp_dir().join(format!("clipmark-symlink-{}", std::process::id()));
+        fs::create_dir_all(folder.join("clips")).unwrap();
+        let original = folder.join("original.md");
+        let link = folder.join("clips/article.md");
+        let renamed = folder.join("clips/renamed.md");
+        fs::write(&original, "original").unwrap();
+        std::os::unix::fs::symlink(&original, &link).unwrap();
+        let mut registry = WindowRegistry::default();
+        registry.register_opened_document_path("document-1", link.to_string_lossy().into_owned());
+        assert_eq!(initial_document_window_state_for_label(&registry, "document-1").path, Some(link.to_string_lossy().into_owned()));
+        super::rename_registered_document(&mut registry, "document-1", "renamed.md").unwrap();
+        assert!(original.exists());
+        assert!(!link.exists());
+        assert!(fs::symlink_metadata(&renamed).unwrap().file_type().is_symlink());
+        assert_eq!(fs::read_to_string(&renamed).unwrap(), "original");
+        assert_eq!(registry.window_for_path(&normalize_document_path_for_registry(&original.to_string_lossy())), Some("document-1".into()));
+        registry.unregister_window("document-1");
+        assert!(registry.opened_paths.is_empty());
+        let _ = fs::remove_dir_all(folder);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn rename_keeps_contents_and_never_overwrites_an_existing_target() {
+        let folder = std::env::temp_dir().join(format!("clipmark-rename-{}", std::process::id()));
+        fs::create_dir_all(&folder).unwrap();
+        let old = folder.join("old.md");
+        let target = folder.join("target.md");
+        fs::write(&old, "original on disk").unwrap();
+        fs::write(&target, "other document").unwrap();
+        assert!(super::rename_without_overwrite(&old, &target).is_err());
+        assert_eq!(fs::read_to_string(&old).unwrap(), "original on disk");
+        assert_eq!(fs::read_to_string(&target).unwrap(), "other document");
+        fs::remove_file(&target).unwrap();
+        super::rename_without_overwrite(&old, &target).unwrap();
+        assert!(!old.exists());
+        assert_eq!(fs::read_to_string(&target).unwrap(), "original on disk");
+        let _ = fs::remove_dir_all(folder);
+    }
 
     #[test]
     fn accepts_supported_external_url_schemes() {
