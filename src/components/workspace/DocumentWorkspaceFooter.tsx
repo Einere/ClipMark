@@ -59,7 +59,6 @@ function DocumentFooterFile({
         <button
           className="editor-workspace__path-button"
           onClick={onPathCopy}
-          title="Click to copy file path"
           type="button"
         >
           {filePath}

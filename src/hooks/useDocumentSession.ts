@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   createDocumentStore,
   type DocumentStore,
@@ -18,6 +18,7 @@ export function useDocumentSession({
   onError,
 }: UseDocumentSessionOptions) {
   const [documentStore] = useState<DocumentStore>(() => createDocumentStore(""));
+  const fileOperationInFlight = useRef(false);
   const {
     clearRecentFilesList,
     forgetRecentFile,
@@ -57,7 +58,7 @@ export function useDocumentSession({
     loadRecentDocument,
     openRecentDocumentWindow,
     openWithPicker,
-    saveDocument,
+    saveDocument: saveDocumentToDisk,
   } = useDocumentFileActions({
     activeFilePath: workspaceState.filePath,
     applyOpenedDocument,
@@ -67,6 +68,12 @@ export function useDocumentSession({
     isWelcomeVisible: workspaceState.isWelcomeVisible,
     onMissingRecentFile: handleMissingRecentFile,
     onRecentFileUnavailable: handleUnavailableRecentFile,
+  });
+  const saveDocument = useEffectEvent(async (options: { activeFilename: string; saveAs?: boolean }) => {
+    if (fileOperationInFlight.current) { onInfo("Wait for the current file operation to finish."); return false; }
+    fileOperationInFlight.current = true;
+    try { return await saveDocumentToDisk(options); }
+    finally { fileOperationInFlight.current = false; }
   });
 
   return {
