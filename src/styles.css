@@ -41,6 +41,13 @@
 .markdown-editor .cm-search button[name="close"]:hover { background: var(--color-bg-subtle); color: var(--color-text-strong); }
 .markdown-editor .cm-search :is(input, button):focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 
+@supports (corner-shape: squircle) {
+  .markdown-editor .cm-search,
+  .markdown-editor .cm-search :is(.cm-textfield, .cm-button, button[name="close"]) {
+    corner-shape: squircle;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-shell--native .editor-workspace__resize-handle::before { transition: none; }
 }

@@ -23,3 +23,9 @@ PR #53을 develop에 병합한 `2f46174`에서 `codex/visual-style-polish` 브�
 - 독립 서브에이전트 소스 리뷰: 조치할 결함 없음.
 
 어두운 테마의 실제 화면과 Windows/Linux 실행 화면은 이번 검증에 포함하지 않았다. 네이티브 버튼 수정은 macOS에만 적용된다. 웹 조작부는 기존 테마 토큰을 소비한다.
+
+## 모서리 후속 정돈
+
+사용자의 곡률 피드백에 따라 공통 md/lg/xl 반경을 10/14/18px에서 8/12/16px로 줄였다. 기존 squircle 적용에 환영 화면의 최근 파일 영역과 검색 패널·입력·버튼·닫기 버튼을 추가했다. 지원하지 않는 엔진에서는 작은 일반 둥근 모서리를 사용한다. AppKit Liquid Glass에는 CSS를 적용하지 않는다.
+
+브라우저 computed style에서 버튼의 8px 반경, 검색 패널의 12px 반경과 `superellipse(2)`를 확인했다. 프론트엔드 빌드와 diff 체크가 통과했다. [MDN 호환성 데이터](https://github.com/mdn/browser-compat-data/blob/main/css/properties/corner-shape.json) 기준 Safari의 지원은 preview 단계로 기록되어 있으므로 macOS WebView에서 squircle 표시를 보장하지 않는다.
