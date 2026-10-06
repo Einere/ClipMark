@@ -23,15 +23,11 @@ export function WelcomeScreen({
       <div className="welcome-screen__inner">
         <section aria-labelledby="welcome-hero-title" className="welcome-screen__hero">
           <header>
-            <span className="welcome-screen__eyebrow">File-first Markdown editor</span>
             <h1 className="welcome-screen__title" id="welcome-hero-title">
-              Open a recent archive or start a new&nbsp;
-              <span className="welcome-screen__title-accent">Markdown</span> file.
+              ClipMark
             </h1>
             <p className="welcome-screen__lede">
-              ClipMark is a lightweight Markdown workspace for saving web research
-              into local files. Move from paste to cleanup, preview, and focused
-              writing without leaving the file-first flow.
+              Create a Markdown file or open an existing document.
             </p>
           </header>
 
