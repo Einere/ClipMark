@@ -10,13 +10,13 @@
   --space-9: 5rem;
 
   --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
-  --radius-xl: 1.125rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --radius-pill: 0.75rem;
 
   --shadow-soft: 0 10px 30px rgb(32 40 36 / 0.08);
-  --shadow-floating: 0 22px 60px rgb(32 40 36 / 0.18);
+  --shadow-floating: 0 8px 24px rgb(32 40 36 / 0.12);
   --shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.65);
 
   --duration-fast: 140ms;
@@ -43,6 +43,6 @@
 
 :root[data-theme="dark"] {
   --shadow-soft: 0 14px 36px rgb(0 0 0 / 0.28);
-  --shadow-floating: 0 24px 72px rgb(0 0 0 / 0.42);
+  --shadow-floating: 0 10px 28px rgb(0 0 0 / 0.32);
   --shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
