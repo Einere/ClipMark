@@ -943,10 +943,6 @@
   text-underline-offset: 0.15em;
 }
 
-.markdown-preview__content a:hover {
-  text-decoration: underline;
-}
-
 .markdown-preview__content blockquote {
   margin-left: 0;
   padding: 0.15rem 0 0.15rem 1rem;
