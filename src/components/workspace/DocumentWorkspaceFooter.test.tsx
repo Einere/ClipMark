@@ -89,10 +89,8 @@ describe("DocumentWorkspaceFooter", () => {
     });
 
     expect(writeText).toHaveBeenCalledWith("/Users/einere/notes/research.md");
-    expect(showToast).toHaveBeenCalledWith(
-      "Copied the file path to the clipboard.",
-      "success",
-    );
+    expect(showToast).not.toHaveBeenCalled();
+    expect(button?.textContent).toContain("Copied");
   });
 
   it("shows draft context for unsaved local documents", () => {

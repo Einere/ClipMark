@@ -1,0 +1,31 @@
+# 톤앤매너 정돈
+
+PR #53을 develop에 병합한 `2f46174`에서 `codex/visual-style-polish` 브랜치로 작업했다. 기존 작업 워크트리는 미추적 파일을 포함한 복원 가능 스냅샷으로 보존하고 정리했다.
+
+## 방향과 변경
+
+미색과 문서 중심 화면을 유지하며 조작부의 형태, 글자와 여백을 정돈했다. 실제 Apple Liquid Glass 재질은 AppKit에 맡긴다.
+
+- 검색·치환: 공통 UI 13px 토큰, 둥근 입력창·버튼, 간격 토큰, 32px 최소 높이. 패널 배경을 본문과 맞추고 플레이스홀더에 muted 텍스트 토큰을 적용했다. 체크박스 accent, 버튼 active, 닫기 hover와 키보드 focus 상태를 제공한다.
+- 네이티브 플로팅 버튼: 높이 44→36pt, 반경 18pt. 하단 16pt와 본문 사이 16pt 여백을 유지하도록 본문 예약 공간을 76→68px로 맞췄다. OS 제공 Liquid Glass의 재질과 그림자는 변경하지 않는다.
+- 웹 알림·대화상자: 공유 floating 그림자의 번짐과 불투명도를 줄였다. 밝은 테마와 어두운 테마를 함께 조정했다.
+- 본문 글자, 미색 팔레트, 문서 폭, 경로 말줄임, 네이티브 이벤트와 단축키는 유지한다.
+
+## 검증
+
+- `npm test`: 59개 파일, 246개 테스트 통과.
+- `npm run build`: 성공. 기존 500kB 청크 경고 유지.
+- `cargo check --manifest-path src-tauri/Cargo.toml`: 성공.
+- `npm run tauri:build -- --debug --bundles app`: macOS 앱 번들 생성 성공.
+- `git diff --check`: 통과.
+- 브라우저: 검색 열기, 검색 실행, 3개 일괄 치환 및 목차·미리보기 갱신 확인. 좁은 편집 영역에서 검색 조작부 줄바꿈 확인.
+- 실제 macOS 앱: 검색 패널과 36pt Liquid Glass 버튼 표시, Escape로 검색 닫기, 플로팅 버튼으로 미리보기 열기 확인.
+- 독립 서브에이전트 소스 리뷰: 조치할 결함 없음.
+
+어두운 테마의 실제 화면과 Windows/Linux 실행 화면은 이번 검증에 포함하지 않았다. 네이티브 버튼 수정은 macOS에만 적용된다. 웹 조작부는 기존 테마 토큰을 소비한다.
+
+## 모서리 후속 정돈
+
+사용자의 곡률 피드백에 따라 공통 md/lg/xl 반경을 10/14/18px에서 8/12/16px로 줄였다. 기존 squircle 적용에 환영 화면의 최근 파일 영역과 검색 패널·입력·버튼·닫기 버튼을 추가했다. 지원하지 않는 엔진에서는 작은 일반 둥근 모서리를 사용한다. AppKit Liquid Glass에는 CSS를 적용하지 않는다.
+
+브라우저 computed style에서 버튼의 8px 반경, 검색 패널의 12px 반경과 `superellipse(2)`를 확인했다. 프론트엔드 빌드와 diff 체크가 통과했다. [MDN 호환성 데이터](https://github.com/mdn/browser-compat-data/blob/main/css/properties/corner-shape.json) 기준 Safari의 지원은 preview 단계로 기록되어 있으므로 macOS WebView에서 squircle 표시를 보장하지 않는다.

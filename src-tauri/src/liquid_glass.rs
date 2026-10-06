@@ -54,11 +54,14 @@ fn rect(x: f64, y: f64, w: f64, h: f64) -> NSRect {
     NSRect::new(NSPoint::new(x, y), NSSize::new(w, h))
 }
 
+const CONTROL_HEIGHT: f64 = 36.0;
+const CONTROL_INSET: f64 = 16.0;
+
 fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::runtime::Sel) -> (Retained<NSView>, Retained<NSButton>) {
     // Never request the macOS 26 class on systems that do not provide it.
     let has_liquid_glass = AnyClass::get(c"NSGlassEffectView").is_some();
     let button = FloatingButton::alloc(mtm).set_ivars(());
-    let button: Retained<FloatingButton> = unsafe { msg_send![super(button), initWithFrame: rect(0.0, 0.0, 100.0, 44.0)] };
+    let button: Retained<FloatingButton> = unsafe { msg_send![super(button), initWithFrame: rect(0.0, 0.0, 100.0, CONTROL_HEIGHT)] };
     let button = button.into_super();
     button.setBordered(!has_liquid_glass);
     unsafe {
@@ -70,12 +73,12 @@ fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::ru
         let _: () = msg_send![&*cell, setLineBreakMode: 5isize];
     }
     let glass = if has_liquid_glass {
-        let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
-        glass.setCornerRadius(22.0);
+        let glass = NSGlassEffectView::initWithFrame(NSGlassEffectView::alloc(mtm), rect(0.0, 0.0, 100.0, CONTROL_HEIGHT));
+        glass.setCornerRadius(CONTROL_HEIGHT / 2.0);
         glass.setContentView(Some(&button));
         glass.into_super()
     } else {
-        let view = NSView::initWithFrame(NSView::alloc(mtm), rect(0.0, 0.0, 100.0, 44.0));
+        let view = NSView::initWithFrame(NSView::alloc(mtm), rect(0.0, 0.0, 100.0, CONTROL_HEIGHT));
         view.addSubview(&button);
         view
     };
@@ -85,11 +88,11 @@ fn glass_button(mtm: MainThreadMarker, target: &ControlTarget, action: objc2::ru
 fn layout(controls: &Controls, content: &NSView) {
     let width = content.bounds().size.width;
     let path_width = (width - 148.0).clamp(44.0, 420.0);
-    let y = if content.isFlipped() { content.bounds().size.height - 60.0 } else { 16.0 };
-    controls.path_glass.setFrame(rect(16.0, y, path_width, 44.0));
-    controls.path_button.setFrame(rect(0.0, 0.0, path_width, 44.0));
-    controls.preview_glass.setFrame(rect(width - 116.0, y, 100.0, 44.0));
-    controls.preview_button.setFrame(rect(0.0, 0.0, 100.0, 44.0));
+    let y = if content.isFlipped() { content.bounds().size.height - CONTROL_INSET - CONTROL_HEIGHT } else { CONTROL_INSET };
+    controls.path_glass.setFrame(rect(CONTROL_INSET, y, path_width, CONTROL_HEIGHT));
+    controls.path_button.setFrame(rect(0.0, 0.0, path_width, CONTROL_HEIGHT));
+    controls.preview_glass.setFrame(rect(width - 116.0, y, 100.0, CONTROL_HEIGHT));
+    controls.preview_button.setFrame(rect(0.0, 0.0, 100.0, CONTROL_HEIGHT));
 }
 
 pub fn resize(window: &WebviewWindow) {
@@ -119,7 +122,7 @@ pub fn remove(label: String, app: &tauri::AppHandle) {
 }
 
 #[tauri::command]
-pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool) -> Result<bool, String> {
+pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool, path_copied: Option<bool>) -> Result<bool, String> {
     let label = window.label().to_string();
     let app = window.app_handle().clone();
     window.run_on_main_thread(move || {
@@ -139,7 +142,8 @@ pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, p
                 content.addSubview(&preview_glass);
                 Controls { path_glass, preview_glass, path_button, preview_button, _target: target }
             });
-            controls.path_button.setTitle(&NSString::from_str(path.as_deref().unwrap_or("Unsaved document")));
+            let path_title = if path.is_some() && path_copied.unwrap_or(false) { "Copied" } else { path.as_deref().unwrap_or("Unsaved document") };
+            controls.path_button.setTitle(&NSString::from_str(path_title));
             controls.path_button.setEnabled(path.is_some());
             native.invalidateCursorRectsForView(&controls.path_button);
             native.invalidateCursorRectsForView(&controls.preview_button);
