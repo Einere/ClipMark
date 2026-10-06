@@ -180,11 +180,11 @@ export default function App({ initialPreferences }: AppProps) {
 
   useEffect(() => {
     if (!session.isWelcomeVisible) {
-      void syncNativeControls({ path: session.filePath, previewOpen: isPreviewVisible })
+      void syncNativeControls({ path: session.filePath, previewOpen: isPreviewVisible, pathCopied: actions.isPathCopied })
         .then(setHasNativeControls)
         .catch(() => showToast("Could not update document controls.", "error"));
     }
-  }, [session.filePath, session.isWelcomeVisible, isPreviewVisible]);
+  }, [session.filePath, session.isWelcomeVisible, isPreviewVisible, actions.isPathCopied]);
 
   useWindowShortcuts({
     onNew: actions.handleWelcomeNew,
@@ -235,6 +235,8 @@ export default function App({ initialPreferences }: AppProps) {
             documentStore={session.documentStore}
             editorRef={editorRef}
             filePath={session.filePath}
+            isPathCopied={actions.isPathCopied}
+            onPathCopy={actions.handleMenuCopyFilePath}
             initialPreviewPanelWidth={previewPanelWidth}
             initialTocPanelWidth={tocPanelWidth}
             isExternalMediaAutoLoadEnabled={isExternalMediaAutoLoadEnabled}

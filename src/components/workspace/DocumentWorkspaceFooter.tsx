@@ -4,6 +4,8 @@ import { useCopyFilePath } from "../../hooks/useCopyFilePath";
 import type { DocumentStatus } from "../../lib/window-state";
 
 type DocumentWorkspaceFooterProps = {
+  isPathCopied?: boolean;
+  onPathCopy?: () => void;
   documentStatus: DocumentStatus | null;
   filePath: string | null;
   headingCount: number;
@@ -48,9 +50,11 @@ function getFileLabel(filePath: string | null) {
 function DocumentFooterFile({
   filePath,
   onPathCopy,
+  isPathCopied,
 }: {
   filePath: string | null;
   onPathCopy: () => void;
+  isPathCopied: boolean;
 }) {
   return (
     <div className="editor-workspace__footer-primary">
@@ -58,10 +62,13 @@ function DocumentFooterFile({
       {filePath ? (
         <button
           className="editor-workspace__path-button"
+          aria-label="Copy file path"
+          aria-live="polite"
           onClick={onPathCopy}
           type="button"
         >
-          {filePath}
+          <span className={isPathCopied ? "editor-workspace__path-placeholder" : undefined}>{filePath}</span>
+          {isPathCopied ? <span className="editor-workspace__path-feedback">Copied</span> : null}
         </button>
       ) : (
         <span className="editor-workspace__footer-value">{getFileLabel(filePath)}</span>
@@ -116,21 +123,22 @@ function DocumentFooterMeta({
 }
 
 export function DocumentWorkspaceFooter({
+  isPathCopied,
+  onPathCopy,
   documentStatus,
   filePath,
   headingCount,
   metrics,
 }: DocumentWorkspaceFooterProps) {
   const { showToast } = useToast();
-  const { copyFilePath } = useCopyFilePath({
+  const { copyFilePath, isPathCopied: locallyCopied } = useCopyFilePath({
     filePath,
-    successToastVariant: "success",
     showToast,
   });
 
   return (
     <footer className="editor-workspace__footer">
-      <DocumentFooterFile filePath={filePath} onPathCopy={copyFilePath} />
+      <DocumentFooterFile filePath={filePath} onPathCopy={onPathCopy ?? copyFilePath} isPathCopied={isPathCopied ?? locallyCopied} />
       <DocumentFooterMeta
         documentStatus={documentStatus}
         headingCount={headingCount}

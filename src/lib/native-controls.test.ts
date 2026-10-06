@@ -27,6 +27,12 @@ describe("native document controls", () => {
     expect(typeof cleanup).toBe("function");
   });
 
+  it("sends copy confirmation without replacing the original path", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await syncNativeControls({ path: "/tmp/note.md", previewOpen: false, pathCopied: true });
+    expect(invoke).toHaveBeenCalledWith("sync_native_controls", { path: "/tmp/note.md", previewOpen: false, pathCopied: true });
+  });
+
   it("preserves web controls when the platform has no native controls", async () => {
     const { invoke } = await import("@tauri-apps/api/core");
     vi.mocked(invoke).mockResolvedValueOnce(false);

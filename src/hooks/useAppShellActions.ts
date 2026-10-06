@@ -60,7 +60,7 @@ export function useAppShellActions({
 
     void saveDocument({ activeFilename, saveAs });
   });
-  const { copyFilePath: handleMenuCopyFilePath } = useCopyFilePath({
+  const { copyFilePath: handleMenuCopyFilePath, isPathCopied } = useCopyFilePath({
     filePath,
     showToast,
   });
@@ -95,6 +95,7 @@ export function useAppShellActions({
   });
 
   return {
+    isPathCopied,
     handleMenuCopyFilePath,
     handleMenuNew,
     handleMenuOpen,

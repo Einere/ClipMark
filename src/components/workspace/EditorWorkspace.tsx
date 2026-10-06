@@ -30,6 +30,8 @@ const PREVIEW_DEBOUNCE_MS = 120;
 const PREVIEW_IDLE_TIMEOUT_MS = 250;
 
 type EditorWorkspaceProps = {
+  isPathCopied?: boolean;
+  onPathCopy?: () => void;
   onEditorActivity?: (line: number | null, editSequence: number) => void;
   documentKey: number;
   documentStore: DocumentStore;
@@ -121,6 +123,8 @@ function DocumentTocPane({
 }
 
 export function EditorWorkspace({
+  isPathCopied,
+  onPathCopy,
   onEditorActivity,
   documentKey,
   documentStore,
@@ -268,6 +272,8 @@ export function EditorWorkspace({
         />
 
         <DocumentWorkspaceFooter
+          isPathCopied={isPathCopied}
+          onPathCopy={onPathCopy}
           documentStatus={documentStatus}
           filePath={filePath}
           headingCount={headings.length}
