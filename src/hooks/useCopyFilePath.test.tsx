@@ -15,7 +15,6 @@ function Harness({
 }) {
   const controls = useCopyFilePath({
     filePath: "/tmp/draft.md",
-    successToastVariant: "success",
     showToast: vi.fn(),
     ...overrides,
   });
@@ -41,9 +40,11 @@ describe("useCopyFilePath", () => {
     });
     container.remove();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
-  it("copies the file path and shows a success toast", async () => {
+  it("shows inline confirmation for 1.5 seconds and restarts it on repeated copy", async () => {
+    vi.useFakeTimers();
     const writeText = vi.fn().mockResolvedValue(undefined);
     const showToast = vi.fn();
     vi.stubGlobal("navigator", {
@@ -66,10 +67,14 @@ describe("useCopyFilePath", () => {
     });
 
     expect(writeText).toHaveBeenCalledWith("/tmp/draft.md");
-    expect(showToast).toHaveBeenCalledWith(
-      "Copied the file path to the clipboard.",
-      "success",
-    );
+    expect(showToast).not.toHaveBeenCalled();
+    expect(controls.isPathCopied).toBe(true);
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    await act(async () => { await controls.copyFilePath(); });
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(controls.isPathCopied).toBe(true);
+    await act(async () => { vi.advanceTimersByTime(500); });
+    expect(controls.isPathCopied).toBe(false);
   });
 
   it("shows an error toast when the clipboard write fails", async () => {
@@ -99,6 +104,22 @@ describe("useCopyFilePath", () => {
       "Could not copy the file path.",
       "error",
     );
+  });
+
+  it("does not confirm a pending copy after switching documents", async () => {
+    let finishCopy!: () => void;
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn(() => new Promise<void>((resolve) => { finishCopy = resolve; })) },
+    });
+    const onReady = (nextControls: Controls) => { controls = nextControls; };
+    await act(async () => { root.render(createElement(Harness, { onReady })); });
+    let copying!: Promise<void>;
+    await act(async () => { copying = controls.copyFilePath(); });
+    await act(async () => {
+      root.render(createElement(Harness, { onReady, overrides: { filePath: "/tmp/other.md" } }));
+    });
+    await act(async () => { finishCopy(); await copying; });
+    expect(controls.isPathCopied).toBe(false);
   });
 
   it("returns early when there is no file path", async () => {

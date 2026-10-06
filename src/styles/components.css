@@ -719,6 +719,7 @@
 }
 
 .editor-workspace__path-button {
+  position: relative;
   justify-self: flex-start;
   max-width: 100%;
   width: auto;
@@ -734,6 +735,17 @@
 
 .editor-workspace__path-button:hover {
   text-decoration: underline;
+}
+
+.editor-workspace__path-placeholder {
+  visibility: hidden;
+}
+
+.editor-workspace__path-feedback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
 .editor-workspace__status {

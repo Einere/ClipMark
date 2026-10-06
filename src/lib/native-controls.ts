@@ -4,7 +4,7 @@ import { isTauriRuntime } from "./file-system";
 
 export type NativeControlAction = "copy-path" | "toggle-preview";
 
-export async function syncNativeControls(state: { path: string | null; previewOpen: boolean }) {
+export async function syncNativeControls(state: { path: string | null; previewOpen: boolean; pathCopied?: boolean }) {
   if (!isTauriRuntime()) return false;
   return invoke<boolean>("sync_native_controls", state);
 }

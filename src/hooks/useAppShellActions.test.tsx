@@ -207,6 +207,7 @@ describe("useAppShellActions", () => {
     });
 
     expect(writeText).toHaveBeenCalledWith("/tmp/draft.md");
-    expect(showToast).toHaveBeenCalledWith("Copied the file path to the clipboard.");
+    expect(showToast).not.toHaveBeenCalled();
+    expect(controls.isPathCopied).toBe(true);
   });
 });

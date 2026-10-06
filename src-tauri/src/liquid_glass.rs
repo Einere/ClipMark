@@ -122,7 +122,7 @@ pub fn remove(label: String, app: &tauri::AppHandle) {
 }
 
 #[tauri::command]
-pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool) -> Result<bool, String> {
+pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, preview_open: bool, path_copied: Option<bool>) -> Result<bool, String> {
     let label = window.label().to_string();
     let app = window.app_handle().clone();
     window.run_on_main_thread(move || {
@@ -142,7 +142,8 @@ pub async fn sync_native_controls(window: WebviewWindow, path: Option<String>, p
                 content.addSubview(&preview_glass);
                 Controls { path_glass, preview_glass, path_button, preview_button, _target: target }
             });
-            controls.path_button.setTitle(&NSString::from_str(path.as_deref().unwrap_or("Unsaved document")));
+            let path_title = if path.is_some() && path_copied.unwrap_or(false) { "Copied" } else { path.as_deref().unwrap_or("Unsaved document") };
+            controls.path_button.setTitle(&NSString::from_str(path_title));
             controls.path_button.setEnabled(path.is_some());
             native.invalidateCursorRectsForView(&controls.path_button);
             native.invalidateCursorRectsForView(&controls.preview_button);

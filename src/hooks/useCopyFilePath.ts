@@ -1,4 +1,4 @@
-import { useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 export type ShowToast = (
   message: string,
@@ -8,15 +8,23 @@ export type ShowToast = (
 
 type UseCopyFilePathOptions = {
   filePath: string | null;
-  successToastVariant?: "success";
   showToast: ShowToast;
 };
 
 export function useCopyFilePath({
   filePath,
-  successToastVariant,
   showToast,
 }: UseCopyFilePathOptions) {
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const request = useRef(0);
+  useEffect(() => {
+    setCopiedPath(null);
+    return () => {
+      request.current += 1;
+      if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+    };
+  }, [filePath]);
   const handleCopyFilePathError = useEffectEvent(() => {
     showToast("Could not copy the file path.", "error");
   });
@@ -27,12 +35,12 @@ export function useCopyFilePath({
     }
 
     try {
+      const copyRequest = ++request.current;
       await navigator.clipboard.writeText(filePath);
-      if (successToastVariant) {
-        showToast("Copied the file path to the clipboard.", successToastVariant);
-      } else {
-        showToast("Copied the file path to the clipboard.");
-      }
+      if (copyRequest !== request.current) return;
+      if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+      setCopiedPath(filePath);
+      resetTimer.current = setTimeout(() => setCopiedPath(null), 1500);
     } catch {
       handleCopyFilePathError();
     }
@@ -40,5 +48,6 @@ export function useCopyFilePath({
 
   return {
     copyFilePath: handleCopyFilePath,
+    isPathCopied: filePath !== null && copiedPath === filePath,
   };
 }
