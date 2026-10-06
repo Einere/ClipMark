@@ -69,8 +69,8 @@
   --color-bg-header-end: color-mix(in oklch, var(--slate-50) 62%, var(--slate-100));
 
   --color-accent-border: color-mix(in oklch, var(--color-accent-solid) 58%, white);
-  --color-accent-surface: color-mix(in oklch, var(--color-accent-solid) 92%, white);
-  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 90%, black 2%);
+  --color-accent-surface: color-mix(in oklch, var(--color-accent-hover) 88%, white 12%);
+  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 96%, black 4%);
   --color-accent-surface-active: color-mix(in oklch, var(--color-accent-hover) 86%, black 14%);
 
   --color-danger-border: color-mix(in oklch, var(--red-500) 36%, white);
@@ -99,7 +99,7 @@
   --color-toast-error-title: var(--red-600);
   --color-toast-error-message: color-mix(in oklch, var(--red-600) 38%, var(--slate-800));
 
-  --color-focus-ring: color-mix(in oklch, var(--blue-500) 55%, white);
+  --color-focus-ring: color-mix(in oklch, var(--color-accent-solid) 90%, white 10%);
   --color-selection-bg: color-mix(in oklch, var(--blue-200) 72%, white);
   --color-selection-bg-strong: color-mix(in oklch, var(--color-selection-bg) 92%, white);
   --color-surface-selected: color-mix(in oklch, var(--color-bg-subtle) 72%, white);
@@ -155,9 +155,9 @@
   --color-bg-header-end: color-mix(in oklch, var(--slate-800) 74%, var(--slate-900));
 
   --color-accent-border: color-mix(in oklch, var(--color-accent-solid) 58%, black);
-  --color-accent-surface: color-mix(in oklch, var(--color-accent-solid) 78%, black);
-  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 82%, black);
-  --color-accent-surface-active: color-mix(in oklch, var(--blue-300) 68%, black);
+  --color-accent-surface: color-mix(in oklch, var(--color-accent-hover) 86%, black 14%);
+  --color-accent-surface-hover: color-mix(in oklch, var(--color-accent-hover) 94%, black 6%);
+  --color-accent-surface-active: color-mix(in oklch, var(--color-accent-hover) 82%, black 18%);
 
   --color-danger-border: color-mix(in oklch, var(--red-500) 52%, black);
   --color-toast-info-surface: color-mix(in oklch, var(--slate-800) 82%, var(--blue-500) 18%);
